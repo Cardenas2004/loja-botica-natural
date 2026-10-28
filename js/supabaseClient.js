@@ -34,7 +34,15 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
  * @property {string} id - Identificador único UUID (PK).
  * @property {string | null} category_id - Chave estrangeira UUID para `public.categories(id)`.
  * @property {string} name - Nome comercial do produto/fórmula.
- * @property {string | null} description - Descrição detalhada e benefícios do produto.
+ * @property {string} [sku_ref] - Código de referência ou SKU do produto (ex: "REF: 4299").
+ * @property {string} [short_description] - Resumo conciso dos benefícios para o topo da página e vitrine.
+ * @property {string} [payment_info] - Informação sobre opções de pagamento exibida ao lado do ícone de cartão.
+ * @property {string | null} description - Descrição detalhada e benefícios clínicos do produto.
+ * @property {string} [usage_instructions] - Instruções de posologia e modo de usar a fórmula.
+ * @property {string} [composition] - Composição detalhada e insumos ativos do bloco "Contém:".
+ * @property {string} [package_info] - Apresentação física e embalagem (ex: "Frasco com 90 cápsulas.").
+ * @property {string} [allergen_info] - Informações de restrições e alergênicos (ex: "Não contém lactose e glúten.").
+ * @property {string} [quality_note] - Nota de compromisso com rigor e qualidade farmacêutica.
  * @property {number} price - Preço unitário numérico (NUMERIC).
  * @property {string | null} image_url - URL pública direta da imagem do produto.
  * @property {string | null} image_path - Caminho relativo do arquivo dentro do bucket `product-images`.
@@ -43,6 +51,20 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
  * @property {string} created_at - Data/hora de criação (ISO 8601 TIMESTAMPTZ).
  * @property {string} updated_at - Data/hora da última atualização (ISO 8601 TIMESTAMPTZ).
  * @property {Category | null} [categories] - Objeto relacional opcional retornado em joins PostgREST.
+ */
+
+/**
+ * Representa um registro da tabela `public.carousel_slides`.
+ * @typedef {Object} CarouselSlide
+ * @property {string} id - Identificador único UUID (PK).
+ * @property {string} title - Descrição curta ou texto alternativo (`alt`) do banner.
+ * @property {string} button_link - Link opcional caso o banner seja clicável.
+ * @property {string} image_url - URL pública direta da imagem do banner no Supabase Storage.
+ * @property {string} image_path - Caminho relativo do arquivo dentro do bucket `product-images`.
+ * @property {number} display_order - Ordem de exibição numérica no carrossel (menor aparece primeiro).
+ * @property {boolean} is_active - Indica se o banner está ativo e visível na Landing Page.
+ * @property {string} created_at - Data/hora de criação (ISO 8601 TIMESTAMPTZ).
+ * @property {string} updated_at - Data/hora da última atualização (ISO 8601 TIMESTAMPTZ).
  */
 
 /**
@@ -68,13 +90,27 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const runtimeEnv = (typeof window !== 'undefined' && window.__ENV__) || {};
 
 /**
- * URL pública do projeto Supabase (ex.: 'https://xyzcompany.supabase.co').
- * Substitua pelo endpoint real do seu projeto no painel do Supabase (Settings > API).
+ * Higieniza a URL base do projeto Supabase.
+ * Caso o desenvolvedor cole acidentalmente o sufixo `/rest/v1/`, `/auth/v1/` ou barras finais,
+ * remove-os automaticamente para evitar duplicação de rotas internas pelo SDK `@supabase/supabase-js`.
+ *
+ * @param {string} rawUrl - URL bruta informada na configuração.
+ * @returns {string} URL base limpa (ex.: 'https://njdkuhgoophzjxmmempu.supabase.co').
+ */
+function sanitizeSupabaseProjectUrl(rawUrl) {
+  return String(rawUrl || '')
+    .trim()
+    .replace(/\/+(rest|auth|storage|functions)\/v1\/?$/i, '')
+    .replace(/\/+$/, '');
+}
+
+/**
+ * URL pública base do projeto Supabase (Project URL).
  * @type {string}
  */
-export const SUPABASE_URL = String(
-  runtimeEnv.SUPABASE_URL || 'https://SEU-PROJETO.supabase.co'
-).trim();
+export const SUPABASE_URL = sanitizeSupabaseProjectUrl(
+  runtimeEnv.SUPABASE_URL || 'https://njdkuhgoophzjxmmempu.supabase.co'
+);
 
 /**
  * Chave pública anônima (`anon` / `public` JWT).
@@ -83,7 +119,8 @@ export const SUPABASE_URL = String(
  * @type {string}
  */
 export const SUPABASE_ANON_KEY = String(
-  runtimeEnv.SUPABASE_ANON_KEY || 'SUA_SUPABASE_ANON_KEY_AQUI'
+  runtimeEnv.SUPABASE_ANON_KEY ||
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qZGt1aGdvb3Boemp4bW1lbXB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwNTUzMTcsImV4cCI6MjEwODYzMTMxN30._OoxbYVB16sKWtH5vyOygPvcMOQtPdOluS15x1pJgq0'
 ).trim();
 
 /* ==========================================================================
@@ -96,6 +133,7 @@ export const SUPABASE_ANON_KEY = String(
 export const DB_TABLES = Object.freeze({
   CATEGORIES: 'categories',
   PRODUCTS: 'products',
+  CAROUSEL: 'carousel_slides',
 });
 
 /**
@@ -455,10 +493,46 @@ export function normalizeSupabaseError(
     };
   }
 
-  // 3. Fallback seguro padrão (nunca expõe nomes de tabelas, colunas ou stack traces SQL)
+  if (
+    rawCode === '42P01' ||
+    rawCode === 'PGRST205' ||
+    lowerMsg.includes('carousel_slides') ||
+    lowerMsg.includes('does not exist')
+  ) {
+    return {
+      success: false,
+      userMessage:
+        'A tabela "carousel_slides" ainda não foi criada no Supabase. Copie e execute o script "supabase_carousel.sql" no SQL Editor do Supabase.',
+      code: 'TABLE_NOT_FOUND',
+      status: 404,
+    };
+  }
+
+  if (lowerMsg.includes('is_admin') || lowerMsg.includes('function public.is_admin')) {
+    return {
+      success: false,
+      userMessage:
+        'A função "public.is_admin()" precisa ser criada. Execute o script "supabase_carousel.sql" atualizado no SQL Editor do Supabase.',
+      code: 'FUNCTION_NOT_FOUND',
+      status: 400,
+    };
+  }
+
+  if (lowerMsg.includes('bucket not found') || lowerMsg.includes('bucket_id')) {
+    return {
+      success: false,
+      userMessage:
+        'O bucket "product-images" não foi encontrado no Storage. Execute o script "supabase_carousel.sql" para criá-lo.',
+      code: 'BUCKET_NOT_FOUND',
+      status: 404,
+    };
+  }
+
+  // 3. Fallback seguro e informativo
+  const fallbackDetail = rawMessage ? `: ${rawMessage}` : '. Tente novamente em alguns instantes.';
   return {
     success: false,
-    userMessage: `${contextMessage}. Tente novamente em alguns instantes.`,
+    userMessage: `${contextMessage}${fallbackDetail}`,
     code: rawCode || 'UNEXPECTED_ERROR',
     status,
   };

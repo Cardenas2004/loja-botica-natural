@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- Estilos Exclusivos do Painel Administrativo -->
-    <link rel="stylesheet" href="css/admin.css?v=20261027">
+    <link rel="stylesheet" href="css/admin.css?v=20261028_carousel_fix">
 </head>
 <body>
     <!-- =====================================================================
@@ -180,6 +180,141 @@
                 </div>
             </section>
 
+            <!-- 1.5. MÓDULO DE GESTÃO DE BANNERS DO CARROSSEL PRINCIPAL (HERO) -->
+            <section class="admin-panel admin-panel--carousel" aria-labelledby="panel-carousel-title">
+                <header class="admin-panel__header">
+                    <div>
+                        <span class="admin-panel__eyebrow"><i class="fa-solid fa-images" aria-hidden="true"></i> Destaque Principal (Hero)</span>
+                        <h2 id="panel-carousel-title" class="admin-panel__title">Gerenciador de Banners do Carrossel</h2>
+                    </div>
+                    <span id="carousel-count-badge" class="badge badge-order">0 fotos</span>
+                </header>
+
+                <div class="carousel-manager-layout">
+                    <!-- Coluna Esquerda: Formulário de Upload / Edição de Slide (#carousel-form) -->
+                    <form id="carousel-form" class="admin-form" novalidate>
+                        <input type="hidden" id="slide-id" name="id">
+                        <input type="hidden" id="slide-old-image-path" name="old_image_path">
+
+                        <div class="form-group">
+                            <label for="slide-image" class="form-label">Foto do Banner (Widescreen) <span id="slide-image-required-mark" class="required-mark" aria-hidden="true">*</span></label>
+                            <div class="upload-zone">
+                                <input
+                                    type="file"
+                                    id="slide-image"
+                                    name="image"
+                                    class="upload-zone__input"
+                                    accept="image/jpeg,image/png,image/webp"
+                                >
+                                <div class="upload-zone__prompt">
+                                    <span class="upload-zone__icon" aria-hidden="true"><i class="fa-solid fa-panorama"></i></span>
+                                    <div class="upload-zone__text">
+                                        <strong>Clique para selecionar ou arraste a foto do banner</strong>
+                                        <span>Tamanho oficial: <strong>1920x650 px</strong> (Panorâmico). Mantenha textos a pelo menos 10% das bordas (Margem de Segurança). Compressão automática em WebP HD.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Container de Preview Panorâmico Widescreen Oficial (1920x650) -->
+                            <div id="slide-preview-container" class="slide-preview-card" hidden>
+                                <div class="slide-preview-card__frame">
+                                    <img id="slide-preview" src="" alt="Pré-visualização panorâmica do banner do carrossel" width="320" height="108">
+                                </div>
+                                <div class="slide-preview-card__info">
+                                    <span class="badge badge-success"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> WebP HD 1920px (85%)</span>
+                                    <p class="image-preview-card__note">Pré-visualização exata em proporção panorâmica oficial (1920x650 px).</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="slide-title" class="form-label">Título / Descrição Curta (Acessibilidade Alt)</label>
+                            <input
+                                type="text"
+                                id="slide-title"
+                                name="title"
+                                class="form-control"
+                                placeholder="Descrição curta do banner (ex: Promoção de Inverno)"
+                                maxlength="160"
+                            >
+                            <small class="form-hint">Usado como texto alternativo (<code>alt</code>) para leitores de tela e SEO.</small>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="slide-order" class="form-label">Ordem de Exibição</label>
+                                <input
+                                    type="number"
+                                    id="slide-order"
+                                    name="display_order"
+                                    class="form-control"
+                                    value="0"
+                                    min="0"
+                                    step="1"
+                                >
+                                <small class="form-hint">Menor número aparece primeiro no carrossel.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="slide-link" class="form-label">Link do Banner (Opcional)</label>
+                                <input
+                                    type="url"
+                                    id="slide-link"
+                                    name="button_link"
+                                    class="form-control"
+                                    placeholder="Ex.: https://wa.me/555197731564 ou produtos.html"
+                                >
+                                <small class="form-hint">Preencha apenas se quiser que o banner seja clicável.</small>
+                            </div>
+                        </div>
+
+                        <div class="toggle-group">
+                            <label class="toggle-card" for="slide-active">
+                                <input type="checkbox" id="slide-active" name="is_active" class="toggle-switch" checked>
+                                <span class="toggle-content">
+                                    <strong class="toggle-title">Banner Ativo no Carrossel</strong>
+                                    <small class="toggle-desc">Exibir esta foto imediatamente no carrossel principal da Landing Page</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" id="btn-save-slide" class="btn btn-primary">
+                                <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+                                <span>Adicionar Foto ao Carrossel</span>
+                            </button>
+                            <button type="button" id="btn-cancel-slide" class="btn btn-secondary" hidden>
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                <span>Cancelar Edição</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Coluna Direita: Galeria Visual dos Slides Atuais (#carousel-admin-grid) -->
+                    <div class="carousel-gallery-column">
+                        <div class="categories-list-section__header">
+                            <h3 class="categories-list-section__title">Fotos Atuais do Carrossel</h3>
+                            <span class="categories-list-section__hint">Ordenadas por prioridade de exibição</span>
+                        </div>
+
+                        <div id="carousel-admin-grid" class="carousel-admin-grid" aria-live="polite">
+                            <!-- Cards de slides renderizados dinamicamente via js/admin.js -->
+                        </div>
+
+                        <!-- Estado Vazio da Galeria do Carrossel (#carousel-empty-state) -->
+                        <div id="carousel-empty-state" class="empty-state" hidden>
+                            <div class="empty-state__icon" aria-hidden="true">
+                                <i class="fa-regular fa-images"></i>
+                            </div>
+                            <h3 class="empty-state__title">Nenhuma foto personalizada no carrossel</h3>
+                            <p class="empty-state__desc">
+                                Utilize o formulário ao lado para enviar seu primeiro banner. Enquanto não houver slides ativos no banco, a vitrine exibirá automaticamente os banners padrão de segurança.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- 2. GRID PRINCIPAL DE 2 COLUNAS (CATEGORIAS À ESQUERDA + PRODUTOS À DIREITA) -->
             <div class="admin-grid">
                 <!-- ================= MÓDULO 1: GESTÃO DE CATEGORIAS ================= -->
@@ -286,17 +421,38 @@
                         <input type="hidden" id="prod-id" name="id">
                         <input type="hidden" id="prod-old-image-path" name="old_image_path">
 
-                        <div class="form-group">
-                            <label for="prod-name" class="form-label">Nome do Produto / Fórmula <span class="required-mark" aria-hidden="true">*</span></label>
-                            <input
-                                type="text"
-                                id="prod-name"
-                                name="name"
-                                class="form-control"
-                                placeholder="Ex.: Okralin™ 500mg — 60 Cápsulas"
-                                maxlength="140"
-                                required
-                            >
+                        <!-- 1. DADOS BÁSICOS E TOPO DO PRODUTO -->
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-tag" aria-hidden="true"></i>
+                            <span>1. Informações Básicas e Topo</span>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prod-name" class="form-label">Nome do Produto / Fórmula <span class="required-mark" aria-hidden="true">*</span></label>
+                                <input
+                                    type="text"
+                                    id="prod-name"
+                                    name="name"
+                                    class="form-control"
+                                    placeholder="Ex.: Magno 6"
+                                    maxlength="140"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prod-sku" class="form-label">Código de Referência (REF / SKU)</label>
+                                <input
+                                    type="text"
+                                    id="prod-sku"
+                                    name="sku_ref"
+                                    class="form-control"
+                                    placeholder="Ex.: REF: 4299"
+                                    maxlength="60"
+                                >
+                                <small class="form-hint">Exibido abaixo do título na página de detalhes.</small>
+                            </div>
                         </div>
 
                         <div class="form-row">
@@ -326,14 +482,108 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="prod-desc" class="form-label">Descrição e Ação do Medicamento</label>
+                            <label for="prod-short-desc" class="form-label">Resumo Curto de Benefícios</label>
+                            <textarea
+                                id="prod-short-desc"
+                                name="short_description"
+                                class="form-control form-textarea"
+                                rows="2"
+                                placeholder="Aumenta o desempenho físico e mental. Melhora concentração e memória. Auxilia no sono..."
+                            ></textarea>
+                            <small class="form-hint">Exibido no topo ao lado da foto e nos cards da vitrine.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="prod-payment-info" class="form-label">Texto de Formas de Pagamento</label>
+                            <input
+                                type="text"
+                                id="prod-payment-info"
+                                name="payment_info"
+                                class="form-control"
+                                value="Consulte formas de pagamento via WhatsApp / Cartão e Pix"
+                                placeholder="Consulte formas de pagamento via WhatsApp / Cartão e Pix"
+                            >
+                            <small class="form-hint">Exibido ao lado do ícone de cartão de crédito.</small>
+                        </div>
+
+                        <!-- 2. FICHA TÉCNICA DETALHADA ("DESCRIÇÃO DO PRODUTO") -->
+                        <div class="form-section-title">
+                            <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+                            <span>2. Ficha Técnica Detalhada (Página de Detalhes)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="prod-desc" class="form-label">Descrição Completa e Mecanismo de Ação</label>
                             <textarea
                                 id="prod-desc"
                                 name="description"
                                 class="form-control form-textarea"
                                 rows="4"
-                                placeholder="Descreva a composição, benefícios clínicos e indicação da fórmula manipulada..."
+                                placeholder="Descreva os benefícios clínicos, indicações e ação da fórmula..."
                             ></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prod-usage" class="form-label">Modo de Usar (Posologia)</label>
+                                <textarea
+                                    id="prod-usage"
+                                    name="usage_instructions"
+                                    class="form-control form-textarea"
+                                    rows="2"
+                                    placeholder="Ex.: Tomar 3 cápsulas pela manhã e 3 cápsulas à noite nas 2 primeiras semanas..."
+                                ></textarea>
+                                <small class="form-hint">Renderizado como <strong>MODO DE USAR:</strong> na página.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prod-composition" class="form-label">Composição e Ativos ("Contém:")</label>
+                                <textarea
+                                    id="prod-composition"
+                                    name="composition"
+                                    class="form-control form-textarea"
+                                    rows="2"
+                                    placeholder="Ex.: 3 tipos de Magnésio (citrato, bisglicinato e aspartato) 80mg, Vitamina B6 5mg e Zinco 5mg."
+                                ></textarea>
+                                <small class="form-hint">Renderizado em destaque em <em>itálico</em>.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prod-package" class="form-label">Apresentação / Embalagem</label>
+                                <input
+                                    type="text"
+                                    id="prod-package"
+                                    name="package_info"
+                                    class="form-control"
+                                    placeholder="Ex.: Frasco com 90 cápsulas."
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prod-allergens" class="form-label">Restrições / Alergênicos</label>
+                                <input
+                                    type="text"
+                                    id="prod-allergens"
+                                    name="allergen_info"
+                                    class="form-control"
+                                    value="Não contém lactose e glúten."
+                                    placeholder="Ex.: Não contém lactose e glúten."
+                                >
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="prod-quality-note" class="form-label">Garantia e Rigor Farmacêutico</label>
+                            <input
+                                type="text"
+                                id="prod-quality-note"
+                                name="quality_note"
+                                class="form-control"
+                                value="Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia."
+                                placeholder="Nota de compromisso farmacêutico em negrito no rodapé da descrição."
+                            >
                         </div>
 
                         <!-- Flags de Controle de Vitrine (Toggle Switches lado a lado) -->

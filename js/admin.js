@@ -32,8 +32,10 @@ import {
  * @typedef {Object} AdminState
  * @property {import('./supabaseClient.js').Category[]} categories
  * @property {import('./supabaseClient.js').Product[]} products
+ * @property {import('./supabaseClient.js').CarouselSlide[]} carouselSlides
  * @property {{ search: string, categoryId: string, status: string }} filters
  * @property {string | null} activePreviewObjectUrl
+ * @property {string | null} activeSlidePreviewObjectUrl
  * @property {boolean} isLoadingData
  */
 
@@ -41,12 +43,14 @@ import {
 const state = {
   categories: [],
   products: [],
+  carouselSlides: [],
   filters: {
     search: '',
     categoryId: 'all',
     status: 'all',
   },
   activePreviewObjectUrl: null,
+  activeSlidePreviewObjectUrl: null,
   isLoadingData: false,
 };
 
@@ -76,6 +80,25 @@ const DOM = Object.freeze({
   kpiBestsellers: /** @type {HTMLElement | null} */ (document.getElementById('kpi-bestsellers')),
   kpiCategories: /** @type {HTMLElement | null} */ (document.getElementById('kpi-categories')),
 
+  // Módulo 0: Gerenciador de Banners do Carrossel Principal
+  panelCarouselTitle: /** @type {HTMLElement | null} */ (document.getElementById('panel-carousel-title')),
+  carouselCountBadge: /** @type {HTMLElement | null} */ (document.getElementById('carousel-count-badge')),
+  carouselForm: /** @type {HTMLFormElement | null} */ (document.getElementById('carousel-form')),
+  slideId: /** @type {HTMLInputElement | null} */ (document.getElementById('slide-id')),
+  slideOldImagePath: /** @type {HTMLInputElement | null} */ (document.getElementById('slide-old-image-path')),
+  slideImage: /** @type {HTMLInputElement | null} */ (document.getElementById('slide-image')),
+  slideImageRequiredMark: /** @type {HTMLElement | null} */ (document.getElementById('slide-image-required-mark')),
+  slidePreviewContainer: /** @type {HTMLElement | null} */ (document.getElementById('slide-preview-container')),
+  slidePreview: /** @type {HTMLImageElement | null} */ (document.getElementById('slide-preview')),
+  slideTitle: /** @type {HTMLInputElement | null} */ (document.getElementById('slide-title')),
+  slideLink: /** @type {HTMLInputElement | null} */ (document.getElementById('slide-link')),
+  slideOrder: /** @type {HTMLInputElement | null} */ (document.getElementById('slide-order')),
+  slideActive: /** @type {HTMLInputElement | null} */ (document.getElementById('slide-active')),
+  btnSaveSlide: /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-save-slide')),
+  btnCancelSlide: /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-cancel-slide')),
+  carouselAdminGrid: /** @type {HTMLElement | null} */ (document.getElementById('carousel-admin-grid')),
+  carouselEmptyState: /** @type {HTMLElement | null} */ (document.getElementById('carousel-empty-state')),
+
   // Módulo 1: Categorias
   panelCategoriesTitle: /** @type {HTMLElement | null} */ (document.getElementById('panel-categories-title')),
   categoryForm: /** @type {HTMLFormElement | null} */ (document.getElementById('category-form')),
@@ -94,9 +117,17 @@ const DOM = Object.freeze({
   prodId: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-id')),
   prodOldImagePath: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-old-image-path')),
   prodName: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-name')),
+  prodSku: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-sku')),
   prodCategory: /** @type {HTMLSelectElement | null} */ (document.getElementById('prod-category')),
   prodPrice: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-price')),
+  prodShortDesc: /** @type {HTMLTextAreaElement | null} */ (document.getElementById('prod-short-desc')),
+  prodPaymentInfo: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-payment-info')),
   prodDesc: /** @type {HTMLTextAreaElement | null} */ (document.getElementById('prod-desc')),
+  prodUsage: /** @type {HTMLTextAreaElement | null} */ (document.getElementById('prod-usage')),
+  prodComposition: /** @type {HTMLTextAreaElement | null} */ (document.getElementById('prod-composition')),
+  prodPackage: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-package')),
+  prodAllergens: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-allergens')),
+  prodQualityNote: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-quality-note')),
   prodActive: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-active')),
   prodBestseller: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-bestseller')),
   prodImage: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-image')),
@@ -381,6 +412,32 @@ function updateImagePreviewUI(srcUrl) {
 }
 
 /**
+ * Revoga o ObjectURL ativo do preview de slide do carrossel da memória do navegador.
+ */
+function revokeActiveSlidePreviewUrl() {
+  if (state.activeSlidePreviewObjectUrl) {
+    URL.revokeObjectURL(state.activeSlidePreviewObjectUrl);
+    state.activeSlidePreviewObjectUrl = null;
+  }
+}
+
+/**
+ * Exibe ou oculta o container de preview panorâmico (`#slide-preview-container`).
+ * @param {string | null} srcUrl - URL da imagem (ObjectURL local ou URL pública do Supabase).
+ */
+function updateSlidePreviewUI(srcUrl) {
+  if (!DOM.slidePreviewContainer || !DOM.slidePreview) return;
+
+  if (srcUrl) {
+    DOM.slidePreview.src = srcUrl;
+    DOM.slidePreviewContainer.hidden = false;
+  } else {
+    DOM.slidePreview.removeAttribute('src');
+    DOM.slidePreviewContainer.hidden = true;
+  }
+}
+
+/**
  * Valida o arquivo de imagem selecionado contra os tipos MIME permitidos
  * e tamanho máximo razoável antes do processamento no Canvas.
  *
@@ -517,6 +574,48 @@ async function uploadProductImage(rawFile) {
 
   const baseSlug = generateSlug(rawFile.name.replace(/\.[^.]+$/, '')) || 'produto';
   const imagePath = `catalogo/${Date.now()}-${baseSlug}-${randomSuffix.slice(0, 8)}.webp`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(STORAGE_CONFIG.BUCKET_NAME)
+    .upload(imagePath, webpBlob, {
+      contentType: 'image/webp',
+      cacheControl: '31536000',
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const imageUrl = getPublicImageUrl(imagePath);
+  return { imagePath, imageUrl };
+}
+
+/**
+ * Comprime um banner widescreen em Alta Definição (`maxDimension = 1920`, `initialQuality = 0.85`)
+ * para formato `image/webp` e realiza o upload no bucket `product-images` com prefixo
+ * padronizado `carousel_${crypto.randomUUID()}.webp`.
+ *
+ * @param {File} rawFile - Arquivo original selecionado em `#slide-image`.
+ * @returns {Promise<{ imagePath: string, imageUrl: string }>}
+ */
+async function uploadCarouselImage(rawFile) {
+  const validation = validateSelectedImageFile(rawFile);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  const webpBlob = await convertImageToWebP(rawFile, {
+    maxDimension: 1920,
+    initialQuality: 0.85,
+  });
+
+  const uniqueUuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+
+  const imagePath = `carousel/banner-${Date.now()}-${uniqueUuid.slice(0, 8)}.webp`;
 
   const { error: uploadError } = await supabase.storage
     .from(STORAGE_CONFIG.BUCKET_NAME)
@@ -883,10 +982,143 @@ function renderProductsTable() {
 }
 
 /**
+ * Renderiza a galeria visual de slides do carrossel (`#carousel-admin-grid`) e controla
+ * a visibilidade de `#carousel-empty-state` usando exclusivamente `createElement` e `textContent`.
+ */
+function renderCarouselAdminGrid() {
+  if (!DOM.carouselAdminGrid) return;
+
+  const totalSlides = state.carouselSlides.length;
+  if (DOM.carouselCountBadge) {
+    DOM.carouselCountBadge.textContent =
+      totalSlides === 1 ? '1 foto' : `${totalSlides} fotos`;
+  }
+
+  if (totalSlides === 0) {
+    DOM.carouselAdminGrid.replaceChildren();
+    DOM.carouselAdminGrid.hidden = true;
+    if (DOM.carouselEmptyState) DOM.carouselEmptyState.hidden = false;
+    return;
+  }
+
+  if (DOM.carouselEmptyState) DOM.carouselEmptyState.hidden = true;
+  DOM.carouselAdminGrid.hidden = false;
+
+  const editingSlideId = DOM.slideId?.value.trim() || '';
+  const fragment = document.createDocumentFragment();
+
+  state.carouselSlides.forEach((slide) => {
+    const card = document.createElement('article');
+    card.className = 'carousel-slide-card';
+    if (editingSlideId && editingSlideId === slide.id) {
+      card.classList.add('is-editing');
+    }
+    card.dataset.id = slide.id;
+
+    // 1. Miniatura Panorâmica Oficial (1920x650) + Badges de Ordem e Status
+    const mediaWrap = document.createElement('div');
+    mediaWrap.className = 'carousel-slide-card__media';
+
+    const img = document.createElement('img');
+    img.className = 'carousel-slide-card__img';
+    img.loading = 'lazy';
+    img.width = 480;
+    img.height = 162;
+    const slideTitleText = String(slide.title || '').trim();
+    img.alt = slideTitleText || `Banner do carrossel (Ordem ${slide.display_order})`;
+    const resolvedUrl =
+      slide.image_url || getPublicImageUrl(slide.image_path) || FALLBACK_PRODUCT_THUMB;
+    img.src = resolvedUrl;
+    img.addEventListener('error', () => {
+      if (img.src !== FALLBACK_PRODUCT_THUMB) {
+        img.src = FALLBACK_PRODUCT_THUMB;
+      }
+    });
+
+    const badgesOverlay = document.createElement('div');
+    badgesOverlay.className = 'carousel-slide-card__badges';
+
+    const orderBadge = document.createElement('span');
+    orderBadge.className = 'badge badge-order';
+    orderBadge.textContent = `Ordem: ${slide.display_order}`;
+
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `badge ${slide.is_active ? 'badge-success' : 'badge-muted'}`;
+    statusBadge.textContent = slide.is_active ? 'Ativo' : 'Inativo';
+
+    badgesOverlay.append(orderBadge, statusBadge);
+    mediaWrap.append(img, badgesOverlay);
+
+    // 2. Corpo com Descrição / Link Opcional
+    const bodyWrap = document.createElement('div');
+    bodyWrap.className = 'carousel-slide-card__body';
+
+    const titleEl = document.createElement('strong');
+    titleEl.className = 'carousel-slide-card__title';
+    titleEl.textContent = slideTitleText || 'Banner sem descrição definida';
+    bodyWrap.appendChild(titleEl);
+
+    const linkText = String(slide.button_link || '').trim();
+    if (linkText) {
+      const linkSpan = document.createElement('span');
+      linkSpan.className = 'carousel-slide-card__link';
+      const linkIcon = document.createElement('i');
+      linkIcon.className = 'fa-solid fa-link';
+      linkIcon.setAttribute('aria-hidden', 'true');
+      linkSpan.append(linkIcon, document.createTextNode(` ${linkText}`));
+      bodyWrap.appendChild(linkSpan);
+    }
+
+    // 3. Ações Diretas: Editar / Trocar Foto & Excluir Foto
+    const actionsWrap = document.createElement('div');
+    actionsWrap.className = 'carousel-slide-card__actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'btn btn-secondary btn-sm';
+    editBtn.dataset.action = 'edit-slide';
+    editBtn.dataset.id = slide.id;
+    editBtn.setAttribute(
+      'aria-label',
+      `Editar ou trocar foto do banner ${slideTitleText || slide.display_order}`
+    );
+    const editIcon = document.createElement('i');
+    editIcon.className = 'fa-solid fa-camera-rotate';
+    editIcon.setAttribute('aria-hidden', 'true');
+    const editLabel = document.createElement('span');
+    editLabel.textContent = 'Editar / Trocar Foto';
+    editBtn.append(editIcon, editLabel);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'btn btn-danger btn-sm';
+    deleteBtn.dataset.action = 'delete-slide';
+    deleteBtn.dataset.id = slide.id;
+    deleteBtn.setAttribute(
+      'aria-label',
+      `Excluir foto do banner ${slideTitleText || slide.display_order}`
+    );
+    const deleteIcon = document.createElement('i');
+    deleteIcon.className = 'fa-regular fa-trash-can';
+    deleteIcon.setAttribute('aria-hidden', 'true');
+    const deleteLabel = document.createElement('span');
+    deleteLabel.textContent = 'Excluir Foto';
+    deleteBtn.append(deleteIcon, deleteLabel);
+
+    actionsWrap.append(editBtn, deleteBtn);
+    card.append(mediaWrap, bodyWrap, actionsWrap);
+    fragment.appendChild(card);
+  });
+
+  DOM.carouselAdminGrid.replaceChildren(fragment);
+}
+
+/**
  * Sincroniza toda a interface administrativa com o estado atual em memória.
  */
 function renderAll() {
   renderKpis();
+  renderCarouselAdminGrid();
   renderCategorySelects();
   renderCategoriesList();
   renderProductsTable();
@@ -936,6 +1168,37 @@ async function fetchProducts() {
   state.products = Array.isArray(data) ? data : [];
   renderKpis();
   renderProductsTable();
+}
+
+/**
+ * Busca todos os slides do carrossel ordenados por `display_order` ASC e `created_at` DESC.
+ */
+async function fetchCarouselSlides() {
+  const { data, error } = await supabase
+    .from(DB_TABLES.CAROUSEL)
+    .select('*')
+    .order('display_order', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    const rawCode = String(error.code || '');
+    // Caso a tabela `carousel_slides` ainda não tenha sido criada no SQL Editor, degrada graciosamente
+    if (rawCode === '42P01' || rawCode === 'PGRST205') {
+      console.warn(
+        '[Admin][Carousel] A tabela "public.carousel_slides" ainda não foi criada no Supabase. Execute o script "supabase_carousel.sql" no SQL Editor.'
+      );
+      state.carouselSlides = [];
+      renderCarouselAdminGrid();
+      return;
+    }
+
+    const normalized = normalizeSupabaseError(error, 'Erro ao carregar fotos do carrossel');
+    showToast(normalized.userMessage, 'error');
+    return;
+  }
+
+  state.carouselSlides = Array.isArray(data) ? data : [];
+  renderCarouselAdminGrid();
 }
 
 /* ==========================================================================
@@ -1097,6 +1360,20 @@ function resetProductForm() {
   DOM.productForm?.reset();
   if (DOM.prodId) DOM.prodId.value = '';
   if (DOM.prodOldImagePath) DOM.prodOldImagePath.value = '';
+  if (DOM.prodSku) DOM.prodSku.value = '';
+  if (DOM.prodShortDesc) DOM.prodShortDesc.value = '';
+  if (DOM.prodPaymentInfo) {
+    DOM.prodPaymentInfo.value = 'Consulte formas de pagamento via WhatsApp / Cartão e Pix';
+  }
+  if (DOM.prodDesc) DOM.prodDesc.value = '';
+  if (DOM.prodUsage) DOM.prodUsage.value = '';
+  if (DOM.prodComposition) DOM.prodComposition.value = '';
+  if (DOM.prodPackage) DOM.prodPackage.value = '';
+  if (DOM.prodAllergens) DOM.prodAllergens.value = 'Não contém lactose e glúten.';
+  if (DOM.prodQualityNote) {
+    DOM.prodQualityNote.value =
+      'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
+  }
   if (DOM.prodActive) DOM.prodActive.checked = true;
   if (DOM.prodBestseller) DOM.prodBestseller.checked = false;
   if (DOM.prodImage) DOM.prodImage.value = '';
@@ -1122,9 +1399,26 @@ function startEditProduct(productId) {
   if (DOM.prodId) DOM.prodId.value = product.id;
   if (DOM.prodOldImagePath) DOM.prodOldImagePath.value = product.image_path || '';
   if (DOM.prodName) DOM.prodName.value = product.name || '';
+  if (DOM.prodSku) DOM.prodSku.value = product.sku_ref || '';
   if (DOM.prodCategory) DOM.prodCategory.value = product.category_id || '';
   if (DOM.prodPrice) DOM.prodPrice.value = Number(product.price ?? 0).toFixed(2);
+  if (DOM.prodShortDesc) DOM.prodShortDesc.value = product.short_description || '';
+  if (DOM.prodPaymentInfo) {
+    DOM.prodPaymentInfo.value =
+      product.payment_info || 'Consulte formas de pagamento via WhatsApp / Cartão e Pix';
+  }
   if (DOM.prodDesc) DOM.prodDesc.value = product.description || '';
+  if (DOM.prodUsage) DOM.prodUsage.value = product.usage_instructions || '';
+  if (DOM.prodComposition) DOM.prodComposition.value = product.composition || '';
+  if (DOM.prodPackage) DOM.prodPackage.value = product.package_info || '';
+  if (DOM.prodAllergens) {
+    DOM.prodAllergens.value = product.allergen_info ?? 'Não contém lactose e glúten.';
+  }
+  if (DOM.prodQualityNote) {
+    DOM.prodQualityNote.value =
+      product.quality_note ||
+      'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
+  }
   if (DOM.prodActive) DOM.prodActive.checked = Boolean(product.is_active);
   if (DOM.prodBestseller) DOM.prodBestseller.checked = Boolean(product.is_best_seller);
 
@@ -1179,9 +1473,21 @@ async function handleProductSubmit(event) {
   const id = DOM.prodId?.value.trim() || '';
   const oldImagePath = DOM.prodOldImagePath?.value.trim() || '';
   const name = DOM.prodName?.value.trim() || '';
+  const skuRef = DOM.prodSku?.value.trim() || '';
   const categoryId = DOM.prodCategory?.value.trim() || '';
   const rawPrice = Number.parseFloat(DOM.prodPrice?.value || '');
-  const description = DOM.prodDesc?.value.trim() || null;
+  const shortDescription = DOM.prodShortDesc?.value.trim() || '';
+  const paymentInfo =
+    DOM.prodPaymentInfo?.value.trim() ||
+    'Consulte formas de pagamento via WhatsApp / Cartão e Pix';
+  const description = DOM.prodDesc?.value.trim() || '';
+  const usageInstructions = DOM.prodUsage?.value.trim() || '';
+  const composition = DOM.prodComposition?.value.trim() || '';
+  const packageInfo = DOM.prodPackage?.value.trim() || '';
+  const allergenInfo = DOM.prodAllergens?.value.trim() || 'Não contém lactose e glúten.';
+  const qualityNote =
+    DOM.prodQualityNote?.value.trim() ||
+    'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
   const isActive = Boolean(DOM.prodActive?.checked);
   const isBestSeller = Boolean(DOM.prodBestseller?.checked);
   const selectedFile = DOM.prodImage?.files?.[0] || null;
@@ -1230,9 +1536,17 @@ async function handleProductSubmit(event) {
 
     const payload = {
       name,
+      sku_ref: skuRef,
       category_id: categoryId,
       price: Number(rawPrice.toFixed(2)),
+      short_description: shortDescription,
+      payment_info: paymentInfo,
       description,
+      usage_instructions: usageInstructions,
+      composition,
+      package_info: packageInfo,
+      allergen_info: allergenInfo,
+      quality_note: qualityNote,
       image_path: finalImagePath,
       image_url: finalImageUrl,
       is_active: isActive,
@@ -1328,6 +1642,272 @@ async function handleDeleteProduct(productId) {
 }
 
 /* ==========================================================================
+   9.5. CONTROLADORES DE FORMULÁRIO: GERENCIADOR DE BANNERS DO CARROSSEL
+   ========================================================================== */
+
+/**
+ * Reseta o formulário `#carousel-form` para o estado inicial de adição de nova foto,
+ * revogando qualquer ObjectURL panorâmico da memória RAM.
+ */
+function resetCarouselForm() {
+  revokeActiveSlidePreviewUrl();
+  updateSlidePreviewUI(null);
+
+  DOM.carouselForm?.reset();
+  if (DOM.slideId) DOM.slideId.value = '';
+  if (DOM.slideOldImagePath) DOM.slideOldImagePath.value = '';
+  if (DOM.slideTitle) DOM.slideTitle.value = '';
+  if (DOM.slideLink) DOM.slideLink.value = '';
+  if (DOM.slideOrder) DOM.slideOrder.value = '0';
+  if (DOM.slideActive) DOM.slideActive.checked = true;
+  if (DOM.slideImage) DOM.slideImage.value = '';
+  if (DOM.slideImageRequiredMark) DOM.slideImageRequiredMark.hidden = false;
+
+  if (DOM.panelCarouselTitle) {
+    DOM.panelCarouselTitle.textContent = 'Gerenciador de Banners do Carrossel';
+  }
+
+  setButtonLoading(
+    DOM.btnSaveSlide,
+    false,
+    'Enviando Banner...',
+    'Adicionar Foto ao Carrossel',
+    'fa-solid fa-cloud-arrow-up'
+  );
+
+  if (DOM.btnCancelSlide) {
+    DOM.btnCancelSlide.hidden = true;
+  }
+
+  renderCarouselAdminGrid();
+}
+
+/**
+ * Manipula a seleção de arquivo no input `#slide-image`, validando formato/tamanho
+ * e exibindo o preview panorâmico widescreen imediato.
+ */
+function handleSlideImageSelection() {
+  revokeActiveSlidePreviewUrl();
+
+  const file = DOM.slideImage?.files?.[0];
+  if (!file) {
+    const editingId = DOM.slideId?.value.trim();
+    if (editingId) {
+      const existing = state.carouselSlides.find((s) => s.id === editingId);
+      const existingUrl = existing?.image_url || getPublicImageUrl(existing?.image_path);
+      updateSlidePreviewUI(existingUrl || null);
+    } else {
+      updateSlidePreviewUI(null);
+    }
+    return;
+  }
+
+  const validation = validateSelectedImageFile(file);
+  if (!validation.valid) {
+    if (DOM.slideImage) DOM.slideImage.value = '';
+    updateSlidePreviewUI(null);
+    showToast(validation.error || 'Arquivo de banner inválido.', 'error');
+    return;
+  }
+
+  const previewUrl = URL.createObjectURL(file);
+  state.activeSlidePreviewObjectUrl = previewUrl;
+  updateSlidePreviewUI(previewUrl);
+}
+
+/**
+ * Preenche o formulário `#carousel-form` para editar ou substituir a foto de um slide existente.
+ * @param {string} slideId
+ */
+function startEditCarouselSlide(slideId) {
+  const slide = state.carouselSlides.find((s) => s.id === slideId);
+  if (!slide) {
+    showToast('Banner não encontrado na memória.', 'error');
+    return;
+  }
+
+  revokeActiveSlidePreviewUrl();
+  if (DOM.slideImage) DOM.slideImage.value = '';
+
+  if (DOM.slideId) DOM.slideId.value = slide.id;
+  if (DOM.slideOldImagePath) DOM.slideOldImagePath.value = slide.image_path || '';
+  if (DOM.slideTitle) DOM.slideTitle.value = slide.title || '';
+  if (DOM.slideLink) DOM.slideLink.value = slide.button_link || '';
+  if (DOM.slideOrder) DOM.slideOrder.value = String(slide.display_order ?? 0);
+  if (DOM.slideActive) DOM.slideActive.checked = Boolean(slide.is_active);
+  if (DOM.slideImageRequiredMark) DOM.slideImageRequiredMark.hidden = true;
+
+  const currentImgUrl = slide.image_url || getPublicImageUrl(slide.image_path);
+  updateSlidePreviewUI(currentImgUrl || null);
+
+  if (DOM.panelCarouselTitle) {
+    DOM.panelCarouselTitle.textContent = `Editando Banner (Ordem ${slide.display_order})`;
+  }
+
+  setButtonLoading(
+    DOM.btnSaveSlide,
+    false,
+    'Salvando...',
+    'Salvar Alterações / Trocar Foto',
+    'fa-solid fa-floppy-disk'
+  );
+
+  if (DOM.btnCancelSlide) {
+    DOM.btnCancelSlide.hidden = false;
+  }
+
+  renderCarouselAdminGrid();
+  DOM.carouselForm?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  DOM.slideTitle?.focus();
+}
+
+/**
+ * Processa a criação ou atualização de um banner do carrossel (`#carousel-form`),
+ * realizando compressão WebP HD (`1920px`, `0.85`), upload no Storage e remoção
+ * automática do arquivo antigo quando a foto é substituída (Zero Arquivos Órfãos).
+ *
+ * @param {SubmitEvent} event
+ */
+async function handleCarouselSubmit(event) {
+  event.preventDefault();
+
+  const editingId = DOM.slideId?.value.trim() || '';
+  const oldImagePath = DOM.slideOldImagePath?.value.trim() || '';
+  const title = DOM.slideTitle?.value.trim() || '';
+  const buttonLink = DOM.slideLink?.value.trim() || '';
+  const rawOrder = Number.parseInt(DOM.slideOrder?.value || '0', 10);
+  const displayOrder = Number.isFinite(rawOrder) && rawOrder >= 0 ? rawOrder : 0;
+  const isActive = Boolean(DOM.slideActive?.checked);
+  const selectedFile = DOM.slideImage?.files?.[0] || null;
+
+  if (!editingId && !selectedFile) {
+    showToast('Selecione uma foto panorâmica para adicionar ao carrossel.', 'warning');
+    DOM.slideImage?.focus();
+    return;
+  }
+
+  setButtonLoading(
+    DOM.btnSaveSlide,
+    true,
+    selectedFile ? 'Otimizando WebP 1920px e enviando...' : 'Salvando alterações...',
+    editingId ? 'Salvar Alterações / Trocar Foto' : 'Adicionar Foto ao Carrossel',
+    editingId ? 'fa-solid fa-floppy-disk' : 'fa-solid fa-cloud-arrow-up'
+  );
+
+  /** @type {{ imagePath: string, imageUrl: string } | null} */
+  let uploadedBanner = null;
+
+  try {
+    if (selectedFile) {
+      uploadedBanner = await uploadCarouselImage(selectedFile);
+    }
+
+    /** @type {Record<string, any>} */
+    const payload = {
+      title,
+      button_link: buttonLink,
+      display_order: displayOrder,
+      is_active: isActive,
+    };
+
+    if (uploadedBanner) {
+      payload.image_path = uploadedBanner.imagePath;
+      payload.image_url = uploadedBanner.imageUrl;
+    }
+
+    if (editingId) {
+      const { error } = await supabase
+        .from(DB_TABLES.CAROUSEL)
+        .update(payload)
+        .eq('id', editingId);
+
+      if (error) throw error;
+
+      // Se uma nova foto foi enviada na edição, apaga o arquivo antigo do Storage para evitar órfãos
+      if (uploadedBanner && oldImagePath && oldImagePath !== uploadedBanner.imagePath) {
+        await removeStorageImageIfPresent(oldImagePath);
+      }
+
+      showToast(
+        uploadedBanner
+          ? 'Foto do banner substituída e carrossel atualizado!'
+          : 'Dados do banner atualizados com sucesso!',
+        'success'
+      );
+    } else {
+      const { error } = await supabase.from(DB_TABLES.CAROUSEL).insert([payload]);
+
+      if (error) throw error;
+
+      showToast('Nova foto adicionada ao carrossel com sucesso!', 'success');
+    }
+
+    resetCarouselForm();
+    await fetchCarouselSlides();
+  } catch (err) {
+    // Rollback físico no Storage caso o upload tenha ocorrido mas o banco tenha falhado
+    if (uploadedBanner?.imagePath) {
+      await removeStorageImageIfPresent(uploadedBanner.imagePath);
+    }
+
+    const normalized = normalizeSupabaseError(err, 'Erro ao salvar banner do carrossel');
+    showToast(normalized.userMessage, 'error');
+  } finally {
+    const stillEditing = Boolean(DOM.slideId?.value.trim());
+    setButtonLoading(
+      DOM.btnSaveSlide,
+      false,
+      'Salvando...',
+      stillEditing ? 'Salvar Alterações / Trocar Foto' : 'Adicionar Foto ao Carrossel',
+      stillEditing ? 'fa-solid fa-floppy-disk' : 'fa-solid fa-cloud-arrow-up'
+    );
+  }
+}
+
+/**
+ * Exclui um banner do carrossel mediante confirmação em `<dialog>` e remove
+ * imediatamente o arquivo físico correspondente do Supabase Storage.
+ *
+ * @param {string} slideId
+ */
+async function handleDeleteCarouselSlide(slideId) {
+  const slide = state.carouselSlides.find((s) => s.id === slideId);
+  if (!slide) return;
+
+  const label = slide.title ? `"${slide.title}"` : `de Ordem ${slide.display_order}`;
+  const confirmed = await confirmAction({
+    title: 'Excluir Foto do Carrossel',
+    message: `Tem certeza que deseja excluir permanentemente o banner ${label}? A imagem também será apagada do servidor.`,
+  });
+
+  if (!confirmed) return;
+
+  try {
+    const { error } = await supabase.from(DB_TABLES.CAROUSEL).delete().eq('id', slideId);
+
+    if (error) {
+      const normalized = normalizeSupabaseError(error, 'Não foi possível excluir o banner');
+      showToast(normalized.userMessage, 'error');
+      return;
+    }
+
+    if (slide.image_path) {
+      await removeStorageImageIfPresent(slide.image_path);
+    }
+
+    if (DOM.slideId?.value === slideId) {
+      resetCarouselForm();
+    }
+
+    showToast('Foto excluída do carrossel e removida do Storage.', 'success');
+    await fetchCarouselSlides();
+  } catch (err) {
+    const normalized = normalizeSupabaseError(err, 'Erro inesperado ao excluir banner');
+    showToast(normalized.userMessage, 'error');
+  }
+}
+
+/* ==========================================================================
    10. AUTENTICAÇÃO, GUARDIÃO DE ROTA E CICLO DE SESSÃO
    ========================================================================== */
 
@@ -1389,7 +1969,7 @@ async function enterAuthenticatedState(session) {
   if (!state.isLoadingData) {
     state.isLoadingData = true;
     try {
-      await Promise.all([fetchCategories(), fetchProducts()]);
+      await Promise.all([fetchCarouselSlides(), fetchCategories(), fetchProducts()]);
     } finally {
       state.isLoadingData = false;
     }
@@ -1402,8 +1982,10 @@ async function enterAuthenticatedState(session) {
 function enterUnauthenticatedState() {
   state.categories = [];
   state.products = [];
+  state.carouselSlides = [];
   state.filters = { search: '', categoryId: 'all', status: 'all' };
 
+  resetCarouselForm();
   resetCategoryForm();
   resetProductForm();
 
@@ -1498,6 +2080,23 @@ function bindEvents() {
   // Autenticação
   DOM.loginForm?.addEventListener('submit', handleLoginSubmit);
   DOM.btnLogout?.addEventListener('click', handleLogout);
+
+  // Formulário de Banners do Carrossel & Event Delegation na Galeria (#carousel-admin-grid)
+  DOM.slideImage?.addEventListener('change', handleSlideImageSelection);
+  DOM.carouselForm?.addEventListener('submit', handleCarouselSubmit);
+  DOM.btnCancelSlide?.addEventListener('click', resetCarouselForm);
+
+  DOM.carouselAdminGrid?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target.closest('button[data-action]') : null;
+    if (!target) return;
+
+    const action = target.getAttribute('data-action');
+    const id = target.getAttribute('data-id');
+    if (!id) return;
+
+    if (action === 'edit-slide') startEditCarouselSlide(id);
+    if (action === 'delete-slide') handleDeleteCarouselSlide(id);
+  });
 
   // Geração automática de slug da categoria enquanto o admin digita o nome
   DOM.catName?.addEventListener('input', () => {

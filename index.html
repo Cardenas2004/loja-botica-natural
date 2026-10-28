@@ -37,7 +37,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
 
     <!-- App Styles & Scripts -->
-    <link rel="stylesheet" href="css/style.css?v=20261026">
+    <link rel="stylesheet" href="css/style.css?v=20261028_carousel_fix">
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
     <script src="js/main.js?v=20261026" defer></script>
 
@@ -118,8 +118,8 @@
     <main id="conteudo">
         <!-- ================= DESTAQUES FULL-BLEED (CARROSSEL SWIPER + DIREÇÃO DE ARTE) ================= -->
         <section class="promo" id="inicio" aria-label="Destaques e novidades da Botica Natural">
-            <div class="swiper promo__carousel">
-                <div class="swiper-wrapper">
+            <div class="swiper promo__carousel" id="hero-carousel" data-hero-carousel>
+                <div class="swiper-wrapper" id="hero-carousel-wrapper" data-hero-carousel-wrapper>
                     <!-- Slide 1 (LCP Priority: loading="eager" + fetchpriority="high") -->
                     <div class="swiper-slide promo__slide">
                         <a class="promo__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20fazer%20um%20or%C3%A7amento%20de%20f%C3%B3rmula%20manipulada." data-wa="banner-por-que-manipular" aria-label="Por que manipular com a Botica Natural? Envie sua receita pelo WhatsApp">
@@ -270,8 +270,8 @@
 
                 <div class="bestsellers-home__footer reveal">
                     <p style="font-size: 1.05rem; color: var(--text-medium); margin-bottom: 1.25rem;">Procurando outras fórmulas ou dosagens personalizadas?</p>
-                    <a class="btn btn--primary btn--lg" href="#catalogo">
-                        <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Explorar Catálogo por Categorias <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    <a class="btn btn--primary btn--lg" href="produtos.html">
+                        <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Acessar Catálogo Completo de Produtos <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                     </a>
                 </div>
             </div>
@@ -436,86 +436,6 @@
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
-                </div>
-            </div>
-        </section>
-
-        <!-- ================= CATÁLOGO DINÂMICO COM FILTROS DE CATEGORIA ================= -->
-        <section class="section" id="catalogo" aria-labelledby="catalogo-home-title">
-            <div class="container">
-                <header class="section-header reveal">
-                    <span class="eyebrow">Vitrine Completa</span>
-                    <h2 id="catalogo-home-title">Catálogo de Fórmulas</h2>
-                    <p>Filtre por categoria ou pesquise o ativo desejado. Todos os nossos produtos contam com orientação farmacêutica especializada.</p>
-                </header>
-
-                <!-- Barra de Pesquisa Instantânea -->
-                <div class="catalog-search-wrap" style="margin-bottom: 1.75rem;">
-                    <i class="fa-solid fa-magnifying-glass catalog-search-icon" aria-hidden="true"></i>
-                    <input type="search" class="catalog-search-input" id="catalog-search-input" placeholder="Buscar por nome do produto, ativo ou descrição..." data-catalog-search aria-label="Buscar produtos no catálogo">
-                    <button type="button" class="catalog-search-clear" id="catalog-search-clear" aria-label="Limpar busca">
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                    </button>
-                </div>
-
-                <!-- Barra de Filtros Dinâmicos de Categoria -->
-                <div class="catalog-tabs-nav" id="category-filters" data-catalog-tabs role="toolbar" aria-label="Filtrar produtos por categoria">
-                    <button type="button" class="catalog-tab active is-active" data-category="all" aria-pressed="true">
-                        <i class="fa-solid fa-shapes" aria-hidden="true"></i> Todos <span class="catalog-tab__count" data-count-badge>0</span>
-                    </button>
-                </div>
-
-                <!-- Barra de Status com Contagem -->
-                <div class="catalog-status-bar">
-                    <span id="catalog-count" data-catalog-count>Carregando fórmulas...</span>
-                    <span><i class="fa-solid fa-user-doctor" aria-hidden="true" style="color: var(--accent);"></i> Orientação farmacêutica inclusa</span>
-                </div>
-
-                <!-- Grid Principal de Produtos (Alimentado por js/app.js) -->
-                <div class="products-grid" id="catalog-grid" data-catalog-grid data-dynamic-catalog aria-live="polite" aria-busy="true">
-                    <article class="product-card product-card--skeleton" aria-hidden="true">
-                        <div class="skeleton-media skeleton-shimmer"></div>
-                        <div class="product-card__body">
-                            <div class="skeleton-line skeleton-line--tag skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--title skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--text skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--short skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--price skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--btn skeleton-shimmer"></div>
-                        </div>
-                    </article>
-                    <article class="product-card product-card--skeleton" aria-hidden="true">
-                        <div class="skeleton-media skeleton-shimmer"></div>
-                        <div class="product-card__body">
-                            <div class="skeleton-line skeleton-line--tag skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--title skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--text skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--short skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--price skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--btn skeleton-shimmer"></div>
-                        </div>
-                    </article>
-                    <article class="product-card product-card--skeleton" aria-hidden="true">
-                        <div class="skeleton-media skeleton-shimmer"></div>
-                        <div class="product-card__body">
-                            <div class="skeleton-line skeleton-line--tag skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--title skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--text skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--short skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--price skeleton-shimmer"></div>
-                            <div class="skeleton-line skeleton-line--btn skeleton-shimmer"></div>
-                        </div>
-                    </article>
-                </div>
-
-                <!-- Estado Vazio (Categoria ou Busca sem resultados) -->
-                <div class="catalog-empty" id="catalog-empty" data-catalog-empty hidden>
-                    <i class="fa-solid fa-box-open catalog-empty__icon" aria-hidden="true"></i>
-                    <h3 class="catalog-empty__title" id="catalog-empty-title">Nenhum produto disponível nesta categoria no momento.</h3>
-                    <p class="catalog-empty__desc" id="catalog-empty-desc">Não encontrou a fórmula desejada? Nós manipulamos qualquer receita ou ativo personalizado sob medida para você.</p>
-                    <a class="btn btn--secondary btn--lg" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20procurei%20uma%20f%C3%B3rmula%20no%20cat%C3%A1logo%20e%20queria%20saber%20se%20voc%C3%AAs%20manipulam." target="_blank" rel="noopener noreferrer" data-wa="catalogo-empty-cta">
-                        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com o Farmacêutico no WhatsApp
-                    </a>
                 </div>
             </div>
         </section>

@@ -1,8 +1,8 @@
 /**
- * @fileoverview Motor Dinâmico da Vitrine Pública (Landing Page & Catálogo) — Botica Natural
- * @description Conecta a vitrine pública (`index.html` e `produtos.html`) ao Supabase (PostgreSQL + Storage),
- * renderizando dinamicamente a seção "Mais Vendidos", a barra de filtros de categorias e o catálogo
- * principal com prevenção estrita de XSS (zero `innerHTML` com dados do banco) e alta performance.
+ * @fileoverview Motor Dinâmico da Vitrine Pública — Botica Natural
+ * @description Conecta a Landing Page (`index.html`) e páginas de catálogo ao Supabase (PostgreSQL + Storage),
+ * renderizando dinamicamente a seção "Mais Vendidos" com programação defensiva (Null-Safety Guards),
+ * prevenção estrita de XSS (zero `innerHTML` com dados do banco) e alta performance.
  *
  * @module js/app
  * @author Staff Frontend Engineer
@@ -11,7 +11,6 @@
 import {
   supabase,
   DB_TABLES,
-  STORAGE_CONFIG,
   isSupabaseConfigured,
   getPublicImageUrl,
   normalizeSupabaseError,
@@ -29,12 +28,12 @@ export const WHATSAPP_CONFIG = Object.freeze({
   PHONE_NUMBER: '555197731564',
   BASE_URL: 'https://wa.me',
   MAX_INSTALLMENTS: 6,
-   MAX_BESTSELLERS: 6,
+  MAX_BESTSELLERS: 6,
 });
 
 /**
  * Formatador nativo de moeda em Real Brasileiro (BRL - R$).
- * Instanciado uma única vez para máxima performance em listas grandes.
+ * Instanciado uma única vez para máxima performance.
  */
 const brlCurrencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -51,7 +50,7 @@ const FALLBACK_PRODUCT_IMAGE =
 
 /**
  * Dados de fallback de segurança exibidos apenas caso `js/supabaseClient.js`
- * ainda esteja com as credenciais de placeholder durante o desenvolvimento local.
+ * esteja sem conectividade ou em modo placeholder durante desenvolvimento offline.
  */
 const LOCAL_SHOWCASE_FALLBACK = Object.freeze({
   categories: [
@@ -179,11 +178,13 @@ const LOCAL_SHOWCASE_FALLBACK = Object.freeze({
    ========================================================================== */
 
 const catalogState = {
+  /** @type {Array<import('./supabaseClient.js').CarouselSlide>} Lista de slides ativos do carrossel principal */
+  carouselSlides: [],
   /** @type {Array<Object>} Lista de categorias ativas ordenadas */
   categories: [],
   /** @type {Array<Object>} Lista de produtos ativos com join de categoria */
   products: [],
-  /** @type {string} ID ou slug da categoria selecionada ('all' por padrão) */
+  /** @type {string} ID da categoria selecionada ('all' por padrão) */
   activeCategory: 'all',
   /** @type {string} Termo de busca textual em tempo real */
   searchQuery: '',
@@ -265,7 +266,7 @@ function resolveProductImageUrl(product) {
 
   const storagePath = String(product?.image_path || '').trim();
   if (storagePath) {
-    const publicUrl = getPublicImageUrl(storagePath, STORAGE_CONFIG.BUCKET_PRODUCT_IMAGES);
+    const publicUrl = getPublicImageUrl(storagePath);
     if (publicUrl) {
       return publicUrl;
     }
@@ -314,17 +315,26 @@ export function createProductCardElement(product) {
 
   const productName = String(product?.name || 'Fórmula Manipulada').trim();
   const productDescription = String(
-    product?.description ||
+    product?.short_description ||
+      product?.description ||
       'Fórmula manipulada sob medida com matérias-primas certificadas e rigoroso controle de qualidade farmacêutico.'
   ).trim();
   const categoryName = resolveProductCategoryName(product);
   const numericPrice = Number(product?.price);
   const hasValidPrice = Number.isFinite(numericPrice) && numericPrice > 0;
   const whatsappUrl = buildProductWhatsAppUrl(product);
+  const productDetailUrl = product?.id
+    ? `produto.html?id=${encodeURIComponent(product.id)}`
+    : 'produto.html';
 
   // 1. Container de Mídia (.product-card__media)
   const mediaContainer = document.createElement('div');
   mediaContainer.className = 'product-card__media';
+
+  const imgLink = document.createElement('a');
+  imgLink.className = 'product-card__media-link';
+  imgLink.href = productDetailUrl;
+  imgLink.setAttribute('aria-label', `Ver detalhes de ${productName}`);
 
   const img = document.createElement('img');
   img.className = 'product-card__img';
@@ -334,6 +344,7 @@ export function createProductCardElement(product) {
   img.decoding = 'async';
   img.width = 600;
   img.height = 450;
+  img.style.cursor = 'pointer';
 
   // Fallback resiliente contra falha de carregamento de imagem externa
   img.addEventListener(
@@ -346,7 +357,8 @@ export function createProductCardElement(product) {
     { once: true }
   );
 
-  mediaContainer.appendChild(img);
+  imgLink.appendChild(img);
+  mediaContainer.appendChild(imgLink);
 
   // 2. Badges Superiores (.product-card__badges)
   const badgesContainer = document.createElement('div');
@@ -390,7 +402,13 @@ export function createProductCardElement(product) {
   // Título (.product-card__title)
   const titleEl = document.createElement('h3');
   titleEl.className = 'product-card__title';
-  titleEl.textContent = productName;
+
+  const titleLink = document.createElement('a');
+  titleLink.className = 'product-card__title-link';
+  titleLink.href = productDetailUrl;
+  titleLink.textContent = productName;
+  titleLink.setAttribute('title', `Ver detalhes de ${productName}`);
+  titleEl.appendChild(titleLink);
   bodyContainer.appendChild(titleEl);
 
   // Descrição (.product-card__desc)
@@ -436,6 +454,17 @@ export function createProductCardElement(product) {
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'product-card__actions';
 
+  const detailsBtn = document.createElement('a');
+  detailsBtn.className = 'product-card__btn product-card__btn--details';
+  detailsBtn.href = productDetailUrl;
+  detailsBtn.setAttribute('aria-label', `Ver detalhes e bula de ${productName}`);
+
+  const eyeIcon = document.createElement('i');
+  eyeIcon.className = 'fa-solid fa-circle-info';
+  eyeIcon.setAttribute('aria-hidden', 'true');
+  detailsBtn.appendChild(eyeIcon);
+  detailsBtn.appendChild(document.createTextNode(' Ver Detalhes'));
+
   const whatsappBtn = document.createElement('a');
   whatsappBtn.className = 'product-card__btn';
   whatsappBtn.href = whatsappUrl;
@@ -454,6 +483,7 @@ export function createProductCardElement(product) {
   whatsappBtn.appendChild(waIcon);
   whatsappBtn.appendChild(document.createTextNode(' Tenho interesse'));
 
+  actionsContainer.appendChild(detailsBtn);
   actionsContainer.appendChild(whatsappBtn);
   bodyContainer.appendChild(actionsContainer);
   article.appendChild(bodyContainer);
@@ -462,11 +492,233 @@ export function createProductCardElement(product) {
 }
 
 /* ==========================================================================
+   4.5. RENDERIZAÇÃO DINÂMICA DO CARROSSEL PRINCIPAL (HERO SWIPER)
+   ========================================================================== */
+
+/**
+ * Higieniza links opcionais de banners contra injeção de protocolos maliciosos (`javascript:`, `data:`).
+ *
+ * @param {string | null | undefined} rawUrl
+ * @returns {string} URL segura ou string vazia (`''`)
+ */
+function sanitizeBannerLink(rawUrl) {
+  const trimmed = String(rawUrl || '').trim();
+  if (!trimmed) return '';
+  if (/^(javascript|data|vbscript):/i.test(trimmed)) return '';
+  return trimmed;
+}
+
+/**
+ * Resolve a URL pública da imagem de um slide do carrossel.
+ *
+ * @param {import('./supabaseClient.js').CarouselSlide} slide
+ * @returns {string}
+ */
+function resolveCarouselSlideImageUrl(slide) {
+  const directUrl = String(slide?.image_url || '').trim();
+  if (directUrl) return directUrl;
+
+  const storagePath = String(slide?.image_path || '').trim();
+  if (storagePath) {
+    const publicUrl = getPublicImageUrl(storagePath);
+    if (publicUrl) return publicUrl;
+  }
+
+  return '';
+}
+
+/**
+ * Cria um elemento `<div class="swiper-slide promo__slide">` usando exclusivamente
+ * `document.createElement` e `textContent` (Zero `innerHTML` — Prevenção de XSS).
+ *
+ * @param {import('./supabaseClient.js').CarouselSlide} slide
+ * @param {number} index Índice do slide para otimização de LCP no primeiro banner
+ * @returns {HTMLElement | null}
+ */
+function createHeroCarouselSlideElement(slide, index) {
+  const imageUrl = resolveCarouselSlideImageUrl(slide);
+  if (!imageUrl) return null;
+
+  const slideEl = document.createElement('div');
+  slideEl.className = 'swiper-slide promo__slide';
+  slideEl.dataset.slideId = String(slide.id || '');
+
+  const altText =
+    String(slide.title || '').trim() ||
+    'Destaque Botica Natural — Farmácia de Manipulação';
+  const safeHref = sanitizeBannerLink(slide.button_link);
+
+  /** @type {HTMLAnchorElement | HTMLDivElement} */
+  let wrapperEl;
+  if (safeHref) {
+    const anchor = document.createElement('a');
+    anchor.className = 'promo__link';
+    anchor.href = safeHref;
+    anchor.setAttribute('aria-label', altText);
+    if (/^https?:\/\//i.test(safeHref)) {
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+    }
+    wrapperEl = anchor;
+  } else {
+    const divWrap = document.createElement('div');
+    divWrap.className = 'promo__link';
+    wrapperEl = divWrap;
+  }
+
+  const picture = document.createElement('picture');
+  picture.className = 'promo__picture';
+
+  const img = document.createElement('img');
+  img.className = 'promo__img';
+  img.src = imageUrl;
+  img.alt = altText;
+  img.width = 1920;
+  img.height = 650;
+
+  if (index === 0) {
+    img.loading = 'eager';
+    img.setAttribute('fetchpriority', 'high');
+    img.decoding = 'sync';
+  } else {
+    img.loading = 'lazy';
+    img.decoding = 'async';
+  }
+
+  picture.appendChild(img);
+  wrapperEl.appendChild(picture);
+  slideEl.appendChild(wrapperEl);
+
+  return slideEl;
+}
+
+/**
+ * Sincroniza ou reinicializa a instância do `Swiper.js` do carrossel principal
+ * após a substituição dinâmica dos slides no DOM, garantindo que autoplay,
+ * setas de navegação e paginação (bullets) funcionem com a quantidade exata de fotos.
+ *
+ * @param {HTMLElement} carouselEl Container `.promo__carousel`
+ * @param {number} slideCount Quantidade de slides ativos renderizados
+ */
+function syncHeroSwiperInstance(carouselEl, slideCount) {
+  if (!carouselEl || typeof window === 'undefined') return;
+
+  const SwiperConstructor = /** @type {any} */ (window).Swiper;
+  const hasMultipleSlides = slideCount > 1;
+  const prefersReducedMotion =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (typeof SwiperConstructor !== 'function') {
+    window.addEventListener(
+      'load',
+      () => syncHeroSwiperInstance(carouselEl, slideCount),
+      { once: true }
+    );
+    return;
+  }
+
+  const existingSwiper = /** @type {any} */ (carouselEl).swiper;
+  if (existingSwiper && typeof existingSwiper.destroy === 'function') {
+    existingSwiper.destroy(true, true);
+  }
+
+  const swiperInstance = new SwiperConstructor(carouselEl, {
+    loop: hasMultipleSlides,
+    speed: 600,
+    grabCursor: hasMultipleSlides,
+    watchOverflow: true,
+    autoplay:
+      hasMultipleSlides && !prefersReducedMotion
+        ? {
+            delay: 5000,
+            disableOnInteraction: false,
+            pauseOnMouseEnter: true,
+          }
+        : false,
+    pagination: {
+      el: '.promo__pagination',
+      clickable: true,
+    },
+    navigation: {
+      nextEl: '.promo__nav--next',
+      prevEl: '.promo__nav--prev',
+    },
+    keyboard: {
+      enabled: true,
+      onlyInViewport: true,
+    },
+    a11y: {
+      prevSlideMessage: 'Banner anterior',
+      nextSlideMessage: 'Próximo banner',
+      firstSlideMessage: 'Este é o primeiro banner',
+      lastSlideMessage: 'Este é o último banner',
+      paginationBulletMessage: 'Ir para o banner {{index}}',
+    },
+  });
+
+  if (swiperInstance && typeof swiperInstance.update === 'function') {
+    swiperInstance.update();
+  }
+}
+
+/**
+ * Renderiza dinamicamente os slides ativos do banco no carrossel principal (`.promo__carousel`).
+ * - Fallback Seguro: Se o banco retornar `0` slides ativos, mantém intactos os slides
+ *   estáticos originais do `index.html` para que o topo do site nunca fique em branco.
+ */
+function renderHeroCarousel() {
+  const carouselEl =
+    document.getElementById('hero-carousel') ||
+    document.querySelector('.promo__carousel');
+  if (!carouselEl) return;
+
+  const wrapperEl =
+    document.getElementById('hero-carousel-wrapper') ||
+    carouselEl.querySelector('.swiper-wrapper');
+  if (!wrapperEl) return;
+
+  const activeSlides = Array.isArray(catalogState.carouselSlides)
+    ? catalogState.carouselSlides
+    : [];
+
+  // Fallback Seguro: mantém os banners originais do HTML se o banco tiver 0 slides ativos
+  if (activeSlides.length === 0) {
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  let validSlideCount = 0;
+
+  activeSlides.forEach((slide, index) => {
+    const slideNode = createHeroCarouselSlideElement(slide, index);
+    if (slideNode) {
+      fragment.appendChild(slideNode);
+      validSlideCount += 1;
+    }
+  });
+
+  if (validSlideCount === 0) {
+    return;
+  }
+
+  // Se o Swiper já havia inicializado sobre os slides estáticos, destrói antes de substituir o DOM
+  const currentSwiper = /** @type {any} */ (carouselEl).swiper;
+  if (currentSwiper && typeof currentSwiper.destroy === 'function') {
+    currentSwiper.destroy(true, true);
+  }
+
+  wrapperEl.replaceChildren(fragment);
+  syncHeroSwiperInstance(/** @type {HTMLElement} */ (carouselEl), validSlideCount);
+}
+
+/* ==========================================================================
    5. RENDERIZAÇÃO DA SEÇÃO "MAIS VENDIDOS" (COM SUPORTE A SWIPER & GRID)
    ========================================================================== */
 
 /**
  * Renderiza a seção `#mais-vendidos` filtrando os produtos com `is_best_seller === true`.
+ * - Blindada com Null-Safety Guard caso a seção não exista no DOM atual.
  * - Se não houver produtos marcados como `is_best_seller`, aplica fallback inteligente
  *   exibindo os produtos ativos mais recentes.
  * - Se não houver nenhum produto ativo no banco, oculta a seção `#mais-vendidos` graciosamente.
@@ -478,6 +730,7 @@ function renderBestSellers() {
     document.getElementById('bestsellers-grid') ||
     document.querySelector('[data-bestsellers-grid]');
 
+  // Null-Safety Guard: retorna silenciosamente se o container não existir na página atual
   if (!bestSellersSection || !container) return;
 
   // Filtra produtos marcados como Mais Vendidos
@@ -532,7 +785,7 @@ function renderBestSellers() {
 }
 
 /* ==========================================================================
-   6. RENDERIZAÇÃO DOS FILTROS DE CATEGORIA E CATÁLOGO PRINCIPAL
+   6. RENDERIZAÇÃO DEFENSIVA DE CATÁLOGO (APENAS QUANDO PRESENTE NO DOM)
    ========================================================================== */
 
 /**
@@ -576,8 +829,8 @@ function createCategoryFilterButton({ id, name, count, isActive }) {
 }
 
 /**
- * Renderiza a barra de categorias mantendo o botão inicial "Todos" ativo por padrão,
- * seguido pelas categorias ativas retornadas do banco de dados.
+ * Renderiza a barra de categorias caso o container exista na página atual (ex: `produtos.html`).
+ * Blindado com Null-Safety Guard para não executar na `index.html`.
  */
 function renderCategoryFilters() {
   const filtersContainer =
@@ -588,7 +841,6 @@ function renderCategoryFilters() {
 
   const fragment = document.createDocumentFragment();
 
-  // 1. Botão Inicial "Todos" ativo por padrão
   const allButton = createCategoryFilterButton({
     id: 'all',
     name: 'Todos',
@@ -597,7 +849,6 @@ function renderCategoryFilters() {
   });
   fragment.appendChild(allButton);
 
-  // 2. Botões gerados dinamicamente para cada categoria ativa do banco
   catalogState.categories.forEach((category) => {
     const categoryId = String(category.id);
     const productCount = catalogState.products.filter(
@@ -618,8 +869,7 @@ function renderCategoryFilters() {
 }
 
 /**
- * Atualiza o estado visual (`.active` / `.is-active` e `aria-pressed`) dos botões de categoria
- * e re-renderiza os produtos instantaneamente a partir da memória.
+ * Atualiza o estado visual dos botões de categoria e re-renderiza os produtos.
  *
  * @param {string} selectedCategoryId ID da categoria selecionada ou `'all'`
  */
@@ -646,21 +896,23 @@ function handleCategorySelection(selectedCategoryId) {
 }
 
 /**
- * Filtra os produtos em memória (`catalogState.products`) de acordo com a categoria ativa
- * e termo de busca, atualizando o grid principal e a mensagem de estado vazio.
+ * Filtra os produtos em memória e atualiza o grid de catálogo (apenas se existir no DOM).
+ * Blindado com Null-Safety Guard para não gerar `TypeError` na `index.html`.
  */
 function renderCatalogProducts() {
   const catalogGrid =
     document.getElementById('catalog-grid') ||
     document.querySelector('[data-catalog-grid]');
+
+  // Null-Safety Guard: se o grid de catálogo não existir na página (ex: index.html), encerra imediatamente
+  if (!catalogGrid) return;
+
   const emptyStateEl =
     document.getElementById('catalog-empty') ||
     document.querySelector('[data-catalog-empty]');
   const countLabelEl =
     document.getElementById('catalog-count') ||
     document.querySelector('[data-catalog-count]');
-
-  if (!catalogGrid) return;
 
   const normalizedQuery = normalizeText(catalogState.searchQuery);
 
@@ -679,14 +931,12 @@ function renderCatalogProducts() {
     return searchableText.includes(normalizedQuery);
   });
 
-  // Atualiza contador de status
   if (countLabelEl) {
     const total = filteredProducts.length;
     countLabelEl.textContent =
       total === 1 ? 'Exibindo 1 fórmula disponível' : `Exibindo ${total} fórmulas disponíveis`;
   }
 
-  // Trata Estado Vazio (Categoria ou Busca sem produtos ativos)
   if (filteredProducts.length === 0) {
     catalogGrid.replaceChildren();
     catalogGrid.hidden = true;
@@ -729,9 +979,12 @@ function renderCatalogProducts() {
 async function loadCatalogData() {
   catalogState.isLoading = true;
 
-  // Se o cliente ainda não tiver configurado as chaves reais do Supabase no ambiente local,
-  // utiliza o fallback de segurança para preservar a experiência visual da página.
-  if (!isSupabaseConfigured()) {
+  const configured =
+    typeof isSupabaseConfigured === 'function'
+      ? isSupabaseConfigured()
+      : Boolean(isSupabaseConfigured);
+
+  if (!configured) {
     console.info(
       '[Botica Natural] Credenciais do Supabase ainda em modo placeholder. Exibindo catálogo de demonstração local.'
     );
@@ -742,7 +995,14 @@ async function loadCatalogData() {
   }
 
   try {
-    const [categoriesResponse, productsResponse] = await Promise.all([
+    const [carouselResponse, categoriesResponse, productsResponse] = await Promise.all([
+      supabase
+        .from(DB_TABLES.CAROUSEL)
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false }),
+
       supabase
         .from(DB_TABLES.CATEGORIES)
         .select('*')
@@ -756,6 +1016,12 @@ async function loadCatalogData() {
         .eq('is_active', true)
         .order('created_at', { ascending: false }),
     ]);
+
+    if (!carouselResponse.error && Array.isArray(carouselResponse.data)) {
+      catalogState.carouselSlides = carouselResponse.data;
+    } else {
+      catalogState.carouselSlides = [];
+    }
 
     if (categoriesResponse.error) {
       throw categoriesResponse.error;
@@ -775,7 +1041,6 @@ async function loadCatalogData() {
     const normalizedErr = normalizeSupabaseError(err);
     console.error('[Botica Natural] Erro ao carregar vitrine do Supabase:', normalizedErr);
 
-    // Fallback resiliente em caso de falha de rede para nunca quebrar a vitrine pública
     if (catalogState.products.length === 0) {
       catalogState.categories = [...LOCAL_SHOWCASE_FALLBACK.categories];
       catalogState.products = [...LOCAL_SHOWCASE_FALLBACK.products];
@@ -786,16 +1051,19 @@ async function loadCatalogData() {
 }
 
 /**
- * Inicializa os eventos de busca textual instantânea no catálogo (quando o input existir na página).
+ * Inicializa os eventos de busca textual instantânea somente quando os elementos
+ * de busca do catálogo existirem no DOM atual.
  */
 function initCatalogSearchListeners() {
   const searchInput = document.querySelector('[data-catalog-search]');
   const clearBtn = document.querySelector('.catalog-search-clear');
 
+  // Null-Safety Guard: na `index.html` não há barra de busca de catálogo, evitando listeners órfãos
   if (!searchInput) return;
 
   searchInput.addEventListener('input', (event) => {
-    catalogState.searchQuery = event.target.value || '';
+    const target = /** @type {HTMLInputElement | null} */ (event.target);
+    catalogState.searchQuery = target?.value || '';
     if (clearBtn) {
       clearBtn.classList.toggle('is-visible', catalogState.searchQuery.trim().length > 0);
     }
@@ -815,13 +1083,46 @@ function initCatalogSearchListeners() {
 
 /**
  * Bootstrapper principal da vitrine pública.
+ * Detecta de forma defensiva quais seções existem no DOM antes de inicializar listeners e renders.
  */
 async function initPublicStorefront() {
-  initCatalogSearchListeners();
+  const hasHeroCarousel = Boolean(
+    document.getElementById('hero-carousel') ||
+      document.querySelector('.promo__carousel')
+  );
+
+  const hasBestsellersSection = Boolean(
+    document.getElementById('mais-vendidos') ||
+      document.getElementById('bestsellers-grid') ||
+      document.querySelector('[data-bestsellers-grid]')
+  );
+
+  const hasCatalogSection = Boolean(
+    document.getElementById('catalog-grid') ||
+      document.querySelector('[data-catalog-grid]')
+  );
+
+  // Se a página atual não possuir Carrossel, "Mais Vendidos" ou "Catálogo", não faz chamadas desnecessárias
+  if (!hasHeroCarousel && !hasBestsellersSection && !hasCatalogSection) return;
+
+  if (hasCatalogSection) {
+    initCatalogSearchListeners();
+  }
+
   await loadCatalogData();
-  renderBestSellers();
-  renderCategoryFilters();
-  renderCatalogProducts();
+
+  if (hasHeroCarousel) {
+    renderHeroCarousel();
+  }
+
+  if (hasBestsellersSection) {
+    renderBestSellers();
+  }
+
+  if (hasCatalogSection) {
+    renderCategoryFilters();
+    renderCatalogProducts();
+  }
 }
 
 if (document.readyState === 'loading') {
@@ -829,4 +1130,3 @@ if (document.readyState === 'loading') {
 } else {
   initPublicStorefront();
 }
-
