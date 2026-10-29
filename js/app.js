@@ -1,11 +1,9 @@
 /**
- * @fileoverview Motor Dinâmico da Vitrine Pública — Botica Natural
- * @description Conecta a Landing Page (`index.html`) e páginas de catálogo ao Supabase (PostgreSQL + Storage),
- * renderizando dinamicamente a seção "Mais Vendidos" com programação defensiva (Null-Safety Guards),
- * prevenção estrita de XSS (zero `innerHTML` com dados do banco) e alta performance.
+ * @fileoverview Motor Dinâmico da Vitrine Pública — Botica Natural (100% Supabase Driven)
+ * @description Conecta a Landing Page (`index.html`) e o Catálogo (`produtos.html`) exclusivamente
+ * ao banco de dados PostgreSQL + Storage do Supabase. Nenhum banner ou produto é fixo no código.
  *
  * @module js/app
- * @author Staff Frontend Engineer
  */
 
 import {
@@ -20,10 +18,6 @@ import {
    1. CONFIGURAÇÕES GLOBAIS E FORMATAÇÃO (SINGLE SOURCE OF TRUTH)
    ========================================================================== */
 
-/**
- * Configuração centralizada de conversão para o WhatsApp da Botica Natural.
- * Preserva o número oficial da farmácia utilizado em toda a Landing Page.
- */
 export const WHATSAPP_CONFIG = Object.freeze({
   PHONE_NUMBER: '555197731564',
   BASE_URL: 'https://wa.me',
@@ -31,10 +25,6 @@ export const WHATSAPP_CONFIG = Object.freeze({
   MAX_BESTSELLERS: 6,
 });
 
-/**
- * Formatador nativo de moeda em Real Brasileiro (BRL - R$).
- * Instanciado uma única vez para máxima performance.
- */
 const brlCurrencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -42,147 +32,19 @@ const brlCurrencyFormatter = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 2,
 });
 
-/**
- * Placeholder SVG Data URI leve e semântico para fallback de imagens ausentes ou com erro de rede.
- */
 const FALLBACK_PRODUCT_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='450' viewBox='0 0 600 450'><rect width='600' height='450' fill='%23F3EDF9'/><g fill='%235B2D9E' opacity='0.45' transform='translate(260, 175)'><path d='M40 0C17.9 0 0 17.9 0 40s17.9 40 40 40 40-17.9 40-40S62.1 0 40 0zm0 70c-16.5 0-30-13.5-30-30s13.5-30 30-30 30 13.5 30 30-13.5 30-30 30z'/><circle cx='40' cy='40' r='14'/></g><text x='50%25' y='66%25' text-anchor='middle' fill='%233D1E6D' font-family='Poppins, sans-serif' font-size='16' font-weight='600' opacity='0.65'>Botica Natural — Fórmula Manipulada</text></svg>";
 
-/**
- * Dados de fallback de segurança exibidos apenas caso `js/supabaseClient.js`
- * esteja sem conectividade ou em modo placeholder durante desenvolvimento offline.
- */
-const LOCAL_SHOWCASE_FALLBACK = Object.freeze({
-  categories: [
-    { id: 'cat-emagrecimento', name: 'Emagrecimento & Metabolismo', slug: 'emagrecimento', display_order: 1, is_active: true },
-    { id: 'cat-dermocosmeticos', name: 'Dermocosméticos', slug: 'dermocosmeticos', display_order: 2, is_active: true },
-    { id: 'cat-suplementos', name: 'Suplementos & Longevidade', slug: 'suplementos', display_order: 3, is_active: true },
-    { id: 'cat-imunidade', name: 'Saúde & Imunidade', slug: 'imunidade', display_order: 4, is_active: true },
-    { id: 'cat-fitoterapicos', name: 'Fitoterápicos & Bem-Estar', slug: 'fitoterapicos', display_order: 5, is_active: true },
-    { id: 'cat-veterinaria', name: 'Linha Pet Veterinária', slug: 'veterinaria', display_order: 6, is_active: true },
-  ],
-  products: [
-    {
-      id: '1',
-      category_id: 'cat-emagrecimento',
-      name: 'Okralin™ 500mg',
-      description: 'Complexo 100% natural patenteado obtido do quiabo cultivado na Tunísia. Auxilia na redução da absorção de gordura alimentar e gerenciamento de peso.',
-      price: 139.90,
-      image_url: 'images/produtos/okralin-500mg.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: true,
-      categories: { id: 'cat-emagrecimento', name: 'Emagrecimento & Metabolismo', slug: 'emagrecimento' },
-    },
-    {
-      id: '2',
-      category_id: 'cat-dermocosmeticos',
-      name: 'Sérum Vitamina C 20% + Ácido Hialurônico',
-      description: 'Concentrado antioxidante de toque seco e rápida absorção. Estimula o colágeno, uniformiza o tom da pele e promove viço imediato.',
-      price: 89.90,
-      image_url: 'images/produtos/serum-vitamina-c.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: true,
-      categories: { id: 'cat-dermocosmeticos', name: 'Dermocosméticos', slug: 'dermocosmeticos' },
-    },
-    {
-      id: '3',
-      category_id: 'cat-emagrecimento',
-      name: 'Morosil® 500mg Autêntico Galena',
-      description: 'Extrato seco do suco das laranjas vermelhas Moro cultivadas ao redor do vulcão Etna na Sicília, auxiliando na redução de medidas abdominais.',
-      price: 124.90,
-      image_url: 'images/produtos/morosil-500mg.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: true,
-      categories: { id: 'cat-emagrecimento', name: 'Emagrecimento & Metabolismo', slug: 'emagrecimento' },
-    },
-    {
-      id: '4',
-      category_id: 'cat-dermocosmeticos',
-      name: 'Creme Facial Anti-Aging Retinol-Like',
-      description: 'Creme rejuvenescedor noturno com Bakuchiol (Retinol-Like) e peptídeos tensores para renovação celular sem irritação ou descamação.',
-      price: 119.90,
-      image_url: 'images/produtos/creme-antiaging.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: false,
-      categories: { id: 'cat-dermocosmeticos', name: 'Dermocosméticos', slug: 'dermocosmeticos' },
-    },
-    {
-      id: '5',
-      category_id: 'cat-emagrecimento',
-      name: 'GreenSelect Phytosome® 120mg',
-      description: 'Extrato de chá verde descafeinado com tecnologia Phytosome® que duplica a absorção dos polifenóis bioativos para gasto calórico seguro.',
-      price: 98.90,
-      image_url: 'images/produtos/greenselect-phytosome.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: true,
-      categories: { id: 'cat-emagrecimento', name: 'Emagrecimento & Metabolismo', slug: 'emagrecimento' },
-    },
-    {
-      id: '6',
-      category_id: 'cat-suplementos',
-      name: 'Coenzima Q10 Ubiquinona 100mg + Vit. E',
-      description: 'Cápsulas de alta biodisponibilidade para produção de energia celular mitocondrial, disposição física e proteção antioxidante cardiovascular.',
-      price: 79.90,
-      image_url: 'images/produtos/coenzima-q10.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: false,
-      categories: { id: 'cat-suplementos', name: 'Suplementos & Longevidade', slug: 'suplementos' },
-    },
-    {
-      id: '7',
-      category_id: 'cat-imunidade',
-      name: 'Própolis Mais Blend (Vermelha + Verde)',
-      description: 'Fórmula pioneira que associa a Própolis Vermelha de Alagoas à Própolis Verde do Alecrim-do-Campo com Zinco Quelato para imunidade diária.',
-      price: 59.90,
-      image_url: 'images/produtos/propolis-mais.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: true,
-      categories: { id: 'cat-imunidade', name: 'Saúde & Imunidade', slug: 'imunidade' },
-    },
-    {
-      id: '8',
-      category_id: 'cat-fitoterapicos',
-      name: 'Composto Calmante Fitoterápico',
-      description: 'Associação sinérgica de Passiflora, Valeriana e Mulungu em dosagens padronizadas para equilíbrio emocional e sono restaurador.',
-      price: 54.90,
-      image_url: 'images/produtos/composto-calmante.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: true,
-      categories: { id: 'cat-fitoterapicos', name: 'Fitoterápicos & Bem-Estar', slug: 'fitoterapicos' },
-    },
-    {
-      id: '9',
-      category_id: 'cat-veterinaria',
-      name: 'Biscoito Pet Articulações (Condroitina + Glucosamina)',
-      description: 'Suplemento veterinário em formato de petisco macio palatável sabor carne para regeneração articular e mobilidade de cães e gatos.',
-      price: 84.90,
-      image_url: 'images/produtos/biscoito-pet.jpg',
-      image_path: null,
-      is_active: true,
-      is_best_seller: false,
-      categories: { id: 'cat-veterinaria', name: 'Linha Pet Veterinária', slug: 'veterinaria' },
-    },
-  ],
-});
-
 /* ==========================================================================
-   2. ESTADO REATIVO EM MEMÓRIA (SINGLE STATE STORE)
+   2. ESTADO REATIVO EM MEMÓRIA (ALIMENTADO 100% PELO SUPABASE)
    ========================================================================== */
 
 const catalogState = {
-  /** @type {Array<import('./supabaseClient.js').CarouselSlide>} Lista de slides ativos do carrossel principal */
+  /** @type {Array<import('./supabaseClient.js').CarouselSlide>} */
   carouselSlides: [],
-  /** @type {Array<Object>} Lista de categorias ativas ordenadas */
+  /** @type {Array<import('./supabaseClient.js').Category>} */
   categories: [],
-  /** @type {Array<Object>} Lista de produtos ativos com join de categoria */
+  /** @type {Array<import('./supabaseClient.js').Product>} */
   products: [],
   /** @type {string} ID da categoria selecionada ('all' por padrão) */
   activeCategory: 'all',
@@ -196,12 +58,6 @@ const catalogState = {
    3. FUNÇÕES UTILITÁRIAS PURAS (FORMATAÇÃO, IMAGENS E WHATSAPP)
    ========================================================================== */
 
-/**
- * Formata um valor numérico para moeda BRL (R$).
- *
- * @param {number|string|null|undefined} value
- * @returns {string} Valor formatado (ex: "R$ 139,90") ou "Sob consulta" se inválido/zero
- */
 function formatPriceBRL(value) {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue) || numericValue <= 0) {
@@ -210,12 +66,6 @@ function formatPriceBRL(value) {
   return brlCurrencyFormatter.format(numericValue);
 }
 
-/**
- * Normaliza texto para busca insensível a acentos e caixa.
- *
- * @param {string} text
- * @returns {string}
- */
 function normalizeText(text) {
   return String(text || '')
     .normalize('NFD')
@@ -224,12 +74,6 @@ function normalizeText(text) {
     .trim();
 }
 
-/**
- * Resolve o nome de exibição da categoria de um produto.
- *
- * @param {Object} product
- * @returns {string}
- */
 function resolveProductCategoryName(product) {
   if (product?.categories && typeof product.categories === 'object') {
     const joinedCategory = Array.isArray(product.categories)
@@ -252,12 +96,6 @@ function resolveProductCategoryName(product) {
   return 'Fórmula Manipulada';
 }
 
-/**
- * Resolve a URL pública da imagem do produto com fallback seguro.
- *
- * @param {Object} product
- * @returns {string}
- */
 function resolveProductImageUrl(product) {
   const directUrl = String(product?.image_url || '').trim();
   if (directUrl) {
@@ -275,13 +113,6 @@ function resolveProductImageUrl(product) {
   return FALLBACK_PRODUCT_IMAGE;
 }
 
-/**
- * Constrói o link dinâmico de conversão para o WhatsApp contendo Nome do Produto,
- * Categoria e Preço formatado em BRL (R$).
- *
- * @param {Object} product
- * @returns {string} URL `https://wa.me/555197731564?text=...`
- */
 export function buildProductWhatsAppUrl(product) {
   const productName = String(product?.name || 'Fórmula Manipulada').trim();
   const categoryName = resolveProductCategoryName(product);
@@ -296,17 +127,9 @@ export function buildProductWhatsAppUrl(product) {
 }
 
 /* ==========================================================================
-   4. CONSTRUÇÃO SEGURA DE DOM (ZERO INNERHTML — PREVENÇÃO DE XSS)
+   4. CONSTRUÇÃO SEGURA DE DOM DE PRODUTOS (ZERO INNERHTML)
    ========================================================================== */
 
-/**
- * Cria o elemento DOM `<article class="product-card">` preservando 100% da hierarquia
- * de classes CSS do Design System da Botica Natural e usando exclusivamente
- * `document.createElement` e `textContent`.
- *
- * @param {Object} product Objeto do produto vindo do Supabase
- * @returns {HTMLElement} Elemento `<article class="product-card">`
- */
 export function createProductCardElement(product) {
   const article = document.createElement('article');
   article.className = 'product-card product-card--fade-in';
@@ -346,7 +169,6 @@ export function createProductCardElement(product) {
   img.height = 450;
   img.style.cursor = 'pointer';
 
-  // Fallback resiliente contra falha de carregamento de imagem externa
   img.addEventListener(
     'error',
     () => {
@@ -389,7 +211,6 @@ export function createProductCardElement(product) {
   const bodyContainer = document.createElement('div');
   bodyContainer.className = 'product-card__body';
 
-  // Tag de especialidade / categoria no topo do corpo
   const formTag = document.createElement('span');
   formTag.className = 'product-card__form';
   const flaskIcon = document.createElement('i');
@@ -399,7 +220,6 @@ export function createProductCardElement(product) {
   formTag.appendChild(document.createTextNode(` ${categoryName}`));
   bodyContainer.appendChild(formTag);
 
-  // Título (.product-card__title)
   const titleEl = document.createElement('h3');
   titleEl.className = 'product-card__title';
 
@@ -411,7 +231,6 @@ export function createProductCardElement(product) {
   titleEl.appendChild(titleLink);
   bodyContainer.appendChild(titleEl);
 
-  // Descrição (.product-card__desc)
   const descEl = document.createElement('p');
   descEl.className = 'product-card__desc';
   descEl.textContent = productDescription;
@@ -450,7 +269,7 @@ export function createProductCardElement(product) {
   priceBox.appendChild(installmentsSpan);
   bodyContainer.appendChild(priceBox);
 
-  // 5. Botão de Ação / Conversão WhatsApp (.product-card__actions > .product-card__btn)
+  // 5. Botões de Ação (.product-card__actions)
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'product-card__actions';
 
@@ -492,15 +311,9 @@ export function createProductCardElement(product) {
 }
 
 /* ==========================================================================
-   4.5. RENDERIZAÇÃO DINÂMICA DO CARROSSEL PRINCIPAL (HERO SWIPER)
+   4.5. RENDERIZAÇÃO DINÂMICA DO CARROSSEL PRINCIPAL (100% SUPABASE)
    ========================================================================== */
 
-/**
- * Higieniza links opcionais de banners contra injeção de protocolos maliciosos (`javascript:`, `data:`).
- *
- * @param {string | null | undefined} rawUrl
- * @returns {string} URL segura ou string vazia (`''`)
- */
 function sanitizeBannerLink(rawUrl) {
   const trimmed = String(rawUrl || '').trim();
   if (!trimmed) return '';
@@ -508,12 +321,6 @@ function sanitizeBannerLink(rawUrl) {
   return trimmed;
 }
 
-/**
- * Resolve a URL pública da imagem de um slide do carrossel.
- *
- * @param {import('./supabaseClient.js').CarouselSlide} slide
- * @returns {string}
- */
 function resolveCarouselSlideImageUrl(slide) {
   const directUrl = String(slide?.image_url || '').trim();
   if (directUrl) return directUrl;
@@ -527,14 +334,6 @@ function resolveCarouselSlideImageUrl(slide) {
   return '';
 }
 
-/**
- * Cria um elemento `<div class="swiper-slide promo__slide">` usando exclusivamente
- * `document.createElement` e `textContent` (Zero `innerHTML` — Prevenção de XSS).
- *
- * @param {import('./supabaseClient.js').CarouselSlide} slide
- * @param {number} index Índice do slide para otimização de LCP no primeiro banner
- * @returns {HTMLElement | null}
- */
 function createHeroCarouselSlideElement(slide, index) {
   const imageUrl = resolveCarouselSlideImageUrl(slide);
   if (!imageUrl) return null;
@@ -592,14 +391,6 @@ function createHeroCarouselSlideElement(slide, index) {
   return slideEl;
 }
 
-/**
- * Sincroniza ou reinicializa a instância do `Swiper.js` do carrossel principal
- * após a substituição dinâmica dos slides no DOM, garantindo que autoplay,
- * setas de navegação e paginação (bullets) funcionem com a quantidade exata de fotos.
- *
- * @param {HTMLElement} carouselEl Container `.promo__carousel`
- * @param {number} slideCount Quantidade de slides ativos renderizados
- */
 function syncHeroSwiperInstance(carouselEl, slideCount) {
   if (!carouselEl || typeof window === 'undefined') return;
 
@@ -625,13 +416,18 @@ function syncHeroSwiperInstance(carouselEl, slideCount) {
 
   const swiperInstance = new SwiperConstructor(carouselEl, {
     loop: hasMultipleSlides,
-    speed: 600,
+    speed: prefersReducedMotion ? 0 : 650,
     grabCursor: hasMultipleSlides,
     watchOverflow: true,
+    observer: true,
+    observeParents: true,
+    resizeObserver: true,
+    slidesPerView: 1,
+    spaceBetween: 0,
     autoplay:
       hasMultipleSlides && !prefersReducedMotion
         ? {
-            delay: 5000,
+            delay: 4500,
             disableOnInteraction: false,
             pauseOnMouseEnter: true,
           }
@@ -663,11 +459,11 @@ function syncHeroSwiperInstance(carouselEl, slideCount) {
 }
 
 /**
- * Renderiza dinamicamente os slides ativos do banco no carrossel principal (`.promo__carousel`).
- * - Fallback Seguro: Se o banco retornar `0` slides ativos, mantém intactos os slides
- *   estáticos originais do `index.html` para que o topo do site nunca fique em branco.
+ * Renderiza exclusivamente os slides ativos vindos do banco de dados (`carousel_slides`).
+ * Se não houver nenhum slide ativo cadastrado no Painel Admin, oculta a seção `.promo`.
  */
 function renderHeroCarousel() {
+  const promoSection = document.getElementById('inicio') || document.querySelector('.promo');
   const carouselEl =
     document.getElementById('hero-carousel') ||
     document.querySelector('.promo__carousel');
@@ -682,11 +478,6 @@ function renderHeroCarousel() {
     ? catalogState.carouselSlides
     : [];
 
-  // Fallback Seguro: mantém os banners originais do HTML se o banco tiver 0 slides ativos
-  if (activeSlides.length === 0) {
-    return;
-  }
-
   const fragment = document.createDocumentFragment();
   let validSlideCount = 0;
 
@@ -698,55 +489,49 @@ function renderHeroCarousel() {
     }
   });
 
-  if (validSlideCount === 0) {
-    return;
-  }
-
-  // Se o Swiper já havia inicializado sobre os slides estáticos, destrói antes de substituir o DOM
   const currentSwiper = /** @type {any} */ (carouselEl).swiper;
   if (currentSwiper && typeof currentSwiper.destroy === 'function') {
     currentSwiper.destroy(true, true);
   }
 
+  // Se não houver banners ativos no banco, oculta a seção do carrossel
+  if (validSlideCount === 0) {
+    wrapperEl.replaceChildren();
+    carouselEl.setAttribute('aria-busy', 'false');
+    if (promoSection) promoSection.hidden = true;
+    return;
+  }
+
+  if (promoSection) promoSection.hidden = false;
   wrapperEl.replaceChildren(fragment);
+  carouselEl.setAttribute('aria-busy', 'false');
   syncHeroSwiperInstance(/** @type {HTMLElement} */ (carouselEl), validSlideCount);
 }
 
 /* ==========================================================================
-   5. RENDERIZAÇÃO DA SEÇÃO "MAIS VENDIDOS" (COM SUPORTE A SWIPER & GRID)
+   5. RENDERIZAÇÃO DA SEÇÃO "MAIS VENDIDOS" (100% SUPABASE)
    ========================================================================== */
 
-/**
- * Renderiza a seção `#mais-vendidos` filtrando os produtos com `is_best_seller === true`.
- * - Blindada com Null-Safety Guard caso a seção não exista no DOM atual.
- * - Se não houver produtos marcados como `is_best_seller`, aplica fallback inteligente
- *   exibindo os produtos ativos mais recentes.
- * - Se não houver nenhum produto ativo no banco, oculta a seção `#mais-vendidos` graciosamente.
- * - Suporta tanto layout em Grid (`.products-grid`) quanto Carrossel (`.swiper` / `.swiper-wrapper`).
- */
 function renderBestSellers() {
   const bestSellersSection = document.getElementById('mais-vendidos');
   const container =
     document.getElementById('bestsellers-grid') ||
     document.querySelector('[data-bestsellers-grid]');
 
-  // Null-Safety Guard: retorna silenciosamente se o container não existir na página atual
   if (!bestSellersSection || !container) return;
 
-  // Filtra produtos marcados como Mais Vendidos
   let featuredProducts = catalogState.products.filter(
     (product) => Boolean(product.is_best_seller)
   );
 
-  // Fallback Inteligente: usa os produtos ativos mais recentes se nenhum estiver marcado como best_seller
   if (featuredProducts.length === 0 && catalogState.products.length > 0) {
     featuredProducts = catalogState.products.slice(0, WHATSAPP_CONFIG.MAX_BESTSELLERS);
   } else {
     featuredProducts = featuredProducts.slice(0, WHATSAPP_CONFIG.MAX_BESTSELLERS);
   }
 
-  // Se não houver nenhum produto ativo cadastrado, oculta a seção graciosamente
   if (featuredProducts.length === 0) {
+    container.replaceChildren();
     bestSellersSection.hidden = true;
     container.setAttribute('aria-busy', 'false');
     return;
@@ -754,7 +539,6 @@ function renderBestSellers() {
 
   bestSellersSection.hidden = false;
 
-  // Verifica se o container utiliza Swiper.js
   const isSwiperWrapper =
     container.classList.contains('swiper-wrapper') ||
     Boolean(container.closest('.swiper'));
@@ -777,7 +561,6 @@ function renderBestSellers() {
   container.replaceChildren(fragment);
   container.setAttribute('aria-busy', 'false');
 
-  // Se estiver em um carrossel Swiper, atualiza a instância após injetar no DOM
   const swiperRoot = container.closest('.swiper');
   if (swiperRoot && swiperRoot.swiper && typeof swiperRoot.swiper.update === 'function') {
     swiperRoot.swiper.update();
@@ -785,24 +568,15 @@ function renderBestSellers() {
 }
 
 /* ==========================================================================
-   6. RENDERIZAÇÃO DEFENSIVA DE CATÁLOGO (APENAS QUANDO PRESENTE NO DOM)
+   6. RENDERIZAÇÃO DE CATÁLOGO E CATEGORIAS (100% SUPABASE)
    ========================================================================== */
 
-/**
- * Cria um botão de filtro de categoria seguro via DOM API.
- *
- * @param {Object} options
- * @param {string} options.id Identificador da categoria ('all' ou UUID)
- * @param {string} options.name Nome exibido no botão
- * @param {number} options.count Quantidade de produtos ativos nessa categoria
- * @param {boolean} options.isActive Se o botão inicia ativo
- * @returns {HTMLButtonElement}
- */
-function createCategoryFilterButton({ id, name, count, isActive }) {
+function createCategoryFilterButton({ id, slug, name, count, isActive }) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = `catalog-tab${isActive ? ' active is-active' : ''}`;
   button.dataset.category = String(id);
+  if (slug) button.dataset.slug = String(slug);
   button.setAttribute('aria-pressed', String(Boolean(isActive)));
 
   if (id === 'all') {
@@ -828,10 +602,6 @@ function createCategoryFilterButton({ id, name, count, isActive }) {
   return button;
 }
 
-/**
- * Renderiza a barra de categorias caso o container exista na página atual (ex: `produtos.html`).
- * Blindado com Null-Safety Guard para não executar na `index.html`.
- */
 function renderCategoryFilters() {
   const filtersContainer =
     document.getElementById('category-filters') ||
@@ -843,6 +613,7 @@ function renderCategoryFilters() {
 
   const allButton = createCategoryFilterButton({
     id: 'all',
+    slug: 'todos',
     name: 'Todos',
     count: catalogState.products.length,
     isActive: catalogState.activeCategory === 'all',
@@ -857,6 +628,7 @@ function renderCategoryFilters() {
 
     const categoryBtn = createCategoryFilterButton({
       id: categoryId,
+      slug: String(category.slug || ''),
       name: String(category.name || '').trim(),
       count: productCount,
       isActive: catalogState.activeCategory === categoryId,
@@ -868,11 +640,6 @@ function renderCategoryFilters() {
   filtersContainer.replaceChildren(fragment);
 }
 
-/**
- * Atualiza o estado visual dos botões de categoria e re-renderiza os produtos.
- *
- * @param {string} selectedCategoryId ID da categoria selecionada ou `'all'`
- */
 function handleCategorySelection(selectedCategoryId) {
   if (catalogState.activeCategory === selectedCategoryId) return;
 
@@ -896,15 +663,32 @@ function handleCategorySelection(selectedCategoryId) {
 }
 
 /**
- * Filtra os produtos em memória e atualiza o grid de catálogo (apenas se existir no DOM).
- * Blindado com Null-Safety Guard para não gerar `TypeError` na `index.html`.
+ * Sincroniza o filtro inicial caso a URL possua hash (ex: produtos.html#dermocosmeticos)
  */
+function syncCategoryFromUrlHash() {
+  try {
+    const rawHash = decodeURIComponent(window.location.hash.replace(/^#/, '')).trim().toLowerCase();
+    if (!rawHash || rawHash === 'todos' || rawHash === 'all') return;
+
+    const matchedCategory = catalogState.categories.find(
+      (cat) =>
+        String(cat.id).toLowerCase() === rawHash ||
+        String(cat.slug || '').toLowerCase() === rawHash
+    );
+
+    if (matchedCategory) {
+      catalogState.activeCategory = String(matchedCategory.id);
+    }
+  } catch {
+    /* Ignora hashes malformados */
+  }
+}
+
 function renderCatalogProducts() {
   const catalogGrid =
     document.getElementById('catalog-grid') ||
     document.querySelector('[data-catalog-grid]');
 
-  // Null-Safety Guard: se o grid de catálogo não existir na página (ex: index.html), encerra imediatamente
   if (!catalogGrid) return;
 
   const emptyStateEl =
@@ -926,7 +710,7 @@ function renderCatalogProducts() {
     if (!normalizedQuery) return true;
 
     const searchableText = normalizeText(
-      `${product.name || ''} ${product.description || ''} ${resolveProductCategoryName(product)}`
+      `${product.name || ''} ${product.short_description || ''} ${product.description || ''} ${resolveProductCategoryName(product)}`
     );
     return searchableText.includes(normalizedQuery);
   });
@@ -947,7 +731,7 @@ function renderCatalogProducts() {
       if (emptyTitle) {
         emptyTitle.textContent = normalizedQuery
           ? 'Nenhum produto encontrado para sua busca.'
-          : 'Nenhum produto disponível nesta categoria no momento.';
+          : 'Nenhum produto cadastrado nesta categoria no momento.';
       }
       emptyStateEl.hidden = false;
     }
@@ -972,10 +756,6 @@ function renderCatalogProducts() {
    7. BUSCA EM PARALELO NO SUPABASE (PROMISE.ALL) E INICIALIZAÇÃO
    ========================================================================== */
 
-/**
- * Busca categorias ativas e produtos ativos em paralelo (`Promise.all`) em uma única
- * rodada de rede, populando `catalogState`.
- */
 async function loadCatalogData() {
   catalogState.isLoading = true;
 
@@ -985,11 +765,12 @@ async function loadCatalogData() {
       : Boolean(isSupabaseConfigured);
 
   if (!configured) {
-    console.info(
-      '[Botica Natural] Credenciais do Supabase ainda em modo placeholder. Exibindo catálogo de demonstração local.'
+    console.warn(
+      '[Botica Natural] Credenciais do Supabase pendentes. Nenhum produto ou banner será exibido até configurar o banco.'
     );
-    catalogState.categories = [...LOCAL_SHOWCASE_FALLBACK.categories];
-    catalogState.products = [...LOCAL_SHOWCASE_FALLBACK.products];
+    catalogState.carouselSlides = [];
+    catalogState.categories = [];
+    catalogState.products = [];
     catalogState.isLoading = false;
     return;
   }
@@ -1017,11 +798,10 @@ async function loadCatalogData() {
         .order('created_at', { ascending: false }),
     ]);
 
-    if (!carouselResponse.error && Array.isArray(carouselResponse.data)) {
-      catalogState.carouselSlides = carouselResponse.data;
-    } else {
-      catalogState.carouselSlides = [];
-    }
+    catalogState.carouselSlides =
+      !carouselResponse.error && Array.isArray(carouselResponse.data)
+        ? carouselResponse.data
+        : [];
 
     if (categoriesResponse.error) {
       throw categoriesResponse.error;
@@ -1039,26 +819,19 @@ async function loadCatalogData() {
       : [];
   } catch (err) {
     const normalizedErr = normalizeSupabaseError(err);
-    console.error('[Botica Natural] Erro ao carregar vitrine do Supabase:', normalizedErr);
-
-    if (catalogState.products.length === 0) {
-      catalogState.categories = [...LOCAL_SHOWCASE_FALLBACK.categories];
-      catalogState.products = [...LOCAL_SHOWCASE_FALLBACK.products];
-    }
+    console.error('[Botica Natural] Erro ao carregar dados do Supabase:', normalizedErr);
+    catalogState.carouselSlides = [];
+    catalogState.categories = [];
+    catalogState.products = [];
   } finally {
     catalogState.isLoading = false;
   }
 }
 
-/**
- * Inicializa os eventos de busca textual instantânea somente quando os elementos
- * de busca do catálogo existirem no DOM atual.
- */
 function initCatalogSearchListeners() {
   const searchInput = document.querySelector('[data-catalog-search]');
   const clearBtn = document.querySelector('.catalog-search-clear');
 
-  // Null-Safety Guard: na `index.html` não há barra de busca de catálogo, evitando listeners órfãos
   if (!searchInput) return;
 
   searchInput.addEventListener('input', (event) => {
@@ -1081,10 +854,6 @@ function initCatalogSearchListeners() {
   }
 }
 
-/**
- * Bootstrapper principal da vitrine pública.
- * Detecta de forma defensiva quais seções existem no DOM antes de inicializar listeners e renders.
- */
 async function initPublicStorefront() {
   const hasHeroCarousel = Boolean(
     document.getElementById('hero-carousel') ||
@@ -1102,7 +871,6 @@ async function initPublicStorefront() {
       document.querySelector('[data-catalog-grid]')
   );
 
-  // Se a página atual não possuir Carrossel, "Mais Vendidos" ou "Catálogo", não faz chamadas desnecessárias
   if (!hasHeroCarousel && !hasBestsellersSection && !hasCatalogSection) return;
 
   if (hasCatalogSection) {
@@ -1120,6 +888,7 @@ async function initPublicStorefront() {
   }
 
   if (hasCatalogSection) {
+    syncCategoryFromUrlHash();
     renderCategoryFilters();
     renderCatalogProducts();
   }
