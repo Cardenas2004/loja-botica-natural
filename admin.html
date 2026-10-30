@@ -10,16 +10,16 @@
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
 
-    <!-- Tipografia Oficial da Marca (Playfair Display + Poppins) -->
+    <!-- Tipografia Oficial do Painel Administrativo (Inter UI) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Poppins:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
     <!-- Ícones (Font Awesome 6.5.1) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- Estilos Exclusivos do Painel Administrativo -->
-    <link rel="stylesheet" href="css/admin.css?v=20261028_carousel_fix">
+    <link rel="stylesheet" href="css/admin.css?v=20261029_typography">
 </head>
 <body>
     <!-- =====================================================================
@@ -179,6 +179,30 @@
                     </article>
                 </div>
             </section>
+
+            <!-- NAVEGAÇÃO RÁPIDA ENTRE SEÇÕES -->
+            <nav class="admin-quick-nav" aria-label="Navegação rápida das seções do painel">
+                <a href="#panel-carousel-title" class="admin-quick-nav__link">
+                    <i class="fa-solid fa-images" aria-hidden="true"></i>
+                    <span>Banners Hero</span>
+                </a>
+                <a href="#panel-categories-title" class="admin-quick-nav__link">
+                    <i class="fa-solid fa-tags" aria-hidden="true"></i>
+                    <span>Categorias</span>
+                </a>
+                <a href="#panel-products-title" class="admin-quick-nav__link">
+                    <i class="fa-solid fa-flask" aria-hidden="true"></i>
+                    <span>Cadastrar Produto</span>
+                </a>
+                <a href="#panel-whatsapp-title" class="admin-quick-nav__link">
+                    <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+                    <span>Mensagens do WhatsApp</span>
+                </a>
+                <a href="#catalog-table-title" class="admin-quick-nav__link">
+                    <i class="fa-solid fa-table-list" aria-hidden="true"></i>
+                    <span>Catálogo &amp; Estoque</span>
+                </a>
+            </nav>
 
             <!-- 1.5. MÓDULO DE GESTÃO DE BANNERS DO CARROSSEL PRINCIPAL (HERO) -->
             <section class="admin-panel admin-panel--carousel" aria-labelledby="panel-carousel-title">
@@ -586,6 +610,41 @@
                             >
                         </div>
 
+                        <!-- 3. MENSAGEM EXCLUSIVA DO WHATSAPP (OPCIONAL) -->
+                        <div class="form-section-title">
+                            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+                            <span>3. Mensagem Exclusiva do WhatsApp deste Produto (Opcional)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="prod-whatsapp-message" class="form-label">
+                                Mensagem Personalizada do WhatsApp
+                            </label>
+                            
+                            <div class="variables-toolbar variables-toolbar--compact" role="toolbar" aria-label="Variáveis para a mensagem">
+                                <span class="variables-toolbar__label">Inserir variável:</span>
+                                <div class="variables-toolbar__pills">
+                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{produto}" title="Nome comercial"><code>{produto}</code></button>
+                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{categoria}" title="Categoria"><code>{categoria}</code></button>
+                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{preco}" title="Preço"><code>{preco}</code></button>
+                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{link}" title="Link da página"><code>{link}</code></button>
+                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{sku}" title="REF / SKU"><code>{sku}</code></button>
+                                </div>
+                            </div>
+
+                            <textarea
+                                id="prod-whatsapp-message"
+                                name="whatsapp_message"
+                                class="form-control form-textarea"
+                                rows="3"
+                                placeholder="Deixe em branco para herdar o modelo geral da loja. Se preencher, o cliente abrirá esta mensagem específica ao clicar em Comprar..."
+                                maxlength="1000"
+                            ></textarea>
+                            <small class="form-hint">
+                                Caso não preenchido, o produto herdará automaticamente o modelo geral configurado na seção "Mensagens do WhatsApp".
+                            </small>
+                        </div>
+
                         <!-- Flags de Controle de Vitrine (Toggle Switches lado a lado) -->
                         <div class="form-row toggle-row" role="group" aria-label="Configurações de visibilidade na vitrine">
                             <label class="toggle-card" for="prod-active">
@@ -652,6 +711,156 @@
                     </form>
                 </section>
             </div>
+
+            <!-- 2.5. MÓDULO DE MENSAGENS PERSONALIZADAS DO WHATSAPP -->
+            <section id="panel-whatsapp-section" class="admin-panel admin-panel--whatsapp" aria-labelledby="panel-whatsapp-title">
+                <header class="admin-panel__header">
+                    <div>
+                        <span class="admin-panel__eyebrow"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Comunicação &amp; Conversão</span>
+                        <h2 id="panel-whatsapp-title" class="admin-panel__title">Mensagens do WhatsApp</h2>
+                    </div>
+                    <span id="whatsapp-sync-badge" class="badge badge-success" title="Status da sincronização com Supabase">
+                        <i class="fa-solid fa-cloud-check" aria-hidden="true"></i> Configuração Ativa
+                    </span>
+                </header>
+
+                <div class="whatsapp-editor-layout">
+                    <!-- Coluna Esquerda: Editor de Mensagem e Inserção de Variáveis -->
+                    <div class="whatsapp-editor-column">
+                        <p class="admin-panel__lead">
+                            Personalize a mensagem automática que será aberta no WhatsApp quando o cliente clicar em <strong>Comprar / Tenho interesse</strong> nos cards do catálogo ou na página de detalhes. Você pode editar o <strong>Modelo Geral da Loja</strong> ou definir uma mensagem <strong>exclusiva para cada produto</strong> separadamente.
+                        </p>
+
+                        <!-- Seletor de Escopo: Modelo Geral vs Produto Individual -->
+                        <div class="form-group wa-scope-selector-card">
+                            <label for="whatsapp-scope-select" class="form-label wa-scope-label">
+                                <i class="fa-solid fa-sliders" aria-hidden="true"></i> Escolha o que deseja editar:
+                            </label>
+                            <div class="wa-scope-select-wrap">
+                                <select id="whatsapp-scope-select" class="form-control wa-scope-select">
+                                    <option value="__global__">🌐 Modelo Geral da Loja (Padrão para produtos sem mensagem própria)</option>
+                                    <optgroup label="Personalizar Produto Específico do Catálogo" id="whatsapp-products-optgroup">
+                                        <!-- Populado dinamicamente com todos os produtos -->
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div id="whatsapp-scope-status" class="wa-scope-status-banner">
+                                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                                <span>Você está editando o <strong>Modelo Geral da Loja</strong>. Produtos sem mensagem exclusiva herdam este modelo automaticamente.</span>
+                            </div>
+                        </div>
+
+                        <!-- Barra de Ferramentas com Pílulas de Variáveis -->
+                        <div class="variables-toolbar" role="toolbar" aria-label="Variáveis dinâmicas para a mensagem">
+                            <span class="variables-toolbar__label">Inserir variável:</span>
+                            <div class="variables-toolbar__pills">
+                                <button type="button" class="var-pill-btn" data-var="{produto}" title="Nome comercial da fórmula">
+                                    <code>{produto}</code>
+                                    <span>Nome</span>
+                                </button>
+                                <button type="button" class="var-pill-btn" data-var="{categoria}" title="Categoria farmacêutica">
+                                    <code>{categoria}</code>
+                                    <span>Categoria</span>
+                                </button>
+                                <button type="button" class="var-pill-btn" data-var="{preco}" title="Preço formatado (ex: R$ 50,00)">
+                                    <code>{preco}</code>
+                                    <span>Preço</span>
+                                </button>
+                                <button type="button" class="var-pill-btn" data-var="{link}" title="Link direto da página do produto">
+                                    <code>{link}</code>
+                                    <span>Link</span>
+                                </button>
+                                <button type="button" class="var-pill-btn" data-var="{sku}" title="Código de referência ou REF">
+                                    <code>{sku}</code>
+                                    <span>REF / SKU</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Formulário / Textarea do Editor -->
+                        <form id="whatsapp-settings-form" class="admin-form" novalidate>
+                            <div class="form-group">
+                                <label for="whatsapp-template-text" class="form-label">
+                                    Texto da Mensagem <span class="required-mark" aria-hidden="true">*</span>
+                                </label>
+                                <textarea
+                                    id="whatsapp-template-text"
+                                    name="template_text"
+                                    class="form-control form-textarea whatsapp-textarea"
+                                    rows="5"
+                                    placeholder="Escreva a mensagem personalizada para o WhatsApp..."
+                                    maxlength="1000"
+                                    required
+                                ></textarea>
+                                
+                                <div class="editor-meta-row">
+                                    <small id="whatsapp-char-counter" class="char-counter">0 / 1000 caracteres</small>
+                                    <small id="whatsapp-validation-hint" class="validation-hint"></small>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" id="btn-save-whatsapp-template" class="btn btn-primary">
+                                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                                    <span id="btn-save-whatsapp-label">Salvar Mensagem Geral</span>
+                                </button>
+                                <button type="button" id="btn-restore-whatsapp-template" class="btn btn-secondary" title="Retorna ao modelo padrão da Botica Natural">
+                                    <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                                    <span id="btn-restore-whatsapp-label">Restaurar Mensagem Padrão</span>
+                                </button>
+                                <button type="button" id="btn-cycle-preview-prod" class="btn btn-secondary btn--ghost" title="Alternar produto de exemplo na pré-visualização">
+                                    <i class="fa-solid fa-shuffle" aria-hidden="true"></i>
+                                    <span>Alternar Exemplo</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Coluna Direita: Pré-visualização em Tempo Real (WhatsApp Chat Bubble) -->
+                    <div class="whatsapp-preview-column">
+                        <div class="preview-header-row">
+                            <h3 class="categories-list-section__title">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Pré-visualização da Mensagem
+                            </h3>
+                            <span id="wa-preview-sample-badge" class="badge badge-order" title="Fórmula sendo utilizada no teste">
+                                Exemplo de teste
+                            </span>
+                        </div>
+
+                        <!-- Card de Simulação do WhatsApp -->
+                        <div class="wa-mockup-card">
+                            <div class="wa-mockup-header">
+                                <div class="wa-mockup-avatar">
+                                    <img src="images/logo.jpg" alt="Botica Natural" width="36" height="36">
+                                </div>
+                                <div class="wa-mockup-info">
+                                    <strong class="wa-mockup-name">Botica Natural</strong>
+                                    <span class="wa-mockup-status"><i class="fa-solid fa-circle wa-status-dot" aria-hidden="true"></i> Conversa com o cliente</span>
+                                </div>
+                            </div>
+
+                            <div class="wa-mockup-body">
+                                <div class="wa-bubble-wrap">
+                                    <div class="wa-bubble">
+                                        <p id="wa-preview-bubble-text" class="wa-bubble__text">
+                                            Carregando pré-visualização...
+                                        </p>
+                                        <div class="wa-bubble__meta">
+                                            <span id="wa-preview-bubble-time" class="wa-bubble__time">12:00</span>
+                                            <i class="fa-solid fa-check-double wa-bubble__ticks" aria-hidden="true"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="wa-mockup-footer">
+                                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                                <span>As variáveis são substituídas dinamicamente para cada fórmula da vitrine e da página de produto.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- 3. MÓDULO 3: CATÁLOGO ADMINISTRATIVO COM BUSCA E FILTROS -->
             <section class="admin-panel admin-panel--catalog" aria-labelledby="catalog-table-title">

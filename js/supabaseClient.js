@@ -43,6 +43,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
  * @property {string} [package_info] - Apresentação física e embalagem (ex: "Frasco com 90 cápsulas.").
  * @property {string} [allergen_info] - Informações de restrições e alergênicos (ex: "Não contém lactose e glúten.").
  * @property {string} [quality_note] - Nota de compromisso com rigor e qualidade farmacêutica.
+ * @property {string} [whatsapp_message] - Mensagem personalizada exclusiva do WhatsApp para este produto.
  * @property {number} price - Preço unitário numérico (NUMERIC).
  * @property {string | null} image_url - URL pública direta da imagem do produto.
  * @property {string | null} image_path - Caminho relativo do arquivo dentro do bucket `product-images`.
@@ -134,6 +135,7 @@ export const DB_TABLES = Object.freeze({
   CATEGORIES: 'categories',
   PRODUCTS: 'products',
   CAROUSEL: 'carousel_slides',
+  SETTINGS: 'site_settings',
 });
 
 /**

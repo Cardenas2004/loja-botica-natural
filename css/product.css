@@ -16,7 +16,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 0.825rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.875rem;
+  line-height: 1.4;
   color: var(--text-light, #7E65A1);
 }
 
@@ -173,26 +175,33 @@
 }
 
 .pdp-product-title {
-  font-family: var(--font-body, 'Poppins', sans-serif);
-  font-size: 1.85rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: clamp(1.5rem, 1.25rem + 1.1vw, 2rem);
   font-weight: 700;
   color: var(--primary-dark, #2B154D);
   line-height: 1.2;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 
 .pdp-sku-badge {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--text-light, #7E65A1);
   letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Resumo Curto de Benefícios */
 .pdp-short-desc {
-  font-size: 0.925rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 1rem;
+  font-weight: 400;
   color: var(--text-medium, #4A2871);
-  line-height: 1.6;
+  line-height: 1.65;
+  max-width: 62ch;
   margin: 0;
 }
 
@@ -205,11 +214,13 @@
 }
 
 .pdp-price-val {
-  font-size: 2.15rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: clamp(1.75rem, 1.5rem + 0.9vw, 2.25rem);
   font-weight: 700;
   color: var(--primary-dark, #2B154D);
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 /* Formas de Pagamento */
@@ -217,7 +228,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.875rem;
+  line-height: 1.5;
   color: var(--text-medium, #4A2871);
   font-weight: 500;
 }
@@ -235,9 +248,10 @@
   background-color: var(--wa, #138A47);
   color: var(--white, #FFFFFF);
   border-radius: 8px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -283,9 +297,11 @@
 
 .pdp-desc-title {
   display: inline-block;
-  font-family: var(--font-body, 'Poppins', sans-serif);
-  font-size: 1.35rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
   font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   color: var(--primary-dark, #2B154D);
   position: relative;
   padding-bottom: 10px;
@@ -307,21 +323,25 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  font-size: 0.95rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 1rem;
+  font-weight: 400;
   color: var(--text, #3D1E6D);
-  line-height: 1.65;
-  max-width: 960px;
+  line-height: 1.7;
+  max-width: 72ch;
   margin: 0 auto;
 }
 
 .pdp-desc-prose {
   color: var(--text-medium, #4A2871);
+  line-height: 1.7;
   margin: 0;
 }
 
 .pdp-desc-usage strong,
 .pdp-desc-composition strong {
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--primary-dark, #2B154D);
 }
 
@@ -333,8 +353,8 @@
 .pdp-desc-quality {
   margin-top: 8px;
   color: var(--primary-dark, #2B154D);
-  font-weight: 700;
-  line-height: 1.55;
+  font-weight: 600;
+  line-height: 1.65;
 }
 
 /* ==========================================================================
@@ -378,15 +398,18 @@
 }
 
 .pdp-error-title {
-  font-family: var(--font-body, 'Poppins', sans-serif);
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 1.5rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--primary-dark, #2B154D);
   margin-bottom: 8px;
 }
 
 .pdp-error-desc {
-  font-size: 0.9rem;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 0.9375rem;
+  line-height: 1.6;
   color: var(--text-medium, #4A2871);
   margin-bottom: 24px;
 }
@@ -435,5 +458,30 @@
   .pdp-brand-badge {
     width: 58px;
     height: 58px;
+  }
+}
+
+@media (max-width: 390px) {
+  .pdp-title-header {
+    gap: 12px;
+  }
+
+  .pdp-product-title {
+    font-size: 1.375rem;
+  }
+
+  .pdp-price-val {
+    font-size: 1.625rem;
+  }
+
+  .btn-pdp-buy {
+    min-height: 48px;
+    padding: 12px 18px;
+    font-size: 0.875rem;
+  }
+
+  .pdp-desc-content {
+    font-size: 0.9375rem;
+    line-height: 1.65;
   }
 }

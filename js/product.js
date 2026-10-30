@@ -19,6 +19,11 @@ import {
   normalizeSupabaseError,
 } from './supabaseClient.js';
 
+import {
+  buildProductWhatsAppUrl,
+  fetchProductWhatsAppTemplate,
+} from './whatsapp.js';
+
 /* ==========================================================================
    1. CONSTANTES & UTILITÁRIOS
    ========================================================================== */
@@ -202,7 +207,12 @@ function renderProductDetails(product) {
 
   // 6. Botão Comprar (WhatsApp)
   if (DOM.btnBuy) {
-    DOM.btnBuy.href = buildWhatsAppBuyUrl(product, formattedPrice);
+    DOM.btnBuy.href = buildProductWhatsAppUrl(product);
+    DOM.btnBuy.target = '_blank';
+    DOM.btnBuy.rel = 'noopener noreferrer';
+    DOM.btnBuy.addEventListener('click', () => {
+      DOM.btnBuy.href = buildProductWhatsAppUrl(product);
+    });
   }
 
   // 7. Bloco Ficha Técnica / Descrição do Produto
@@ -291,11 +301,14 @@ async function initProductPage() {
   }
 
   try {
-    const { data: product, error } = await supabase
-      .from(DB_TABLES.PRODUCTS)
-      .select('*, categories(id, name, slug)')
-      .eq('id', productId)
-      .single();
+    const [{ data: product, error }] = await Promise.all([
+      supabase
+        .from(DB_TABLES.PRODUCTS)
+        .select('*, categories(id, name, slug)')
+        .eq('id', productId)
+        .single(),
+      fetchProductWhatsAppTemplate(),
+    ]);
 
     if (error || !product) {
       normalizeSupabaseError(error, 'Produto não encontrado');

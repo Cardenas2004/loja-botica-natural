@@ -14,6 +14,11 @@ import {
   normalizeSupabaseError,
 } from './supabaseClient.js';
 
+import {
+  buildProductWhatsAppUrl as buildCentralProductWhatsAppUrl,
+  fetchProductWhatsAppTemplate,
+} from './whatsapp.js';
+
 /* ==========================================================================
    1. CONFIGURAÇÕES GLOBAIS E FORMATAÇÃO (SINGLE SOURCE OF TRUTH)
    ========================================================================== */
@@ -114,16 +119,7 @@ function resolveProductImageUrl(product) {
 }
 
 export function buildProductWhatsAppUrl(product) {
-  const productName = String(product?.name || 'Fórmula Manipulada').trim();
-  const categoryName = resolveProductCategoryName(product);
-  const formattedPrice = formatPriceBRL(product?.price);
-
-  const message =
-    `Olá! Tenho interesse no produto *${productName}* ` +
-    `(Categoria: ${categoryName} | Valor: ${formattedPrice}) ` +
-    `que vi na vitrine da Botica Natural. Gostaria de mais informações e fazer meu pedido!`;
-
-  return `${WHATSAPP_CONFIG.BASE_URL}/${WHATSAPP_CONFIG.PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
+  return buildCentralProductWhatsAppUrl(product);
 }
 
 /* ==========================================================================
@@ -796,6 +792,8 @@ async function loadCatalogData() {
         .select('*, categories(id, name, slug)')
         .eq('is_active', true)
         .order('created_at', { ascending: false }),
+
+      fetchProductWhatsAppTemplate(),
     ]);
 
     catalogState.carouselSlides =

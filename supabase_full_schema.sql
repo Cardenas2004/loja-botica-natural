@@ -1,8 +1,9 @@
 -- ============================================================================
--- Botica Natural — Arquitetura de Banco de Dados Mestre e Definitiva
+-- BOTICA NATURAL — ARQUITETURA DE BANCO DE DADOS MESTRE E DEFINITIVA
 -- Arquivo: supabase_full_schema.sql
--- Arquitetura: PostgreSQL 15+ (Supabase) · Zero-Trust RLS · 100% Idempotente
--- Criado para execução direta no SQL Editor do Supabase
+-- Ambiente: PostgreSQL 15+ (Supabase) · Zero-Trust RLS · 100% Idempotente
+-- Instruções: Cole este script integralmente no "SQL Editor" do painel Supabase
+-- e clique em "Run" (Executar). Seguro para rodar em bancos novos ou existentes.
 -- ============================================================================
 
 BEGIN;
@@ -11,7 +12,7 @@ BEGIN;
 -- 1. EXTENSÕES DO POSTGRESQL
 -- ============================================================================
 
--- Ativa suporte a UUIDs criptograficamente seguros (v4)
+-- Ativa suporte a geração de UUIDs criptograficamente seguros (v4)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================================
@@ -35,29 +36,61 @@ COMMENT ON FUNCTION public.handle_updated_at() IS
   'Trigger que sincroniza automaticamente a coluna updated_at com o timestamp UTC atual em updates.';
 
 -- 2.2. Função RPC de verificação de permissão administrativa (Zero-Trust)
--- Valida o e-mail oficial do administrador registrado no Supabase Auth
+-- Valida o e-mail oficial do administrador registrado no Supabase Auth com múltiplos fallbacks seguros
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, auth
 STABLE
 AS $$
-  SELECT coalesce(
-    -- 1. E-mail oficial do administrador configurado
-    lower(coalesce(auth.jwt() ->> 'email', '')) = 'eduardodudusants12345@gmail.com'
-    -- 2. Papel de administrador nos metadados da conta
-    OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
-    -- 3. Chamadas diretas de serviço interno (service_role)
-    OR (auth.jwt() ->> 'role') = 'service_role'
-    -- 4. Compatibilidade com sessão autenticada do admin
-    OR (auth.role() = 'authenticated' AND lower(coalesce(auth.jwt() ->> 'email', '')) = 'eduardodudusants12345@gmail.com'),
-    false
-  );
+DECLARE
+  v_email text;
+  v_app_role text;
+BEGIN
+  -- 1. Se for chamada via service_role interna do Supabase, sempre autoriza
+  IF coalesce(auth.jwt() ->> 'role', '') = 'service_role' THEN
+    RETURN true;
+  END IF;
+
+  -- 2. Se não houver sessão autenticada (usuário anônimo), rejeita imediatamente
+  IF auth.uid() IS NULL THEN
+    RETURN false;
+  END IF;
+
+  -- 3. Tenta extrair e-mail e roles diretamente do JWT (rápido e sem I/O extra)
+  v_email := lower(coalesce(auth.jwt() ->> 'email', ''));
+  v_app_role := lower(coalesce(
+    auth.jwt() -> 'app_metadata' ->> 'role',
+    auth.jwt() -> 'user_metadata' ->> 'role',
+    ''
+  ));
+
+  IF v_email = 'eduardodudusants12345@gmail.com' OR v_app_role = 'admin' THEN
+    RETURN true;
+  END IF;
+
+  -- 4. Fallback resiliente: busca o e-mail real na tabela auth.users pelo UID autenticado
+  SELECT lower(coalesce(email, '')) INTO v_email
+  FROM auth.users
+  WHERE id = auth.uid();
+
+  IF v_email = 'eduardodudusants12345@gmail.com' THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN false;
+END;
 $$;
 
 COMMENT ON FUNCTION public.is_admin() IS
   'Função de segurança Zero-Trust que valida privilégios de administrador para eduardodudusants12345@gmail.com.';
+
+-- Concede privilégio de execução explícito à função RPC para os clientes anon e authenticated
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated, service_role;
 
 -- ============================================================================
 -- 3. MODELAGEM COMPLETA E MIGRAÇÃO INCREMENTAL DAS TABELAS
@@ -68,8 +101,8 @@ COMMENT ON FUNCTION public.is_admin() IS
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.categories (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  name          TEXT        NOT NULL,
-  slug          TEXT        NOT NULL,
+  name          TEXT        NOT NULL DEFAULT '',
+  slug          TEXT        NOT NULL DEFAULT '',
   display_order INT         NOT NULL DEFAULT 0,
   is_active     BOOLEAN     NOT NULL DEFAULT true,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -100,7 +133,7 @@ COMMENT ON COLUMN public.categories.is_active IS 'Define se a categoria e seus p
 CREATE TABLE IF NOT EXISTS public.products (
   id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   category_id   UUID          REFERENCES public.categories(id) ON DELETE SET NULL,
-  name          TEXT          NOT NULL,
+  name          TEXT          NOT NULL DEFAULT '',
   description   TEXT          NOT NULL DEFAULT '',
   price         NUMERIC(10,2) NOT NULL DEFAULT 0.00 CHECK (price >= 0),
   image_url     TEXT          NOT NULL DEFAULT '',
@@ -133,6 +166,7 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS composition TEXT NOT NULL D
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS package_info TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS allergen_info TEXT NOT NULL DEFAULT 'Não contém lactose e glúten.';
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS quality_note TEXT NOT NULL DEFAULT 'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS whatsapp_message TEXT NOT NULL DEFAULT '';
 
 COMMENT ON TABLE public.products IS 'Catálogo geral de fórmulas magistrais e produtos manipulados.';
 COMMENT ON COLUMN public.products.sku_ref IS 'Código interno de referência (REF) da fórmula (ex: REF: 4299).';
@@ -144,6 +178,7 @@ COMMENT ON COLUMN public.products.composition IS 'Lista detalhada de ativos e do
 COMMENT ON COLUMN public.products.package_info IS 'Apresentação física do frasco/embalagem (ex: Frasco com 90 cápsulas).';
 COMMENT ON COLUMN public.products.allergen_info IS 'Informações sobre alérgenos e restrições (ex: Não contém lactose e glúten).';
 COMMENT ON COLUMN public.products.quality_note IS 'Garantia de conformidade farmacêutica e boas práticas de manipulação.';
+COMMENT ON COLUMN public.products.whatsapp_message IS 'Mensagem personalizada exclusiva para o WhatsApp deste produto. Se vazia, herda o modelo global de site_settings.';
 
 -- ----------------------------------------------------------------------------
 -- 3.3. Tabela: `public.carousel_slides` (Banners do Carrossel Principal)
@@ -151,11 +186,9 @@ COMMENT ON COLUMN public.products.quality_note IS 'Garantia de conformidade farm
 CREATE TABLE IF NOT EXISTS public.carousel_slides (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   title         TEXT        NOT NULL DEFAULT '',
-  subtitle      TEXT        NOT NULL DEFAULT '',
-  button_text   TEXT        NOT NULL DEFAULT '',
   button_link   TEXT        NOT NULL DEFAULT '',
-  image_url     TEXT        NOT NULL CHECK (char_length(trim(image_url)) > 0),
-  image_path    TEXT        NOT NULL CHECK (char_length(trim(image_path)) > 0),
+  image_url     TEXT        NOT NULL DEFAULT '',
+  image_path    TEXT        NOT NULL DEFAULT '',
   display_order INT         NOT NULL DEFAULT 0,
   is_active     BOOLEAN     NOT NULL DEFAULT true,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -164,8 +197,6 @@ CREATE TABLE IF NOT EXISTS public.carousel_slides (
 
 -- Migração incremental das colunas do carrossel
 ALTER TABLE public.carousel_slides ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.carousel_slides ADD COLUMN IF NOT EXISTS subtitle TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.carousel_slides ADD COLUMN IF NOT EXISTS button_text TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.carousel_slides ADD COLUMN IF NOT EXISTS button_link TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.carousel_slides ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.carousel_slides ADD COLUMN IF NOT EXISTS image_path TEXT NOT NULL DEFAULT '';
@@ -177,7 +208,43 @@ ALTER TABLE public.carousel_slides ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
 COMMENT ON TABLE public.carousel_slides IS 'Banners rotativos do carrossel Hero gerenciados pelo painel administrativo.';
 COMMENT ON COLUMN public.carousel_slides.title IS 'Título ou descrição de acessibilidade (alt) da imagem.';
 COMMENT ON COLUMN public.carousel_slides.button_link IS 'Link opcional de redirecionamento ao clicar no banner.';
+COMMENT ON COLUMN public.carousel_slides.image_url IS 'URL pública otimizada da imagem do banner no Supabase Storage.';
 COMMENT ON COLUMN public.carousel_slides.image_path IS 'Caminho físico no Storage para deleção sem deixar arquivos órfãos.';
+COMMENT ON COLUMN public.carousel_slides.display_order IS 'Ordem numérica de exibição no carrossel (menor aparece primeiro).';
+COMMENT ON COLUMN public.carousel_slides.is_active IS 'Define se o slide está ativo e visível na vitrine pública.';
+
+-- ----------------------------------------------------------------------------
+-- 3.4. Tabela: `public.site_settings` (Configurações Globais / Mensagens WhatsApp)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.site_settings (
+  key         TEXT        PRIMARY KEY,
+  value       TEXT        NOT NULL DEFAULT '',
+  description TEXT        NOT NULL DEFAULT '',
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by  TEXT        NOT NULL DEFAULT ''
+);
+
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS value TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE public.site_settings ADD COLUMN IF NOT EXISTS updated_by TEXT NOT NULL DEFAULT '';
+
+-- Correção retroativa: Se 'updated_by' foi criada anteriormente como UUID ou com FK em auth.users,
+-- remove a restrição e converte para TEXT de forma limpa e sem perda de dados
+DO $$
+BEGIN
+  ALTER TABLE public.site_settings DROP CONSTRAINT IF EXISTS site_settings_updated_by_fkey;
+  ALTER TABLE public.site_settings ALTER COLUMN updated_by TYPE TEXT USING coalesce(updated_by::text, '');
+  ALTER TABLE public.site_settings ALTER COLUMN updated_by SET DEFAULT '';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+COMMENT ON TABLE public.site_settings IS 'Parâmetros dinâmicos e configurações globais (ex.: template de WhatsApp).';
+COMMENT ON COLUMN public.site_settings.key IS 'Chave identificadora única da configuração (Primary Key).';
+COMMENT ON COLUMN public.site_settings.value IS 'Conteúdo da configuração salvo em formato de texto.';
+COMMENT ON COLUMN public.site_settings.description IS 'Descrição amigável da finalidade do parâmetro.';
+COMMENT ON COLUMN public.site_settings.updated_by IS 'Identificador ou e-mail do administrador responsável pela alteração.';
 
 -- ============================================================================
 -- 4. ÍNDICES DE PERFORMANCE B-TREE
@@ -227,6 +294,12 @@ CREATE TRIGGER trg_carousel_slides_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
 
+DROP TRIGGER IF EXISTS trg_site_settings_updated_at ON public.site_settings;
+CREATE TRIGGER trg_site_settings_updated_at
+  BEFORE UPDATE ON public.site_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();
+
 -- ============================================================================
 -- 6. SEGURANÇA ZERO-TRUST: ROW LEVEL SECURITY (RLS)
 -- ============================================================================
@@ -235,8 +308,9 @@ CREATE TRIGGER trg_carousel_slides_updated_at
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.carousel_slides ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
 
--- Concede privilégios explícitos aos papéis Supabase
+-- Concede privilégios explícitos aos papéis do Supabase (anon e authenticated)
 GRANT SELECT ON public.categories TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.categories TO authenticated;
 
@@ -245,6 +319,9 @@ GRANT INSERT, UPDATE, DELETE ON public.products TO authenticated;
 
 GRANT SELECT ON public.carousel_slides TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.carousel_slides TO authenticated;
+
+GRANT SELECT ON public.site_settings TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.site_settings TO authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 6.1. Políticas RLS: `public.categories`
@@ -330,6 +407,34 @@ CREATE POLICY "carousel_slides_delete_admin"
   TO authenticated
   USING (public.is_admin());
 
+-- ----------------------------------------------------------------------------
+-- 6.4. Políticas RLS: `public.site_settings`
+-- ----------------------------------------------------------------------------
+DROP POLICY IF EXISTS "site_settings_select_public" ON public.site_settings;
+CREATE POLICY "site_settings_select_public"
+  ON public.site_settings FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "site_settings_insert_admin" ON public.site_settings;
+CREATE POLICY "site_settings_insert_admin"
+  ON public.site_settings FOR INSERT
+  TO authenticated
+  WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "site_settings_update_admin" ON public.site_settings;
+CREATE POLICY "site_settings_update_admin"
+  ON public.site_settings FOR UPDATE
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "site_settings_delete_admin" ON public.site_settings;
+CREATE POLICY "site_settings_delete_admin"
+  ON public.site_settings FOR DELETE
+  TO authenticated
+  USING (public.is_admin());
+
 -- ============================================================================
 -- 7. SUPABASE STORAGE (BUCKET E POLÍTICAS DE OBJETOS)
 -- ============================================================================
@@ -361,7 +466,7 @@ CREATE POLICY "product_images_insert_admin"
   TO authenticated
   WITH CHECK (
     bucket_id = 'product-images'
-    AND public.is_admin()
+    AND (public.is_admin() OR lower(coalesce(auth.jwt() ->> 'email', '')) = 'eduardodudusants12345@gmail.com')
   );
 
 DROP POLICY IF EXISTS "product_images_update_admin" ON storage.objects;
@@ -370,11 +475,11 @@ CREATE POLICY "product_images_update_admin"
   TO authenticated
   USING (
     bucket_id = 'product-images'
-    AND public.is_admin()
+    AND (public.is_admin() OR lower(coalesce(auth.jwt() ->> 'email', '')) = 'eduardodudusants12345@gmail.com')
   )
   WITH CHECK (
     bucket_id = 'product-images'
-    AND public.is_admin()
+    AND (public.is_admin() OR lower(coalesce(auth.jwt() ->> 'email', '')) = 'eduardodudusants12345@gmail.com')
   );
 
 DROP POLICY IF EXISTS "product_images_delete_admin" ON storage.objects;
@@ -383,7 +488,7 @@ CREATE POLICY "product_images_delete_admin"
   TO authenticated
   USING (
     bucket_id = 'product-images'
-    AND public.is_admin()
+    AND (public.is_admin() OR lower(coalesce(auth.jwt() ->> 'email', '')) = 'eduardodudusants12345@gmail.com')
   );
 
 -- ============================================================================
@@ -397,10 +502,60 @@ VALUES
   ('Sachês & Chás', 'saches-chas', 4, true)
 ON CONFLICT (slug) DO NOTHING;
 
+-- Configuração inicial do template de mensagem do WhatsApp
+INSERT INTO public.site_settings (key, value, description, updated_by)
+VALUES (
+  'whatsapp_product_message_template',
+  'Olá! Tenho interesse no produto *{produto}* (Categoria: {categoria} | Valor: {preco}). Vi no site da Botica Natural ({link}) e gostaria de tirar dúvidas com o farmacêutico e fazer meu pedido!',
+  'Template de mensagem personalizada pré-preenchida no WhatsApp para interesse em produtos do catálogo e PDP.',
+  'sistema'
+)
+ON CONFLICT (key) DO NOTHING;
+
+-- Banners iniciais da vitrine (apenas se a tabela estiver totalmente vazia)
+INSERT INTO public.carousel_slides (title, button_link, image_url, image_path, display_order, is_active)
+SELECT
+  'Por que manipular com a Botica Natural? Envie sua receita pelo WhatsApp',
+  'https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20fazer%20um%20or%C3%A7amento%20de%20f%C3%B3rmula%20manipulada.',
+  'images/banners/banner-por-que-manipular-desktop.jpg',
+  'images/banners/banner-por-que-manipular-desktop.jpg',
+  1,
+  true
+WHERE NOT EXISTS (SELECT 1 FROM public.carousel_slides LIMIT 1);
+
+INSERT INTO public.carousel_slides (title, button_link, image_url, image_path, display_order, is_active)
+SELECT
+  'Própolis Mais: Blend Exclusivo com Própolis Vermelha',
+  'produto.html?id=7',
+  'images/banners/banner-propolis-mais-desktop.jpg',
+  'images/banners/banner-propolis-mais-desktop.jpg',
+  2,
+  true
+WHERE (SELECT COUNT(*) FROM public.carousel_slides) = 1;
+
+INSERT INTO public.carousel_slides (title, button_link, image_url, image_path, display_order, is_active)
+SELECT
+  'Okralin 500mg — Gerenciamento de Peso Saudável',
+  'produto.html?id=1',
+  'images/banners/banner-okralin-desktop.jpg',
+  'images/banners/banner-okralin-desktop.jpg',
+  3,
+  true
+WHERE (SELECT COUNT(*) FROM public.carousel_slides) = 2;
+
+INSERT INTO public.carousel_slides (title, button_link, image_url, image_path, display_order, is_active)
+SELECT
+  'Greenselect Phytosome — Queima Calórica e Disposição',
+  'produto.html?id=2',
+  'images/banners/banner-greenselect-desktop.jpg',
+  'images/banners/banner-greenselect-desktop.jpg',
+  4,
+  true
+WHERE (SELECT COUNT(*) FROM public.carousel_slides) = 3;
+
 COMMIT;
 
 -- ============================================================================
 -- 9. RECARREGAMENTO DE CACHE DO POSTGREST (EVITA ERRO PGRST204)
 -- ============================================================================
 NOTIFY pgrst, 'reload schema';
-

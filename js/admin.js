@@ -24,6 +24,15 @@ import {
   normalizeSupabaseError,
 } from './supabaseClient.js';
 
+import {
+  fetchProductWhatsAppTemplate,
+  saveProductWhatsAppTemplate,
+  saveIndividualProductWhatsAppMessage,
+  DEFAULT_PRODUCT_MESSAGE_TEMPLATE,
+  interpolateTemplate,
+  AVAILABLE_VARIABLES,
+} from './whatsapp.js';
+
 /* ==========================================================================
    1. ESTADO REATIVO EM MEMÓRIA (SINGLE STATE STORE)
    ========================================================================== */
@@ -52,6 +61,9 @@ const state = {
   activePreviewObjectUrl: null,
   activeSlidePreviewObjectUrl: null,
   isLoadingData: false,
+  whatsappTemplate: DEFAULT_PRODUCT_MESSAGE_TEMPLATE,
+  whatsappScope: '__global__',
+  selectedSampleIndex: 0,
 };
 
 /* ==========================================================================
@@ -128,6 +140,7 @@ const DOM = Object.freeze({
   prodPackage: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-package')),
   prodAllergens: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-allergens')),
   prodQualityNote: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-quality-note')),
+  prodWhatsappMessage: /** @type {HTMLTextAreaElement | null} */ (document.getElementById('prod-whatsapp-message')),
   prodActive: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-active')),
   prodBestseller: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-bestseller')),
   prodImage: /** @type {HTMLInputElement | null} */ (document.getElementById('prod-image')),
@@ -151,6 +164,26 @@ const DOM = Object.freeze({
   modalBtnCancel: /** @type {HTMLButtonElement | null} */ (document.getElementById('modal-btn-cancel')),
   modalBtnConfirm: /** @type {HTMLButtonElement | null} */ (document.getElementById('modal-btn-confirm')),
   toastContainer: /** @type {HTMLElement | null} */ (document.getElementById('toast-container')),
+
+  // Módulo 2.5: Mensagens do WhatsApp
+  panelWhatsappTitle: /** @type {HTMLElement | null} */ (document.getElementById('panel-whatsapp-title')),
+  whatsappScopeSelect: /** @type {HTMLSelectElement | null} */ (document.getElementById('whatsapp-scope-select')),
+  whatsappProductsOptgroup: /** @type {HTMLOptGroupElement | null} */ (document.getElementById('whatsapp-products-optgroup')),
+  whatsappScopeStatus: /** @type {HTMLElement | null} */ (document.getElementById('whatsapp-scope-status')),
+  whatsappForm: /** @type {HTMLFormElement | null} */ (document.getElementById('whatsapp-settings-form')),
+  whatsappTemplateText: /** @type {HTMLTextAreaElement | null} */ (document.getElementById('whatsapp-template-text')),
+  whatsappCharCounter: /** @type {HTMLElement | null} */ (document.getElementById('whatsapp-char-counter')),
+  whatsappValidationHint: /** @type {HTMLElement | null} */ (document.getElementById('whatsapp-validation-hint')),
+  whatsappSyncBadge: /** @type {HTMLElement | null} */ (document.getElementById('whatsapp-sync-badge')),
+  btnSaveWhatsApp: /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-save-whatsapp-template')),
+  btnSaveWhatsAppLabel: /** @type {HTMLElement | null} */ (document.getElementById('btn-save-whatsapp-label')),
+  btnRestoreWhatsApp: /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-restore-whatsapp-template')),
+  btnRestoreWhatsAppLabel: /** @type {HTMLElement | null} */ (document.getElementById('btn-restore-whatsapp-label')),
+  btnCyclePreviewProd: /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-cycle-preview-prod')),
+  waPreviewSampleBadge: /** @type {HTMLElement | null} */ (document.getElementById('wa-preview-sample-badge')),
+  waPreviewBubbleText: /** @type {HTMLElement | null} */ (document.getElementById('wa-preview-bubble-text')),
+  waPreviewBubbleTime: /** @type {HTMLElement | null} */ (document.getElementById('wa-preview-bubble-time')),
+  varPillBtns: /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.var-pill-btn')),
 });
 
 /* ==========================================================================
@@ -939,6 +972,20 @@ function renderProductsTable() {
       badgesWrap.appendChild(bestBadge);
     }
 
+    const hasCustomWa = Boolean(product.whatsapp_message && product.whatsapp_message.trim());
+    const waBadge = document.createElement('span');
+    waBadge.className = `badge ${hasCustomWa ? 'badge-success' : 'badge-muted'}`;
+    const waIcon = document.createElement('i');
+    waIcon.className = 'fa-brands fa-whatsapp';
+    waIcon.setAttribute('aria-hidden', 'true');
+    const waText = document.createElement('span');
+    waText.textContent = hasCustomWa ? ' Msg Própria' : ' Msg Geral';
+    waBadge.append(waIcon, waText);
+    waBadge.title = hasCustomWa
+      ? 'Este produto possui mensagem exclusiva configurada para o WhatsApp'
+      : 'Este produto herda o modelo geral padrão da loja no WhatsApp';
+    badgesWrap.appendChild(waBadge);
+
     tdStatus.appendChild(badgesWrap);
 
     // 6. Ações (Editar / Excluir)
@@ -1168,6 +1215,7 @@ async function fetchProducts() {
   state.products = Array.isArray(data) ? data : [];
   renderKpis();
   renderProductsTable();
+  populateWhatsAppScopeSelect();
 }
 
 /**
@@ -1374,6 +1422,7 @@ function resetProductForm() {
     DOM.prodQualityNote.value =
       'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
   }
+  if (DOM.prodWhatsappMessage) DOM.prodWhatsappMessage.value = '';
   if (DOM.prodActive) DOM.prodActive.checked = true;
   if (DOM.prodBestseller) DOM.prodBestseller.checked = false;
   if (DOM.prodImage) DOM.prodImage.value = '';
@@ -1418,6 +1467,9 @@ function startEditProduct(productId) {
     DOM.prodQualityNote.value =
       product.quality_note ||
       'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
+  }
+  if (DOM.prodWhatsappMessage) {
+    DOM.prodWhatsappMessage.value = product.whatsapp_message || '';
   }
   if (DOM.prodActive) DOM.prodActive.checked = Boolean(product.is_active);
   if (DOM.prodBestseller) DOM.prodBestseller.checked = Boolean(product.is_best_seller);
@@ -1488,6 +1540,7 @@ async function handleProductSubmit(event) {
   const qualityNote =
     DOM.prodQualityNote?.value.trim() ||
     'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
+  const whatsappMessage = DOM.prodWhatsappMessage?.value.trim() || '';
   const isActive = Boolean(DOM.prodActive?.checked);
   const isBestSeller = Boolean(DOM.prodBestseller?.checked);
   const selectedFile = DOM.prodImage?.files?.[0] || null;
@@ -1547,6 +1600,7 @@ async function handleProductSubmit(event) {
       package_info: packageInfo,
       allergen_info: allergenInfo,
       quality_note: qualityNote,
+      whatsapp_message: whatsappMessage,
       image_path: finalImagePath,
       image_url: finalImageUrl,
       is_active: isActive,
@@ -1908,6 +1962,389 @@ async function handleDeleteCarouselSlide(slideId) {
 }
 
 /* ==========================================================================
+   9.5. MÓDULO DE GESTÃO DE MENSAGENS PERSONALIZADAS DO WHATSAPP
+   ========================================================================== */
+
+/**
+ * Retorna uma fórmula para alimentar a pré-visualização em tempo real.
+ * Se um produto específico estiver selecionado no escopo, utiliza seus dados reais;
+ * caso contrário, utiliza a fórmula do ciclo da vitrine ou fallback estruturado.
+ * @returns {any}
+ */
+function getSampleProductForPreview() {
+  if (state.whatsappScope && state.whatsappScope !== '__global__') {
+    const specificProd = state.products.find((p) => p.id === state.whatsappScope);
+    if (specificProd) return specificProd;
+  }
+
+  if (Array.isArray(state.products) && state.products.length > 0) {
+    const idx = Math.abs(state.selectedSampleIndex) % state.products.length;
+    return state.products[idx];
+  }
+
+  return {
+    id: '4299',
+    name: 'Magno 6',
+    category_id: 'cat-magnesio',
+    category_name: 'Cápsulas',
+    categories: { name: 'Cápsulas' },
+    price: 50.0,
+    sku_ref: 'REF: 4299',
+    short_description: 'Aumenta a energia física e mental, auxiliando no relaxamento e sono.',
+  };
+}
+
+/**
+ * Popula o select de escopo com todos os produtos do catálogo para edição individual.
+ */
+function populateWhatsAppScopeSelect() {
+  if (!DOM.whatsappProductsOptgroup) return;
+
+  const fragment = document.createDocumentFragment();
+
+  state.products.forEach((prod) => {
+    const opt = document.createElement('option');
+    opt.value = prod.id;
+    const hasCustom = Boolean(prod.whatsapp_message && prod.whatsapp_message.trim());
+    opt.textContent = `${prod.name} ${hasCustom ? '⭐ (Mensagem Exclusiva)' : '· (Padrão Geral)'}`;
+    fragment.appendChild(opt);
+  });
+
+  DOM.whatsappProductsOptgroup.replaceChildren(fragment);
+
+  // Garante sincronia do valor selecionado
+  if (DOM.whatsappScopeSelect) {
+    if (
+      state.whatsappScope !== '__global__' &&
+      !state.products.some((p) => p.id === state.whatsappScope)
+    ) {
+      state.whatsappScope = '__global__';
+      DOM.whatsappScopeSelect.value = '__global__';
+      handleWhatsAppScopeChange();
+    } else {
+      DOM.whatsappScopeSelect.value = state.whatsappScope;
+    }
+  }
+}
+
+/**
+ * Altera o escopo do editor entre o "Modelo Geral da Loja" e a "Mensagem Exclusiva de um Produto".
+ */
+function handleWhatsAppScopeChange() {
+  const selectedScope = DOM.whatsappScopeSelect?.value || '__global__';
+  state.whatsappScope = selectedScope;
+
+  if (selectedScope === '__global__') {
+    if (DOM.whatsappTemplateText) {
+      DOM.whatsappTemplateText.value = state.whatsappTemplate || DEFAULT_PRODUCT_MESSAGE_TEMPLATE;
+    }
+
+    if (DOM.whatsappScopeStatus) {
+      DOM.whatsappScopeStatus.className = 'wa-scope-status-banner';
+      DOM.whatsappScopeStatus.innerHTML =
+        '<i class="fa-solid fa-circle-info" aria-hidden="true"></i> <span>Você está editando o <strong>Modelo Geral da Loja</strong>. Qualquer produto sem mensagem exclusiva herdará este modelo automaticamente.</span>';
+    }
+
+    if (DOM.btnSaveWhatsAppLabel) {
+      DOM.btnSaveWhatsAppLabel.textContent = 'Salvar Modelo Geral';
+    }
+    if (DOM.btnRestoreWhatsAppLabel) {
+      DOM.btnRestoreWhatsAppLabel.textContent = 'Restaurar Padrão Oficial';
+    }
+    if (DOM.btnCyclePreviewProd) {
+      DOM.btnCyclePreviewProd.hidden = false;
+    }
+  } else {
+    const product = state.products.find((p) => p.id === selectedScope);
+    if (!product) return;
+
+    const hasCustom = Boolean(product.whatsapp_message && product.whatsapp_message.trim());
+
+    if (DOM.whatsappTemplateText) {
+      DOM.whatsappTemplateText.value = hasCustom
+        ? product.whatsapp_message
+        : (state.whatsappTemplate || DEFAULT_PRODUCT_MESSAGE_TEMPLATE);
+    }
+
+    if (DOM.whatsappScopeStatus) {
+      if (hasCustom) {
+        DOM.whatsappScopeStatus.className = 'wa-scope-status-banner wa-scope-status-banner--custom';
+        DOM.whatsappScopeStatus.innerHTML = `<i class="fa-solid fa-star" aria-hidden="true"></i> <span>Editando mensagem <strong>exclusiva</strong> do produto: <strong>"${product.name}"</strong>. Apenas este produto abrirá esta mensagem no WhatsApp.</span>`;
+      } else {
+        DOM.whatsappScopeStatus.className = 'wa-scope-status-banner';
+        DOM.whatsappScopeStatus.innerHTML = `<i class="fa-solid fa-link" aria-hidden="true"></i> <span>O produto <strong>"${product.name}"</strong> está usando o <em>Modelo Geral da Loja</em>. Escreva abaixo para torná-la exclusiva para ele.</span>`;
+      }
+    }
+
+    if (DOM.btnSaveWhatsAppLabel) {
+      DOM.btnSaveWhatsAppLabel.textContent = `Salvar Mensagem do Produto`;
+    }
+    if (DOM.btnRestoreWhatsAppLabel) {
+      DOM.btnRestoreWhatsAppLabel.textContent = 'Limpar e Usar Modelo Geral';
+    }
+    if (DOM.btnCyclePreviewProd) {
+      DOM.btnCyclePreviewProd.hidden = true;
+    }
+  }
+
+  updateWhatsAppPreview();
+}
+
+/**
+ * Atualiza o balão de simulação do WhatsApp e o contador de caracteres em tempo real.
+ */
+function updateWhatsAppPreview() {
+  const textarea = DOM.whatsappTemplateText;
+  const currentText = textarea?.value || '';
+  const charLength = currentText.length;
+  const maxChars = 1000;
+
+  // Atualiza contador de caracteres com classes semânticas de alerta
+  if (DOM.whatsappCharCounter) {
+    DOM.whatsappCharCounter.textContent = `${charLength} / ${maxChars} caracteres`;
+    DOM.whatsappCharCounter.classList.toggle('is-warning', charLength >= 750 && charLength < 950);
+    DOM.whatsappCharCounter.classList.toggle('is-danger', charLength >= 950);
+  }
+
+  // Validação: não permitir mensagem vazia
+  const isValid = currentText.trim().length > 0;
+  if (DOM.btnSaveWhatsApp) {
+    DOM.btnSaveWhatsApp.disabled = !isValid;
+  }
+
+  if (DOM.whatsappValidationHint) {
+    if (!isValid) {
+      DOM.whatsappValidationHint.textContent = 'A mensagem não pode ficar vazia.';
+      DOM.whatsappValidationHint.style.color = 'var(--danger)';
+    } else {
+      DOM.whatsappValidationHint.textContent = '';
+    }
+  }
+
+  const sampleProduct = getSampleProductForPreview();
+
+  // Atualiza crachá da fórmula de teste
+  if (DOM.waPreviewSampleBadge) {
+    const sampleName = sampleProduct.name || 'Fórmula';
+    const sampleSku = sampleProduct.sku_ref ? ` (${sampleProduct.sku_ref})` : '';
+    const samplePrice = formatCurrencyBRL(sampleProduct.price);
+    DOM.waPreviewSampleBadge.textContent = `${sampleName}${sampleSku} · ${samplePrice}`;
+  }
+
+  // Interpola as variáveis de forma segura no balão do WhatsApp
+  if (DOM.waPreviewBubbleText) {
+    const previewMessage = interpolateTemplate(
+      currentText || DEFAULT_PRODUCT_MESSAGE_TEMPLATE,
+      sampleProduct
+    );
+    DOM.waPreviewBubbleText.textContent = previewMessage;
+  }
+
+  // Atualiza horário atual no balão
+  if (DOM.waPreviewBubbleTime) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    DOM.waPreviewBubbleTime.textContent = `${hh}:${mm}`;
+  }
+}
+
+/**
+ * Insere a variável dinâmica na posição do cursor do textarea informado.
+ * @param {string} variableText - Tag entre chaves (ex.: '{produto}').
+ * @param {HTMLTextAreaElement | null} [targetTextarea=null] - Textarea alvo.
+ */
+function insertVariableAtCursor(variableText, targetTextarea = null) {
+  const textarea = targetTextarea || DOM.whatsappTemplateText;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const currentVal = textarea.value;
+
+  textarea.value = currentVal.substring(0, start) + variableText + currentVal.substring(end);
+  const nextPos = start + variableText.length;
+  textarea.setSelectionRange(nextPos, nextPos);
+  textarea.focus();
+
+  if (textarea === DOM.whatsappTemplateText) {
+    updateWhatsAppPreview();
+  }
+}
+
+/**
+ * Carrega a configuração do template salva no Supabase (`site_settings`).
+ */
+async function fetchWhatsAppSettings() {
+  if (DOM.whatsappSyncBadge) {
+    DOM.whatsappSyncBadge.className = 'badge badge-muted';
+    DOM.whatsappSyncBadge.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sincronizando...';
+  }
+
+  try {
+    const template = await fetchProductWhatsAppTemplate(true);
+    state.whatsappTemplate = template;
+
+    if (state.whatsappScope === '__global__' && DOM.whatsappTemplateText) {
+      DOM.whatsappTemplateText.value = template;
+    }
+
+    updateWhatsAppPreview();
+
+    if (DOM.whatsappSyncBadge) {
+      DOM.whatsappSyncBadge.className = 'badge badge-success';
+      DOM.whatsappSyncBadge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> Sincronizado';
+    }
+  } catch (err) {
+    const normalized = normalizeSupabaseError(err, 'Erro ao carregar template do WhatsApp');
+    showToast(normalized.userMessage, 'warning');
+
+    if (DOM.whatsappSyncBadge) {
+      DOM.whatsappSyncBadge.className = 'badge badge-gold';
+      DOM.whatsappSyncBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Modo Padrão Ativo';
+    }
+  }
+}
+
+/**
+ * Salva e persiste a mensagem no banco de dados via Supabase (Global ou por Produto).
+ * @param {SubmitEvent} event
+ */
+async function handleSaveWhatsAppSettings(event) {
+  event.preventDefault();
+
+  const newText = DOM.whatsappTemplateText?.value.trim() || '';
+  if (!newText) {
+    showToast('A mensagem do WhatsApp não pode ficar vazia.', 'warning');
+    return;
+  }
+
+  setButtonLoading(
+    DOM.btnSaveWhatsApp,
+    true,
+    'Salvando Mensagem...',
+    'Salvar Mensagem',
+    'fa-solid fa-floppy-disk'
+  );
+
+  if (DOM.whatsappSyncBadge) {
+    DOM.whatsappSyncBadge.className = 'badge badge-muted';
+    DOM.whatsappSyncBadge.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Salvando...';
+  }
+
+  try {
+    const adminEmail = DOM.adminUserEmail?.textContent || 'admin';
+
+    if (state.whatsappScope === '__global__') {
+      // Salva Modelo Geral da Loja (site_settings)
+      await saveProductWhatsAppTemplate(newText, adminEmail);
+      state.whatsappTemplate = newText;
+      showToast('Modelo Geral do WhatsApp salvo com sucesso no banco de dados!', 'success');
+    } else {
+      // Salva Mensagem Exclusiva do Produto (products.whatsapp_message)
+      const productId = state.whatsappScope;
+      await saveIndividualProductWhatsAppMessage(productId, newText, adminEmail);
+
+      const product = state.products.find((p) => p.id === productId);
+      if (product) {
+        product.whatsapp_message = newText;
+      }
+
+      populateWhatsAppScopeSelect();
+      renderProductsTable();
+      handleWhatsAppScopeChange();
+
+      showToast(`Mensagem exclusiva salva com sucesso para "${product?.name || 'o produto'}"!`, 'success');
+    }
+
+    if (DOM.whatsappSyncBadge) {
+      DOM.whatsappSyncBadge.className = 'badge badge-success';
+      DOM.whatsappSyncBadge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> Salvo no Banco';
+    }
+
+    updateWhatsAppPreview();
+  } catch (err) {
+    const normalized = normalizeSupabaseError(err, 'Não foi possível salvar o template');
+    showToast(normalized.userMessage, 'error');
+
+    if (DOM.whatsappSyncBadge) {
+      DOM.whatsappSyncBadge.className = 'badge badge-danger';
+      DOM.whatsappSyncBadge.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Erro ao Salvar';
+    }
+  } finally {
+    setButtonLoading(
+      DOM.btnSaveWhatsApp,
+      false,
+      'Salvando Mensagem...',
+      state.whatsappScope === '__global__' ? 'Salvar Modelo Geral' : 'Salvar Mensagem do Produto',
+      'fa-solid fa-floppy-disk'
+    );
+  }
+}
+
+/**
+ * Restaura o modelo padrão (se global) ou remove a mensagem exclusiva (se produto individual).
+ */
+async function handleRestoreWhatsAppDefault() {
+  if (state.whatsappScope === '__global__') {
+    const confirmed = await confirmAction({
+      title: 'Restaurar Modelo Padrão Geral',
+      message:
+        'Deseja realmente restaurar o modelo original da Botica Natural? O texto atual no editor será substituído pelo padrão da marca.',
+    });
+
+    if (!confirmed) return;
+
+    if (DOM.whatsappTemplateText) {
+      DOM.whatsappTemplateText.value = DEFAULT_PRODUCT_MESSAGE_TEMPLATE;
+    }
+
+    updateWhatsAppPreview();
+    showToast(
+      'Modelo padrão geral restaurado no editor. Clique em "Salvar" para aplicar.',
+      'warning'
+    );
+  } else {
+    const product = state.products.find((p) => p.id === state.whatsappScope);
+    const confirmed = await confirmAction({
+      title: 'Remover Mensagem Exclusiva',
+      message: `Deseja remover a mensagem exclusiva de "${product?.name || 'este produto'}" e fazer com que ele volte a herdar o Modelo Geral da loja?`,
+    });
+
+    if (!confirmed) return;
+
+    try {
+      const adminEmail = DOM.adminUserEmail?.textContent || 'admin';
+      await saveIndividualProductWhatsAppMessage(state.whatsappScope, '', adminEmail);
+
+      if (product) {
+        product.whatsapp_message = '';
+      }
+
+      populateWhatsAppScopeSelect();
+      renderProductsTable();
+      handleWhatsAppScopeChange();
+
+      showToast(`O produto "${product?.name || ''}" agora utiliza o Modelo Geral da loja.`, 'success');
+    } catch (err) {
+      const normalized = normalizeSupabaseError(err, 'Erro ao redefinir mensagem do produto');
+      showToast(normalized.userMessage, 'error');
+    }
+  }
+}
+
+/**
+ * Alterna a fórmula de teste utilizada na pré-visualização (disponível no modo geral).
+ */
+function handleCycleSampleProduct() {
+  state.selectedSampleIndex++;
+  updateWhatsAppPreview();
+
+  const currentSample = getSampleProductForPreview();
+  showToast(`Pré-visualização atualizada com: "${currentSample.name}"`, 'success');
+}
+
+/* ==========================================================================
    10. AUTENTICAÇÃO, GUARDIÃO DE ROTA E CICLO DE SESSÃO
    ========================================================================== */
 
@@ -1969,7 +2406,12 @@ async function enterAuthenticatedState(session) {
   if (!state.isLoadingData) {
     state.isLoadingData = true;
     try {
-      await Promise.all([fetchCarouselSlides(), fetchCategories(), fetchProducts()]);
+      await Promise.all([
+        fetchCarouselSlides(),
+        fetchCategories(),
+        fetchProducts(),
+        fetchWhatsAppSettings(),
+      ]);
     } finally {
       state.isLoadingData = false;
     }
@@ -1983,6 +2425,8 @@ function enterUnauthenticatedState() {
   state.categories = [];
   state.products = [];
   state.carouselSlides = [];
+  state.whatsappTemplate = null;
+  state.whatsappScope = '__global__';
   state.filters = { search: '', categoryId: 'all', status: 'all' };
 
   resetCarouselForm();
@@ -2161,6 +2605,35 @@ function bindEvents() {
 
     if (action === 'edit-product') startEditProduct(id);
     if (action === 'delete-product') handleDeleteProduct(id);
+  });
+
+  // Editor de Mensagens Automáticas do WhatsApp (Geral e por Produto)
+  DOM.whatsappScopeSelect?.addEventListener('change', handleWhatsAppScopeChange);
+  DOM.whatsappTemplateText?.addEventListener('input', updateWhatsAppPreview);
+  DOM.whatsappForm?.addEventListener('submit', handleSaveWhatsAppSettings);
+  DOM.btnRestoreWhatsApp?.addEventListener('click', handleRestoreWhatsAppDefault);
+  DOM.btnCyclePreviewProd?.addEventListener('click', handleCycleSampleProduct);
+
+  // Inserção de variáveis no editor principal do WhatsApp
+  document
+    .querySelectorAll('.var-pill-btn:not(.var-pill-btn--prod)')
+    .forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const variableTag = btn.getAttribute('data-var');
+        if (variableTag) {
+          insertVariableAtCursor(variableTag, DOM.whatsappTemplateText);
+        }
+      });
+    });
+
+  // Inserção de variáveis no formulário de produtos
+  document.querySelectorAll('.var-pill-btn--prod').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const variableTag = btn.getAttribute('data-var');
+      if (variableTag) {
+        insertVariableAtCursor(variableTag, DOM.prodWhatsappMessage);
+      }
+    });
   });
 }
 
