@@ -38,7 +38,7 @@ const brlCurrencyFormatter = new Intl.NumberFormat('pt-BR', {
 });
 
 const FALLBACK_PRODUCT_IMAGE =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='450' viewBox='0 0 600 450'><rect width='600' height='450' fill='%23F3EDF9'/><g fill='%235B2D9E' opacity='0.45' transform='translate(260, 175)'><path d='M40 0C17.9 0 0 17.9 0 40s17.9 40 40 40 40-17.9 40-40S62.1 0 40 0zm0 70c-16.5 0-30-13.5-30-30s13.5-30 30-30 30 13.5 30 30-13.5 30-30 30z'/><circle cx='40' cy='40' r='14'/></g><text x='50%25' y='66%25' text-anchor='middle' fill='%233D1E6D' font-family='Poppins, sans-serif' font-size='16' font-weight='600' opacity='0.65'>Botica Natural — Fórmula Manipulada</text></svg>";
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><rect width='600' height='600' fill='%23FAF7FD'/><g fill='%235B2D9E' opacity='0.45' transform='translate(260, 240)'><path d='M40 0C17.9 0 0 17.9 0 40s17.9 40 40 40 40-17.9 40-40S62.1 0 40 0zm0 70c-16.5 0-30-13.5-30-30s13.5-30 30-30 30 13.5 30 30-13.5 30-30 30z'/><circle cx='40' cy='40' r='14'/></g><text x='50%25' y='62%25' text-anchor='middle' fill='%233D1E6D' font-family='Inter, sans-serif' font-size='16' font-weight='600' opacity='0.65'>Botica Natural — Fórmula Manipulada</text></svg>";
 
 /* ==========================================================================
    2. ESTADO REATIVO EM MEMÓRIA (ALIMENTADO 100% PELO SUPABASE)
@@ -162,7 +162,7 @@ export function createProductCardElement(product) {
   img.loading = 'lazy';
   img.decoding = 'async';
   img.width = 600;
-  img.height = 450;
+  img.height = 600;
   img.style.cursor = 'pointer';
 
   img.addEventListener(
@@ -232,7 +232,10 @@ export function createProductCardElement(product) {
   descEl.textContent = productDescription;
   bodyContainer.appendChild(descEl);
 
-  // 4. Bloco de Preço e Parcelamento (.product-card__price-box)
+  // 4. Rodapé do Card (.product-card__footer: Preço + Botões de Ação alinhados na base)
+  const footerContainer = document.createElement('div');
+  footerContainer.className = 'product-card__footer';
+
   const priceBox = document.createElement('div');
   priceBox.className = 'product-card__price-box';
 
@@ -263,7 +266,7 @@ export function createProductCardElement(product) {
   priceBox.appendChild(priceLabel);
   priceBox.appendChild(priceValue);
   priceBox.appendChild(installmentsSpan);
-  bodyContainer.appendChild(priceBox);
+  footerContainer.appendChild(priceBox);
 
   // 5. Botões de Ação (.product-card__actions)
   const actionsContainer = document.createElement('div');
@@ -300,7 +303,8 @@ export function createProductCardElement(product) {
 
   actionsContainer.appendChild(detailsBtn);
   actionsContainer.appendChild(whatsappBtn);
-  bodyContainer.appendChild(actionsContainer);
+  footerContainer.appendChild(actionsContainer);
+  bodyContainer.appendChild(footerContainer);
   article.appendChild(bodyContainer);
 
   return article;
@@ -330,12 +334,29 @@ function resolveCarouselSlideImageUrl(slide) {
   return '';
 }
 
+function resolveCarouselSlideMobileImageUrl(slide) {
+  const directMobileUrl = String(slide?.mobile_image_url || '').trim();
+  if (directMobileUrl) return directMobileUrl;
+
+  const mobileStoragePath = String(slide?.mobile_image_path || '').trim();
+  if (mobileStoragePath) {
+    const publicUrl = getPublicImageUrl(mobileStoragePath);
+    if (publicUrl) return publicUrl;
+  }
+
+  return '';
+}
+
 function createHeroCarouselSlideElement(slide, index) {
   const imageUrl = resolveCarouselSlideImageUrl(slide);
   if (!imageUrl) return null;
 
+  const mobileImageUrl = resolveCarouselSlideMobileImageUrl(slide);
+
   const slideEl = document.createElement('div');
-  slideEl.className = 'swiper-slide promo__slide';
+  slideEl.className = mobileImageUrl
+    ? 'swiper-slide promo__slide promo__slide--has-mobile-art'
+    : 'swiper-slide promo__slide';
   slideEl.dataset.slideId = String(slide.id || '');
 
   const altText =
@@ -364,12 +385,19 @@ function createHeroCarouselSlideElement(slide, index) {
   const picture = document.createElement('picture');
   picture.className = 'promo__picture';
 
+  if (mobileImageUrl) {
+    const sourceMobile = document.createElement('source');
+    sourceMobile.media = '(max-width: 767px)';
+    sourceMobile.srcset = mobileImageUrl;
+    picture.appendChild(sourceMobile);
+  }
+
   const img = document.createElement('img');
   img.className = 'promo__img';
   img.src = imageUrl;
   img.alt = altText;
   img.width = 1920;
-  img.height = 650;
+  img.height = 600;
 
   if (index === 0) {
     img.loading = 'eager';

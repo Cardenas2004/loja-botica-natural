@@ -234,37 +234,41 @@
     const floats = $$('.mobile-cta, .wa-float');
     if (!floats.length) return;
 
-    const heroCta = $('.hero__actions') || $('.catalog-search-wrap') || $('#pdp-btn-buy');
     const finalCta = $('.cta-final') || $('.catalog-custom-banner');
+    let isFinalVisible = false;
+    let rafPending = false;
 
-    if (heroCta && 'IntersectionObserver' in window) {
-      const state = { hero: true, final: false };
-      const render = () => {
-        const show = !state.hero && !state.final;
-        floats.forEach((el) => el.classList.toggle('is-visible', show));
-      };
+    const render = () => {
+      const scrolledPastTop = window.scrollY > 240;
+      const show = scrolledPastTop && !isFinalVisible;
+      floats.forEach((el) => el.classList.toggle('is-visible', show));
+      rafPending = false;
+    };
 
+    const onScroll = () => {
+      if (!rafPending) {
+        requestAnimationFrame(render);
+        rafPending = true;
+      }
+    };
+
+    if (finalCta && 'IntersectionObserver' in window) {
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
-            if (entry.target === heroCta) state.hero = entry.isIntersecting;
-            if (entry.target === finalCta) state.final = entry.isIntersecting;
+            if (entry.target === finalCta) {
+              isFinalVisible = entry.isIntersecting;
+            }
           });
           render();
         },
         { threshold: 0 }
       );
-
-      observer.observe(heroCta);
-      if (finalCta) observer.observe(finalCta);
-    } else {
-      const onScroll = () => {
-        const show = window.scrollY > 300;
-        floats.forEach((el) => el.classList.toggle('is-visible', show));
-      };
-      window.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
+      observer.observe(finalCta);
     }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    render();
   };
 
   /* 6. SCROLL REVEAL */
