@@ -144,6 +144,7 @@ function updateProductSeoAndJsonLd(product, resolvedImg, hasValidPrice) {
   if (!scriptEl) {
     scriptEl = document.createElement('script');
     scriptEl.id = 'product-jsonld';
+    // @ts-ignore
     scriptEl.type = 'application/ld+json';
     document.head.appendChild(scriptEl);
   }

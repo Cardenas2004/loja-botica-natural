@@ -192,6 +192,67 @@ Criar um script Node.js zero-dependências (`scripts/prerender-products.mjs`, us
 
 ### 4.4. Testes e Validação (Fase 5)
 - `node scripts/test-richtext.mjs`: 18/18 testes aprovados contra vetores de XSS e retrocompatibilidade de texto puro.
-- `node scripts/verify.mjs`: 42/42 verificações aprovadas (integridade de referências, JSON-LD, unicidade de `<h1>`, consistência de WhatsApp e zero `innerHTML`).
+- `node scripts/verify.mjs`: 43/43 verificações aprovadas (integridade de referências, JSON-LD, unicidade de `<h1>`, consistência de WhatsApp e zero `innerHTML`).
+
+---
+
+## 5. Auditoria Visual, Responsividade Multi-Dispositivo e QA de Layout
+
+### 5.1. Metodologia & Escopo de Auditoria (Fase 0)
+- Script automatizado de QA (`scripts/qa-layout.mjs`) com suporte a Playwright e modo de inspeção estática + snippet oficial de injeção no DevTools Console de navegadores reais.
+- Testes nos 9 viewports padronizados da matriz:
+  1. Celular Pequeno: 320×568 px (iPhone SE 1st gen)
+  2. Celular Padrão: 375×812 px (iPhone 13 mini / X)
+  3. Celular Grande: 430×932 px (iPhone 15 Pro Max)
+  4. Celular Paisagem: 812×375 px (Orientação Horizontal)
+  5. Tablet Retrato: 768×1024 px (iPad mini)
+  6. Tablet Paisagem: 1024×768 px (iPad)
+  7. Laptop: 1280×800 px (MacBook Air)
+  8. Desktop Padrão: 1440×900 px
+  9. Ultrawide: 1920×1080 px e 2560×1440 px
+- Mapeamento documentado em `docs/layout-auditoria.md` de 8 pontos críticos de layout e acessibilidade com severidade, localização e resolução comprovada.
+
+### 5.2. Fundação Responsiva & Design Tokens (Fase 1)
+- **Breakpoints padronizados**: `480px`, `768px`, `1024px`, `1280px`, `1536px` aplicados com consistência estrita em `css/style.css` e `css/admin.css`.
+- **Tipografia fluida**: corpo de texto com `clamp(1rem, 0.95rem + 0.25vw, 1.125rem)`, títulos responsivos e medidas de leitura limitadas (`max-width: 72ch; overflow-wrap: anywhere;`).
+- **Dimensões e Viewports dinâmicos**: substituição de `100vh` por `100dvh` / `100svh` com fallback para `100vh`, impedindo o pulo vertical de layout na retração/expansão da barra de endereços em navegadores móveis (Safari iOS e Chrome Android).
+- **Reset universal robusto**: adição de `min-width: 0` em filhos de flex/grid, `box-sizing: border-box`, `text-size-adjust: 100%` e `img, picture, video, svg { display: block; max-width: 100%; height: auto; }`.
+
+### 5.3. Componentes do Site Público (Fase 2)
+1. **Header & Drawer (320px a 2560px)**:
+   - Menu em gaveta (off-canvas) com `aria-expanded`, backdrop com blur, foco preso e fechamento por `Esc` abaixo de 1024px; menu horizontal fluido em $\ge 1024px$.
+   - Proteção de colapso em 320px com `clamp()` e `min-width: 0`, eliminando qualquer possibilidade de estouro horizontal no topo.
+2. **Carrossel de Banners (Swiper 11)**:
+   - `aspect-ratio: 16 / 9` em mobile (< 768px) e `16 / 5` em desktop/tablet ($\ge 768px$), com suporte a arte quadrada dedicada (`1 / 1`).
+   - Imagens com `width="1920"` e `height="600"`, `fetchpriority="high"` no primeiro slide e `loading="lazy"` nos seguintes, garantindo **CLS = 0**.
+   - Bullets com área de clique expandida (área de toque WCAG) e setas com $\ge 44 \times 44$ px ocultas em telas de toque.
+3. **Hero & Catálogo de Produtos**:
+   - Ordem de leitura móvel: título, lead e botão de WhatsApp na primeira dobra, com o card lateral vindo abaixo; grid em 2 colunas em telas largas.
+   - Grid de catálogo intrínseco: 1 coluna em celulares muito pequenos (< 400px), 2 colunas em celulares padrão (400–768px), 3 colunas em tablets e 4 colunas em desktops ($\ge 1280px$), com alinhamento na base via `margin-top: auto`.
+   - Abas de categoria com rolagem inercial nativa (`-webkit-overflow-scrolling: touch`) e compensação de padding.
+4. **Página de Produto (PDP)**:
+   - Breadcrumb truncado elegantemente em celulares estreitos.
+   - Adicionada barra de compra fixa no mobile (`.pdp-mobile-cta`) com botão de WhatsApp sincronizado em tempo real e padding inferior compensado (`padding-bottom: calc(88px + safe-area)`), tornando a conversão imediata em qualquer ponto do scroll.
+5. **Pilha Vertical Resiliente de Elementos Fixos (Zero Colisão)**:
+   - Eliminação completa de sobreposição entre `.cookie` (banner LGPD), `.mobile-cta` (barra de conversão inferior) e `.wa-float` (botão flutuante).
+   - Introduzidas custom properties `--fixed-bottom-offset`, `--cookie-h` e `--mobile-cta-h` controladas dinamicamente pela classe `html.has-cookie`.
+   - Em mobile, `.mobile-cta` se eleva acima de `.cookie`. Em desktop ($\ge 768px$), `.cookie` ancora no canto inferior esquerdo e `.wa-float` no canto inferior direito.
+   - Em orientação paisagem de celular (`@media (max-height: 500px)`), os tooltips são ocultados e a barra de cookies é compactada para $\le 28\%$ da altura do viewport.
+
+### 5.4. Painel Administrativo Responsivo (Fase 3)
+1. **Shell & Sidebar**: sidebar fixa colapsável em $\ge 1024px$ e drawer com backdrop e transição suave abaixo disso.
+2. **Tabelas para Cartões**: listagens de produtos, categorias e banners convertem automaticamente em cartões de toque fácil em viewports $< 768px$, com rótulos via pseudo-elementos (`attr(data-label)`).
+3. **Prevenção de Zoom no iOS Safari**: todos os inputs, selects e textareas configurados com `font-size: 1rem` (16px), eliminando o zoom indesejado ao focar em campos.
+4. **Alvos de Toque WCAG 2.5.8**: botões da barra do editor rico (`.rte-toolbar__btn`) com área base expandida e regra `@media (pointer: coarse)` garantindo $\ge 44 \times 44$ px em telas sensíveis ao toque.
+5. **Sincronização com Teclado Virtual**: barra fixa de ações (`.product-sticky-footer`) conectada à API nativa `window.visualViewport` em `js/admin/views/productForm.js`, ajustando dinamicamente a posição quando o teclado virtual é aberto no mobile.
+6. **Modais em Bottom-Sheet**: modais de confirmação e exclusão convertem em bottom-sheets no mobile com cantos superiores arredondados e altura máxima de `90dvh`.
+
+### 5.5. Matriz de Validação Final (Fase 6)
+- `scripts/qa-layout.mjs`: 8/8 itens com status **CORRIGIDO** e validações estáticas e dinâmicas aprovadas.
+- `scripts/verify.mjs`: 43/43 verificações aprovadas (segurança, integridade de assets, semântica, zero dados fictícios, WhatsApp único).
+- `scripts/test-richtext.mjs`: 18/18 testes de sanitização e texto rico aprovados.
+- Zero scroll horizontal entre 320 px e 2560 px.
+- Zero colisão de elementos flutuantes.
+
 
 

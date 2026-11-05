@@ -62,3 +62,12 @@ Mapeamento completo das funcionalidades existentes no painel administrativo (`ad
 - [x] **Inserção de Variáveis e Formatação WhatsApp**: Pílulas clicáveis (`{produto}`, `{categoria}`, `{preco}`, `{link}`, `{sku}`), botões `*negrito*` e `_itálico_`, contador de caracteres (`1000` máx.), botão Restaurar Padrão / Remover Mensagem Exclusiva e botão Alternar Produto de Exemplo.
 - [x] **Mockup de Conversa em Tempo Real**: Balão estilizado do WhatsApp exibindo a mensagem interpolada ao vivo.
 
+## 9. Responsividade, Mobile & Acessibilidade WCAG (Fase Layout)
+- [x] **Shell Responsivo (< 1024px)**: Sidebar oculta por padrão e acessada via botão de menu na top bar, com gaveta lateral (drawer), backdrop escuro e fechamento por `Escape`.
+- [x] **Tabelas para Cartões (< 768px)**: Listagens de produtos, categorias e banners convertem automaticamente em cartões de toque fácil em viewports mobile, mantendo seleção em lote.
+- [x] **Prevenção de Zoom no iOS Safari**: Inputs, selects e textareas com `font-size: 1rem` (16px), eliminando o zoom indesejado ao focar em campos.
+- [x] **Alvos de Toque WCAG 2.5.8**: Botões da barra do editor rico (`.rte-toolbar__btn`) com área base expandida e regra `@media (pointer: coarse)` garantindo $\ge 44 \times 44$ px em telas de toque.
+- [x] **Sincronização com Teclado Virtual**: Barra fixa de ações (`.product-sticky-footer`) conectada à API nativa `window.visualViewport` em `js/admin/views/productForm.js`, ajustando dinamicamente a posição quando o teclado virtual é aberto no mobile.
+- [x] **Modais em Bottom-Sheet**: Diálogos `<dialog>` de confirmação e exclusão convertem em bottom-sheets no mobile com cantos superiores arredondados e altura máxima de `90dvh`.
+
+

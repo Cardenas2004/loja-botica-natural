@@ -1032,8 +1032,26 @@ export function renderProductFormView(container, context) {
   isInitializing = false;
   syncLivePreviewAndSeo();
 
+  // Sincronização da barra fixa de ações com o teclado virtual no mobile via visualViewport
+  /** @type {(() => void) | null} */
+  let cleanupVisualViewport = null;
+  if (typeof window !== 'undefined' && window.visualViewport) {
+    const handleViewportChange = () => {
+      if (!window.visualViewport) return;
+      const offset = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+      stickyFooterBar.style.bottom = `${offset}px`;
+    };
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    cleanupVisualViewport = () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+    };
+  }
+
   return () => {
     window.removeEventListener('keydown', onKeyDownSave);
+    if (cleanupVisualViewport) cleanupVisualViewport();
     revokePreviewBlob();
     livePreview.destroy();
   };

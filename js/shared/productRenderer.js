@@ -231,6 +231,13 @@ export function renderProduct(root, rawProductData, options = {}) {
     btnBuy.href = waUrl;
     btnBuy.target = '_blank';
     btnBuy.rel = 'noopener noreferrer';
+
+    const mobileBtnBuy = /** @type {HTMLAnchorElement | null} */ (byId('pdp-mobile-buy-btn'));
+    if (mobileBtnBuy) {
+      mobileBtnBuy.href = waUrl;
+      mobileBtnBuy.target = '_blank';
+      mobileBtnBuy.rel = 'noopener noreferrer';
+    }
   }
 
   // 7. Ficha Técnica / Descrição Completa (Rich Text sanitizado)
