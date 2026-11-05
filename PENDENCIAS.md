@@ -69,5 +69,36 @@ Os pontos abaixo foram marcados no código com `<!-- REVISAR COM RT: RDC 67/2007
 
 ## 4. Infraestrutura e Hospedagem (Headers HTTP)
 
-As páginas HTML já incluem `<meta http-equiv="Content-Security-Policy">` e `<meta name="referrer" content="strict-origin-when-cross-origin">`. Porém, cabeçalhos de segurança completos (`Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Permissions-Policy`) só têm efeito pleno quando enviados via **HTTP Response Headers** pelo servidor/CDN ( Cloudflare, Vercel, Netlify ou Nginx). Configure-os no painel de hospedagem conforme documentado em `RELATORIO.md`.
+Os cabeçalhos de segurança completos foram configurados no repositório através dos arquivos:
+- `_headers`: Pronto para Cloudflare Pages e Netlify com HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` restritiva e CSP separada para a loja e para o admin.
+- `vercel.json`: Pronto para Vercel Edge com os mesmos cabeçalhos mapeados por rota.
+
+Assegure que o serviço de hospedagem escolhido processe esses arquivos sem sobrescrevê-los.
+
+---
+
+## 5. Migrações e Scripts Operacionais do Supabase
+
+### 5.1 Migrações a Aplicar no Supabase (Ordem Cronológica)
+1. `supabase/migrations/20261104200000_security_hardening.sql`: Cria `admin_users`, blinda `is_admin()`, remove e-mail hardcoded e restringe RLS.
+2. `supabase/migrations/20261104210000_product_richtext_options.sql`: Adiciona coluna `text_options JSONB` em `products`.
+3. `supabase/migrations/20261105200000_data_safety_defaults.sql`: Elimina defaults perigosos (`allergen_info`, `quality_note`, `payment_info`), adiciona constraint `check_price_non_negative`, triggers de `updated_at` e isolamento de `site_settings`.
+
+### 5.2 Script de Higiene de Caracteres Especiais no Banco
+Se produtos foram cadastrados antes da correção do BUG-ESCAPE, rode:
+```bash
+node scripts/repair-escapes.mjs --dry-run
+node scripts/repair-escapes.mjs
+```
+O script normaliza entidades HTML repetidas e grava `_v: 2` em `text_options`.
+
+---
+
+## 6. Validação Prévia de Produção
+
+Antes de subir para produção, execute no terminal:
+```bash
+npm run verify:prod
+```
+O script verifica se restou algum `[PREENCHER: ...]` nos arquivos HTML públicos. A publicação só deve ocorrer quando todos os placeholders tiverem sido preenchidos com os dados reais do estabelecimento.
 

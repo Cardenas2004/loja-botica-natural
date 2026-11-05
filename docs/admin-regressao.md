@@ -70,4 +70,13 @@ Mapeamento completo das funcionalidades existentes no painel administrativo (`ad
 - [x] **Sincronização com Teclado Virtual**: Barra fixa de ações (`.product-sticky-footer`) conectada à API nativa `window.visualViewport` em `js/admin/views/productForm.js`, ajustando dinamicamente a posição quando o teclado virtual é aberto no mobile.
 - [x] **Modais em Bottom-Sheet**: Diálogos `<dialog>` de confirmação e exclusão convertem em bottom-sheets no mobile com cantos superiores arredondados e altura máxima de `90dvh`.
 
+## 10. Resiliência Operacional, Integridade e Concorrência (Fase Endurecimento)
+- [x] **Prevenção do BUG-AUTH-RERENDER**: Nenhuma perda de dados no formulário quando ocorrem eventos `TOKEN_REFRESHED` ou foco da aba com `SIGNED_IN`.
+- [x] **Autosave de Rascunho em LocalStorage**: Salva estado do produto a cada modificação com recuperação visual através de banner no topo do formulário.
+- [x] **Validação Segura de Preço**: Rejeição imediata de valores negativos ou inválidos; confirmação explícita ao cadastrar preço `0,00` (modo "Sob consulta").
+- [x] **Detecção de Concorrência Otimista**: Impede sobrescrita acidental se outro usuário tiver alterado o produto simultaneamente (`CONCURRENT_MODIFICATION`).
+- [x] **Upload Resiliente com Fallback**: Converte para WebP de até 1280px e faz fallback transparente para JPEG caso o motor Canvas não suporte WebP.
+- [x] **Zero Violações de CSP**: Sem nenhum script inline, sem `onerror` inline e sem estilos inline em todo o HTML do painel.
+- [x] **Zero Violações WCAG 2.1 AA**: Auditado via `@axe-core/playwright` com zero erros críticos ou sérios de acessibilidade.
+
 

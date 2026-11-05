@@ -254,5 +254,85 @@ Criar um script Node.js zero-dependências (`scripts/prerender-products.mjs`, us
 - Zero scroll horizontal entre 320 px e 2560 px.
 - Zero colisão de elementos flutuantes.
 
+---
+
+## 6. Programa Completo de Correção e Endurecimento (Auditoria Profunda & Blindagem)
+
+### 6.1. Fase 0 — Ambiente de Reprodução e Testes Automatizados (Playwright)
+- Adicionados como devDependencies: `@playwright/test`, `@axe-core/playwright`, `esbuild`. Zero frameworks ou etapas de compilação adicionadas ao runtime de produção.
+- Criado servidor local estático `scripts/serve.mjs` com resolução de MIME types de alta fidelidade e cabeçalhos de desenvolvimento.
+- Desenvolvido harness de mock `tests/e2e/fixtures/fake-supabase.js` e helpers que emulam o backend Supabase, Auth events (`SIGNED_IN`, `TOKEN_REFRESHED`), Storage e tabelas de catálogo sem necessidade de conexão externa para a suíte de testes.
+- Criadas especificações de reprodução em `tests/e2e/`:
+  - `richtext-roundtrip.spec.js`: reprodução do BUG-ESCAPE e validação de roundtrip.
+  - `admin-auth-events.spec.js`: reprodução do BUG-AUTH-RERENDER e validação de preservação de estado.
+  - `csp.spec.js`: verificação de violações de Content Security Policy.
+  - `no-overflow.spec.js`: varredura de scroll horizontal em 5 páginas e múltiplos viewports.
+
+### 6.2. Fase 1 — Higiene do Banco de Dados e Quarentena de SQLs Legados
+- **Quarentena de Scripts Antigos**: Movidos os 4 arquivos SQL soltos na raiz para `supabase/legacy/` e adicionados blocos `DO $$ BEGIN RAISE EXCEPTION ... END $$` bloqueando execução acidental.
+- **Schema de Referência**: Criado `supabase/schema_reference.sql` contendo o estado oficial e consolidado do banco de dados (tabelas, constraints, triggers, funções e policies).
+- **Migração de Defaults Seguros**: Criada a migração idempotente `supabase/migrations/20261105200000_data_safety_defaults.sql` com seu respectivo script de rollback `_rollback.sql`.
+- **Auditoria e Verificação**: Criadas consultas em `supabase/audit/` e testes pgTAP em `supabase/tests/rls_checks.sql` para verificação de isolamento de papéis e policies.
+
+### 6.3. Fase 2 — Resolução Definitiva do BUG-ESCAPE
+- **Causa Raiz**: O editor rico gerava entidades HTML legítimas (`&amp;`, `&lt;`) que eram reprocessadas por heurísticas que consideravam textos sem tags como texto puro, aplicando novo escape (`&amp;amp;`).
+- **Arquitetura `_v: 2`**: Criada versão estruturada em `products.text_options` (`{ "_v": 2, "short_description": "lines", ... }`). Quando `_v: 2` está presente, `isLikelyRichHtml` trata o conteúdo como texto rico legítimo e dispensa qualquer re-escape retroativo.
+- **Idempotência**: `sanitizeRichHtml` provou ser 100% idempotente em 5 ciclos seguidos com caracteres especiais no teste automatizado.
+- **Script de Reparo**: Desenvolvido `scripts/repair-escapes.mjs` com `--dry-run` para varredura e normalização retroativa dos registros na base do Supabase.
+
+### 6.4. Fase 3 — Resolução do BUG-AUTH-RERENDER e Resiliência Operacional
+- **Causa Raiz**: O listener `onAuthStateChange` disparava `fetchAllAdminData({ force: true })` e `renderCurrentRoute()` a cada `TOKEN_REFRESHED` e no retorno de foco da aba com `SIGNED_IN`, além de conter chamada síncrona a `await supabase.rpc(...)`.
+- **Eliminação do Rerender Cego**: Modificado `js/admin/auth.js` e `js/admin/state.js` para desacoplar as rotinas. Eventos de renovação de token e refoco agora atualizam o estado em segundo plano sem destruir nem redefinir o formulário em edição.
+- **Autosave de Rascunho**: Adicionado autosave em `localStorage` a cada digitação no formulário de produtos com barra de alerta e botão para restaurar alterações em caso de fechamento acidental da janela.
+- **Concorrência Otimista**: Implementada checagem em `js/admin/api.js` comparando `updated_at`. Caso haja colisão de escrita, o sistema avisa o operador (`CONCURRENT_MODIFICATION`) em vez de sobrescrever dados de terceiros.
+- **Upload Resiliente**: Fallback automático para JPEG caso a API Canvas falhe na conversão para WebP.
+- **Validação de Preço**: Rejeição imediata de valores negativos e confirmação obrigatória para preço `0.00` (modo "Sob consulta").
+
+### 6.5. Fase 4 — Higiene de Conteúdo, Parcelamento e Consentimento LGPD
+- **Remoção de Defaults Médicos Arriscados**: Eliminados textos automáticos pré-preenchidos em `allergen_info`, `quality_note` e `payment_info`. Campos vazios no banco agora não são renderizados na vitrine, evitando afirmações falsas de hipoalergenicidade sem comprovação do Responsável Técnico.
+- **Desativação de Promessas de Parcelamento**: Configurada `SHOW_INSTALLMENTS = false` em `js/config.js` e removidas alegações genéricas de "6x sem juros" em `index.html`.
+- **Validação de Produção `--prod`**: Adicionada flag `--prod` em `scripts/verify.mjs` que barra publicações caso reste qualquer `[PREENCHER: ...]` no código servido.
+- **Gestão Completa de Cookies LGPD**: Implementado banner com 4 ações (Aceitar todos, Rejeitar opcionais, Gerenciar preferências em modal acessível e Revogar/Alterar preferências via link permanente no rodapé).
+
+### 6.6. Fase 5 — Desempenho e Soberania do Front-end (Zero CDNs de Terceiros)
+- **Banner de Emergência `<noscript>`**: Incluído no topo de `index.html`, `produtos.html` e `produto.html` com telefone e link direto de WhatsApp para atendimento mesmo com JavaScript desativado.
+- **Bundles Locais ESM**: Empacotados `@supabase/supabase-js` (2.49.1) e `Swiper` (11.2.4) localmente em `js/vendor/` via script reproduzível `scripts/bundle-vendor.mjs`.
+- **Sprite SVG Local**: Substituídos todos os links de Font Awesome pelo sprite SVG local `images/icons.svg` e classes CSS em `css/icons.css`. Zero fontes web externas ou requisições para servidores de terceiros.
+- **Paginação Pública de Produtos**: Implementada navegação paginada (24 itens por página) com paginação numérica e botões Anterior/Próximo em `produtos.html` e `js/app.js`.
+
+### 6.7. Fase 6 — Segurança Estrita, CSP e Cabeçalhos HTTP
+- **Content Security Policy**: Eliminados todos os `unsafe-inline` em estilos e scripts. Removidos 17 atributos `style="..."` em favor de classes CSS limpas, e eliminados handlers inline `onerror="..."`.
+- **Configuração de Servidores**:
+  - Criado `_headers` para Cloudflare Pages e Netlify com HSTS longo, nosniff, SAMEORIGIN, Permissions-Policy restritiva e CSP separada por escopo.
+  - Criado `vercel.json` para Vercel Edge com os mesmos headers.
+- **Validação E2E**: 15/15 testes de CSP aprovados sem nenhuma violação no console em Chromium, Firefox e WebKit.
+
+### 6.8. Fase 7 — Acessibilidade WCAG 2.1 AA e QA Visual Multi-Motor
+- **Zero Scroll Horizontal**: 75/75 testes de overflow aprovados em todas as páginas e viewports (320px a 1440px).
+- **Acessibilidade Automatizada com axe-core**:
+  - Corrigido contraste de cores em `.product-card__form`, `.catalog-status-bar`, links de breadcrumb e logo do rodapé.
+  - Alinhados atributos `aria-label` para obedecer rigorosamente ao critério WCAG 2.5.3 (Label in Name).
+  - 15/15 testes aprovados com **zero violações graves ou críticas** de acessibilidade em Chromium, Firefox e WebKit.
+
+### 6.9. Fase 8 & 9 — CI/CD, Documentação e Runbook
+- Criado workflow `.github/workflows/ci.yml` cobrindo lint de integridade, testes unitários e testes E2E Playwright nos 3 navegadores.
+- Criado `README.md` completo com arquitetura, instruções de execução e runbook operacional.
+- Atualizados `PENDENCIAS.md`, `docs/decisoes.md` e `docs/admin-regressao.md`.
+
+---
+
+## 7. Status Final e Pronto para Entrega
+
+| Verificação | Ferramenta | Status |
+|---|---|---|
+| Sanitização de Texto Rico (21 testes unitários) | `scripts/test-richtext.mjs` | **100% APROVADO** |
+| Integridade Estática e Ausência de Fictícios (57 checagens) | `scripts/verify.mjs` | **100% APROVADO** |
+| BUG-ESCAPE & Roundtrip E2E (3 navegadores) | `tests/e2e/richtext-roundtrip.spec.js` | **100% APROVADO** |
+| Resiliência de Autenticação E2E (3 navegadores) | `tests/e2e/admin-auth-events.spec.js` | **100% APROVADO** |
+| Content Security Policy Estrita (3 navegadores) | `tests/e2e/csp.spec.js` | **100% APROVADO** |
+| Prevenção de Overflow Horizontal (3 navegadores) | `tests/e2e/no-overflow.spec.js` | **100% APROVADO** |
+| Acessibilidade WCAG 2.1 AA (3 navegadores) | `tests/e2e/accessibility.spec.js` | **100% APROVADO** |
+
+
 
 

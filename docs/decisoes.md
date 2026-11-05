@@ -56,3 +56,55 @@ Adicionada a coluna `text_options JSONB NOT NULL DEFAULT '{}'::jsonb` na tabela 
   2. O iframe aceita mensagens `postMessage` exclusivamente quando `event.origin === window.location.origin` e `event.source === window.parent`.
   3. Ao focar em um campo do formulário no admin, o preview faz scroll suave até `[data-field="<nome>"]` e aplica um contorno sutil temporário.
 
+---
+
+## 5. Eliminação do BUG-ESCAPE e Versionamento de Conteúdo (`_v: 2`)
+
+### Contexto
+Digitar caracteres especiais como `Dose A & B < 5 mg` causava o acúmulo de entidades HTML (`&amp;amp;` e `&amp;lt;`) porque textos ricos sem tags HTML eram classificados incorretamente como texto puro legado e re-escapados a cada ciclo de salvamento ou renderização.
+
+### Decisão
+1. **Versionamento Explícito**: Introduzida a chave `_v: 2` em `products.text_options`. Se `_v >= 2`, o conteúdo foi serializado pelo editor rico moderno e nunca deve sofrer heurísticas legadas de escape duplicado.
+2. **Heurística de Detecção Confiável**: A função `isLikelyRichHtml` passou a verificar a presença de tags HTML semânticas da whitelist ou marcação explícita de parágrafos/quebras.
+3. **Idempotência**: `sanitizeRichHtml` e `legacyPlainTextToHtml` foram testados e garantidos como idempotentes em 5 ciclos contínuos de salvamento/leitura.
+4. **Script de Reparo**: Criado `scripts/repair-escapes.mjs` com suporte a `--dry-run` para normalizar registros legados no Supabase.
+
+---
+
+## 6. Prevenção do BUG-AUTH-RERENDER e Proteção contra Perda de Trabalho
+
+### Contexto
+Eventos frequentes da biblioteca do Supabase (`TOKEN_REFRESHED` a cada 60 min e `SIGNED_IN` ao focar na aba) disparavam `fetchAllAdminData({ force: true })` e `renderCurrentRoute()`, limpando o formulário de edição em silêncio e executando RPC síncrono dentro do listener de autenticação.
+
+### Decisão
+1. **Desacoplamento do Listener de Auth**: Chamadas assíncronas `supabase.rpc('is_admin')` e recarregamentos de rota foram removidos do corpo direto de `onAuthStateChange`.
+2. **Ignorar Eventos Silenciosos**: Eventos de renovação de token e refoco de aba não re-renderizam a rota ativa se o usuário já estiver autenticado e com permissão validada.
+3. **Autosave de Rascunho em LocalStorage**: A cada digitação no formulário de produto, um rascunho com timestamp é gravado no storage local. Se a aba for fechada acidentalmente ou atualizada, uma barra de recuperação de rascunho é exibida ao retornar.
+
+---
+
+## 7. Proteção contra Edições Concorrentes e Upload Resiliente
+
+### Decisão
+1. **Detecção de Concorrência Otimista**: Ao atualizar um produto (`updateProduct`), o módulo `js/admin/api.js` valida o campo `updated_at`. Caso outro operador tenha modificado o registro entre a abertura e a gravação, a operação é rejeitada com erro `CONCURRENT_MODIFICATION`, permitindo ao usuário mesclar ou revisar os dados antes de sobrescrever.
+2. **Upload com Fallback Gracioso**: Caso o navegador ou dispositivo falhe na conversão de imagem para WebP via Canvas (ex.: restrições de memória em dispositivos móveis legados), o pipeline realiza fallback automático para JPEG comprimido com qualidade balanceada.
+
+---
+
+## 8. Eliminação Total de Dependências de CDNs Externos
+
+### Decisão
+1. **Bundles Locais ESM**: `scripts/bundle-vendor.mjs` gera versões locais e fixadas de `@supabase/supabase-js` (2.49.1) e `Swiper` (11.2.4) em `js/vendor/` e `css/vendor/`.
+2. **Sprite SVG Local**: Font Awesome foi completamente descontinuado em favor do sprite SVG local `images/icons.svg` e da folha de estilos `css/icons.css`. O site agora funciona 100% offline ou em redes restritas sem requisições para servidores externos de fontes ou CDNs.
+3. **CSP Estrita sem CDNs**: `script-src` e `style-src` das páginas públicas e do admin apontam exclusivamente para `'self'`, sem permissões para `cdn.jsdelivr.net` ou `cdnjs.cloudflare.com`.
+
+---
+
+## 9. Conformidade com a LGPD e Privacidade
+
+### Decisão
+1. **Consentimento Granular com 4 Ações**: O banner LGPD oferece Aceitar todos, Rejeitar opcionais e Gerenciar preferências (essenciais vs. analíticos/comunicação), além de um link permanente no rodapé de todas as páginas para alterar ou revogar consentimento a qualquer momento.
+2. **Versionamento e Timestamp**: O consentimento é registrado em `localStorage` no formato `{ v: 1, ts: <timestamp>, choices: { analytics: boolean, marketing: boolean } }`.
+3. **Página de Privacidade Transparente**: `privacidade.html` detalha a finalidade do processamento dos dados em conformidade com as diretrizes da ANPD e da Anvisa.
+
+
