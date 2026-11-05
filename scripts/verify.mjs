@@ -26,7 +26,7 @@ const HTML_FILES = [
   'admin.html',
 ];
 
-const CSS_FILES = ['css/style.css', 'css/product.css', 'css/admin.css'];
+const CSS_FILES = ['css/style.css', 'css/product.css', 'css/admin.css', 'css/icons.css'];
 
 const JS_FILES = [
   'js/config.js',
@@ -62,6 +62,11 @@ const REQUIRED_SEO_FILES = [
   'images/apple-touch-icon.png',
   'images/logo.png',
   'images/og-image.jpg',
+  'images/icons.svg',
+  'css/icons.css',
+  'js/vendor/supabase-js-2.49.1.esm.js',
+  'js/vendor/swiper-11.2.4.bundle.min.js',
+  'css/vendor/swiper-11.2.4.bundle.min.css',
   'supabase/migrations/20261104200000_security_hardening.sql',
   'supabase/migrations/20261104210000_product_richtext_options.sql',
   'supabase/migrations/20261105200000_data_safety_defaults.sql',
@@ -398,6 +403,13 @@ for (const jsFile of JS_FILES) {
     const source = match[2];
     if (source.startsWith('http://') || source.startsWith('https://')) continue;
     const targetPath = path.resolve(path.dirname(fullPath), source);
+    if (source.includes('vendor/')) {
+      if (!fs.existsSync(targetPath)) {
+        fail(`${jsFile}: vendor bundle inexistente: ${source}`);
+        importResolutionErrors++;
+      }
+      continue;
+    }
     const targetExports = exportMap.get(targetPath);
     if (!targetExports) {
       fail(`${jsFile}: importa de arquivo inexistente ou não mapeado: ${source}`);

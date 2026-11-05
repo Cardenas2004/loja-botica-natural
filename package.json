@@ -9,10 +9,16 @@
     "test:e2e": "playwright test",
     "verify": "node scripts/verify.mjs",
     "verify:prod": "node scripts/verify.mjs --prod",
+    "build:vendor": "node scripts/bundle-vendor.mjs",
+    "build:icons": "node scripts/build-icons-sprite.mjs",
     "serve": "node scripts/serve.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",
-    "@playwright/test": "^1.50.1"
+    "@fortawesome/fontawesome-free": "^7.3.1",
+    "@playwright/test": "^1.50.1",
+    "@supabase/supabase-js": "^2.49.1",
+    "esbuild": "^0.28.2",
+    "swiper": "^11.2.4"
   }
 }

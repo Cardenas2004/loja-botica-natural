@@ -67,6 +67,10 @@ const catalogState = {
   activeCategory: 'all',
   /** @type {string} Termo de busca textual em tempo real */
   searchQuery: '',
+  /** @type {number} Página atual da listagem do catálogo */
+  currentPage: 1,
+  /** @type {number} Quantidade de produtos por página no catálogo */
+  pageSize: 24,
   /** @type {boolean} Controle de estado de carregamento */
   isLoading: true,
   /** @type {boolean} Indica falha de conexão/consulta ao Supabase */
@@ -744,6 +748,7 @@ function handleCategorySelection(selectedCategoryId) {
   if (catalogState.activeCategory === selectedCategoryId) return;
 
   catalogState.activeCategory = selectedCategoryId;
+  catalogState.currentPage = 1;
 
   const filtersContainer =
     document.getElementById('category-filters') ||
@@ -797,6 +802,9 @@ function renderCatalogProducts() {
   const countLabelEl =
     document.getElementById('catalog-count') ||
     document.querySelector('[data-catalog-count]');
+  const paginationEl =
+    document.getElementById('catalog-pagination') ||
+    document.querySelector('[data-catalog-pagination]');
 
   const normalizedQuery = normalizeText(catalogState.searchQuery);
 
@@ -815,16 +823,37 @@ function renderCatalogProducts() {
     return searchableText.includes(normalizedQuery);
   });
 
-  if (countLabelEl) {
-    const total = filteredProducts.length;
-    countLabelEl.textContent =
-      total === 1 ? 'Exibindo 1 fórmula disponível' : `Exibindo ${total} fórmulas disponíveis`;
+  const total = filteredProducts.length;
+  const pageSize = catalogState.pageSize || 24;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  if (catalogState.currentPage > totalPages) {
+    catalogState.currentPage = totalPages;
+  }
+  if (catalogState.currentPage < 1) {
+    catalogState.currentPage = 1;
   }
 
-  if (filteredProducts.length === 0) {
+  const startIndex = (catalogState.currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, total);
+  const pagedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  if (countLabelEl) {
+    if (total === 0) {
+      countLabelEl.textContent = '0 fórmulas encontradas';
+    } else if (totalPages > 1) {
+      countLabelEl.textContent = `Exibindo ${startIndex + 1}–${endIndex} de ${total} fórmulas disponíveis`;
+    } else {
+      countLabelEl.textContent =
+        total === 1 ? 'Exibindo 1 fórmula disponível' : `Exibindo ${total} fórmulas disponíveis`;
+    }
+  }
+
+  if (total === 0) {
     catalogGrid.replaceChildren();
     catalogGrid.hidden = true;
     catalogGrid.setAttribute('aria-busy', 'false');
+    if (paginationEl) paginationEl.hidden = true;
 
     if (emptyStateEl) {
       const emptyTitle = emptyStateEl.querySelector('.catalog-empty__title');
@@ -852,13 +881,76 @@ function renderCatalogProducts() {
   }
 
   const fragment = document.createDocumentFragment();
-  filteredProducts.forEach((product) => {
+  pagedProducts.forEach((product) => {
     fragment.appendChild(createProductCardElement(product));
   });
 
   catalogGrid.hidden = false;
   catalogGrid.replaceChildren(fragment);
   catalogGrid.setAttribute('aria-busy', 'false');
+
+  // Renderiza controles de paginação
+  if (paginationEl) {
+    if (totalPages <= 1) {
+      paginationEl.hidden = true;
+      paginationEl.replaceChildren();
+    } else {
+      paginationEl.hidden = false;
+      const navFragment = document.createDocumentFragment();
+
+      const prevBtn = document.createElement('button');
+      prevBtn.type = 'button';
+      prevBtn.className = 'catalog-pagination__btn';
+      prevBtn.setAttribute('aria-label', 'Página anterior');
+      prevBtn.disabled = catalogState.currentPage === 1;
+      prevBtn.textContent = '← Anterior';
+      prevBtn.addEventListener('click', () => {
+        if (catalogState.currentPage > 1) {
+          catalogState.currentPage--;
+          renderCatalogProducts();
+          document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+      navFragment.appendChild(prevBtn);
+
+      for (let p = 1; p <= totalPages; p++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.type = 'button';
+        pageBtn.className = 'catalog-pagination__btn';
+        if (p === catalogState.currentPage) {
+          pageBtn.classList.add('is-active');
+          pageBtn.setAttribute('aria-current', 'page');
+        }
+        pageBtn.setAttribute('aria-label', `Ir para página ${p}`);
+        pageBtn.textContent = String(p);
+        pageBtn.addEventListener('click', () => {
+          if (catalogState.currentPage !== p) {
+            catalogState.currentPage = p;
+            renderCatalogProducts();
+            document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+        navFragment.appendChild(pageBtn);
+      }
+
+      const nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      nextBtn.className = 'catalog-pagination__btn';
+      nextBtn.setAttribute('aria-label', 'Próxima página');
+      nextBtn.disabled = catalogState.currentPage === totalPages;
+      nextBtn.textContent = 'Próxima →';
+      nextBtn.addEventListener('click', () => {
+        if (catalogState.currentPage < totalPages) {
+          catalogState.currentPage++;
+          renderCatalogProducts();
+          document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+      navFragment.appendChild(nextBtn);
+
+      paginationEl.replaceChildren(navFragment);
+    }
+  }
 }
 
 /* ==========================================================================
@@ -951,6 +1043,7 @@ function initCatalogSearchListeners() {
   searchInput.addEventListener('input', (event) => {
     const target = /** @type {HTMLInputElement | null} */ (event.target);
     catalogState.searchQuery = target?.value || '';
+    catalogState.currentPage = 1;
     if (clearBtn) {
       clearBtn.classList.toggle('is-visible', catalogState.searchQuery.trim().length > 0);
     }
@@ -961,6 +1054,7 @@ function initCatalogSearchListeners() {
     clearBtn.addEventListener('click', () => {
       searchInput.value = '';
       catalogState.searchQuery = '';
+      catalogState.currentPage = 1;
       clearBtn.classList.remove('is-visible');
       renderCatalogProducts();
       searchInput.focus();

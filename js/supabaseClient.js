@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/+esm';
+import { createClient } from './vendor/supabase-js-2.49.1.esm.js';
 
 /* ==========================================================================
    1. TIPAGEM JSDOC (SCHEMA POSTGRESQL -> INTELLISENSE VS CODE)
