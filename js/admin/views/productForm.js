@@ -16,6 +16,9 @@ import {
   FIELD_CHAR_LIMITS,
   extractPlainText,
   normalizeTextMode,
+  normalizeTextOptions,
+  legacyPlainTextToHtml,
+  sanitizeRichHtml,
 } from '../../shared/richtext.js';
 import { state, setState } from '../state.js';
 import {
@@ -326,16 +329,25 @@ export function renderProductFormView(container, context) {
       ? editingProduct.text_options
       : {};
 
+  const isProductV2 = Boolean(savedTextOptions._v === 2 || savedTextOptions._v === '2');
+
   /** @param {keyof typeof DEFAULT_FIELD_MODES} field */
   const getInitialFieldMode = (field) =>
     normalizeTextMode(savedTextOptions[field], DEFAULT_FIELD_MODES[field]);
+
+  /** Inicializa valor do editor: se v2 usa direto; se legado, converte via legacyPlainTextToHtml */
+  const getInitialFieldValue = (val, field) => {
+    if (!val) return '';
+    if (isProductV2) return val;
+    return legacyPlainTextToHtml(val, { mode: getInitialFieldMode(field) });
+  };
 
   const shortDescEditor = createRichTextEditor({
     fieldName: 'short_description',
     label: 'Resumo Curto de Benefícios (Topo da Página)',
     hint: 'Exibido logo abaixo do título do produto e nos cartões da vitrine.',
     placeholder: 'Ex: Auxilia no relaxamento muscular, energia física e qualidade do sono.',
-    initialValue: editingProduct?.short_description || '',
+    initialValue: getInitialFieldValue(editingProduct?.short_description || '', 'short_description'),
     initialMode: getInitialFieldMode('short_description'),
     maxLength: FIELD_CHAR_LIMITS.short_description,
     minHeight: 84,
@@ -348,7 +360,7 @@ export function renderProductFormView(container, context) {
     label: 'Descrição Detalhada (Ficha Técnica)',
     hint: 'Suporta parágrafos, listas de benefícios, subtítulos H3/H4, citações e links seguros.',
     placeholder: 'Descreva os ativos, mecanismo de ação e diferenciais da fórmula...',
-    initialValue: editingProduct?.description || '',
+    initialValue: getInitialFieldValue(editingProduct?.description || '', 'description'),
     initialMode: getInitialFieldMode('description'),
     maxLength: FIELD_CHAR_LIMITS.description,
     minHeight: 160,
@@ -360,7 +372,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'usage_instructions',
     label: 'Modo de Usar (Posologia)',
     placeholder: 'Ex: Tomar 1 dose (2 cápsulas) ao dia, ou conforme orientação profissional.',
-    initialValue: editingProduct?.usage_instructions || '',
+    initialValue: getInitialFieldValue(editingProduct?.usage_instructions || '', 'usage_instructions'),
     initialMode: getInitialFieldMode('usage_instructions'),
     maxLength: FIELD_CHAR_LIMITS.usage_instructions,
     minHeight: 88,
@@ -372,7 +384,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'composition',
     label: 'Composição / Contém',
     placeholder: 'Ex: Bisglicinato de Magnésio, Dimalato, Taurato, Citrato, Óxido e Cloreto.',
-    initialValue: editingProduct?.composition || '',
+    initialValue: getInitialFieldValue(editingProduct?.composition || '', 'composition'),
     initialMode: getInitialFieldMode('composition'),
     maxLength: FIELD_CHAR_LIMITS.composition,
     minHeight: 88,
@@ -384,7 +396,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'package_info',
     label: 'Informações da Embalagem / Apresentação',
     placeholder: 'Ex: Pote lacrado contendo 60 cápsulas gelatinosas.',
-    initialValue: editingProduct?.package_info || '',
+    initialValue: getInitialFieldValue(editingProduct?.package_info || '', 'package_info'),
     initialMode: getInitialFieldMode('package_info'),
     maxLength: FIELD_CHAR_LIMITS.package_info,
     minHeight: 72,
@@ -396,7 +408,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'allergen_info',
     label: 'Restrições e Alérgenos',
     placeholder: DEFAULT_ALLERGENS,
-    initialValue: editingProduct?.allergen_info ?? DEFAULT_ALLERGENS,
+    initialValue: getInitialFieldValue(editingProduct?.allergen_info ?? DEFAULT_ALLERGENS, 'allergen_info'),
     initialMode: getInitialFieldMode('allergen_info'),
     maxLength: FIELD_CHAR_LIMITS.allergen_info,
     minHeight: 68,
@@ -408,7 +420,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'quality_note',
     label: 'Nota de Rigor e Qualidade Farmacêutica',
     placeholder: DEFAULT_QUALITY_NOTE,
-    initialValue: editingProduct?.quality_note ?? DEFAULT_QUALITY_NOTE,
+    initialValue: getInitialFieldValue(editingProduct?.quality_note ?? DEFAULT_QUALITY_NOTE, 'quality_note'),
     initialMode: getInitialFieldMode('quality_note'),
     maxLength: FIELD_CHAR_LIMITS.quality_note,
     minHeight: 88,
@@ -420,7 +432,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'payment_info',
     label: 'Condições de Pagamento (Linha de Preço)',
     placeholder: DEFAULT_PAYMENT_INFO,
-    initialValue: editingProduct?.payment_info ?? DEFAULT_PAYMENT_INFO,
+    initialValue: getInitialFieldValue(editingProduct?.payment_info ?? DEFAULT_PAYMENT_INFO, 'payment_info'),
     initialMode: getInitialFieldMode('payment_info'),
     maxLength: FIELD_CHAR_LIMITS.payment_info,
     minHeight: 64,
@@ -543,6 +555,7 @@ export function renderProductFormView(container, context) {
     const numericPrice = Number.isFinite(rawPrice) && rawPrice >= 0 ? rawPrice : 0;
 
     const text_options = {
+      _v: 2,
       short_description: shortDescEditor.getMode(),
       description: descriptionEditor.getMode(),
       usage_instructions: usageEditor.getMode(),

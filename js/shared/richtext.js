@@ -144,6 +144,30 @@ export function normalizeTextMode(mode, fallback = 'paragraphs') {
 }
 
 /**
+ * Normaliza o mapa de opções de texto do produto, extraindo versão e modos por campo.
+ * Garante que metadados como `_v` não sejam tratados como campos de texto.
+ *
+ * @param {Record<string, any> | null | undefined} rawOptions
+ * @returns {{ _v: number } & Record<string, TextMode>}
+ */
+export function normalizeTextOptions(rawOptions) {
+  const options = rawOptions && typeof rawOptions === 'object' ? rawOptions : {};
+  const version =
+    typeof options._v === 'number'
+      ? options._v
+      : options._v
+      ? Number(options._v) || 1
+      : 1;
+
+  /** @type {{ _v: number } & Record<string, TextMode>} */
+  const result = { _v: version };
+  for (const [key, defaultMode] of Object.entries(DEFAULT_FIELD_MODES)) {
+    result[key] = normalizeTextMode(options[key], defaultMode);
+  }
+  return result;
+}
+
+/**
  * Escapa caracteres especiais HTML em texto puro.
  * @param {string} value
  * @returns {string}
@@ -237,14 +261,17 @@ export function sanitizeLinkHref(rawHref) {
 }
 
 /**
- * Detecta se uma string contém marcação HTML estrutural da whitelist ou se é texto puro legado.
+ * Detecta se uma string contém marcação HTML estrutural da whitelist ou entidades HTML.
  * @param {string} raw
  * @returns {boolean}
  */
 export function isLikelyRichHtml(raw) {
   if (!raw || typeof raw !== 'string') return false;
-  return /<\/?(p|br|strong|b|em|i|u|s|ul|ol|li|h[1-6]|blockquote|a|div|span|script|style|iframe|img|svg|form|object|embed)\b/i.test(
-    raw
+  return (
+    /<\/?(p|br|strong|b|em|i|u|s|ul|ol|li|h[1-6]|blockquote|a|div|span|script|style|iframe|img|svg|form|object|embed)\b/i.test(
+      raw
+    ) ||
+    /&(?:amp|lt|gt|quot|apos|nbsp|#\d+|#x[0-9a-f]+);/i.test(raw)
   );
 }
 
@@ -716,22 +743,18 @@ function trimBrNodes(nodes) {
 }
 
 /**
- * Sanitiza HTML rico de acordo com a whitelist da Botica Natural e o modo do campo.
- * Também converte texto puro legado com `\n` de forma retrocompatível.
+ * Sanitiza HTML rico exclusivamente através do parser AST/DOMParser contra a allowlist da Botica Natural.
+ * Assume que a entrada É HTML (do editor ou já gravada no formato versionado v2).
+ * NUNCA executa detecção heurística nem escapeHtml em cascata.
  *
  * @param {string | null | undefined} input
  * @param {{ mode?: TextMode }} [options]
  * @returns {string}
  */
-export function sanitizeRichText(input, options = {}) {
+export function sanitizeRichHtml(input, options = {}) {
   const mode = normalizeTextMode(options.mode, 'paragraphs');
   const raw = String(input ?? '').trim();
   if (!raw) return '';
-
-  // Retrocompatibilidade: se o valor salvo não possui tags HTML conhecidas, converte quebras de linha
-  if (!isLikelyRichHtml(raw)) {
-    return convertPlainTextToHtml(raw, mode);
-  }
 
   const ast = buildAstFromHtml(raw);
   let cleanNodes = sanitizeAstNodes(ast.children, mode, false);
@@ -750,6 +773,41 @@ export function sanitizeRichText(input, options = {}) {
 }
 
 /**
+ * Converte texto puro legado (sem formatação rica) em HTML seguro conforme o modo.
+ * Escapa caracteres especiais apenas uma vez.
+ *
+ * @param {string | null | undefined} input
+ * @param {{ mode?: TextMode }} [options]
+ * @returns {string}
+ */
+export function legacyPlainTextToHtml(input, options = {}) {
+  const mode = normalizeTextMode(options.mode, 'paragraphs');
+  return convertPlainTextToHtml(input || '', mode);
+}
+
+/**
+ * Sanitiza HTML rico de acordo com a whitelist da Botica Natural e o modo do campo.
+ * Se o conteúdo for texto puro legado (sem tags e sem entidades HTML), converte usando legacyPlainTextToHtml.
+ * Caso contrário, processa como HTML rico via sanitizeRichHtml.
+ *
+ * @param {string | null | undefined} input
+ * @param {{ mode?: TextMode }} [options]
+ * @returns {string}
+ */
+export function sanitizeRichText(input, options = {}) {
+  const mode = normalizeTextMode(options.mode, 'paragraphs');
+  const raw = String(input ?? '').trim();
+  if (!raw) return '';
+
+  // Retrocompatibilidade: se o valor salvo não possui tags HTML conhecidas nem entidades, converte quebras
+  if (!isLikelyRichHtml(raw)) {
+    return legacyPlainTextToHtml(raw, { mode });
+  }
+
+  return sanitizeRichHtml(raw, { mode });
+}
+
+/**
  * Extrai apenas o texto visível (sem tags HTML) de um conteúdo rico ou texto puro.
  * Útil para contadores de caracteres, resumos na listagem e meta tags SEO.
  *
@@ -764,7 +822,7 @@ export function extractPlainText(htmlOrText) {
     return raw.replace(/\r\n?/g, '\n').trim();
   }
 
-  const sanitized = sanitizeRichText(raw, { mode: 'lines' });
+  const sanitized = sanitizeRichHtml(raw, { mode: 'lines' });
   const withLineBreaks = sanitized.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[a-z0-9]+[^>]*>/gi, '');
   return decodeHtmlEntities(withLineBreaks)
     .replace(/[ \t]+\n/g, '\n')
@@ -808,7 +866,7 @@ function astNodeToDom(astNode, doc) {
  *
  * @param {HTMLElement | null} container
  * @param {string | null | undefined} rawContent
- * @param {{ mode?: TextMode, fallbackText?: string }} [options]
+ * @param {{ mode?: TextMode, fallbackText?: string, isV2?: boolean }} [options]
  */
 export function renderSanitizedRichText(container, rawContent, options = {}) {
   if (!container) return;
@@ -821,7 +879,9 @@ export function renderSanitizedRichText(container, rawContent, options = {}) {
     return;
   }
 
-  const safeHtml = sanitizeRichText(source, { mode });
+  const safeHtml = options.isV2
+    ? sanitizeRichHtml(source, { mode })
+    : sanitizeRichText(source, { mode });
   const ast = parseHtmlToAst(safeHtml);
   const doc = container.ownerDocument || document;
   const fragment = doc.createDocumentFragment();

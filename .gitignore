@@ -3,3 +3,7 @@ Thumbs.db
 .vscode/
 node_modules/
 .env
+playwright-report/
+test-results/
+backups/
+

@@ -10,6 +10,9 @@ import { buildProductWhatsAppUrl } from '../whatsapp.js';
 import {
   DEFAULT_FIELD_MODES,
   normalizeTextMode,
+  normalizeTextOptions,
+  sanitizeRichHtml,
+  legacyPlainTextToHtml,
   renderSanitizedRichText,
   extractPlainText,
 } from './richtext.js';
@@ -37,7 +40,7 @@ export const SAMPLE_PREVIEW_PRODUCT = Object.freeze({
   quality_note:
     'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.',
   whatsapp_message: '',
-  text_options: { ...DEFAULT_FIELD_MODES },
+  text_options: { _v: 2, ...DEFAULT_FIELD_MODES },
   image_url: '',
   image_path: '',
   is_active: true,
@@ -91,12 +94,8 @@ export function resolveProductImage(product, options = {}) {
  * @returns {'paragraphs' | 'lines' | 'inline'}
  */
 export function getFieldTextMode(product, fieldName) {
-  const rawOptions =
-    product && typeof product.text_options === 'object' && product.text_options !== null
-      ? product.text_options
-      : {};
-  const fallback = DEFAULT_FIELD_MODES[fieldName] || 'paragraphs';
-  return normalizeTextMode(rawOptions[fieldName], fallback);
+  const norm = normalizeTextOptions(product?.text_options);
+  return norm[fieldName] || DEFAULT_FIELD_MODES[fieldName] || 'paragraphs';
 }
 
 /**
@@ -110,6 +109,7 @@ export function renderProduct(root, rawProductData, options = {}) {
   const doc = root instanceof Document ? root : root.ownerDocument || document;
   const isPreview = Boolean(options.isPreview);
   const product = rawProductData || SAMPLE_PREVIEW_PRODUCT;
+  const isV2 = Boolean(product?.text_options && Number(product.text_options._v) === 2);
 
   const byId = (/** @type {string} */ id) => doc.getElementById(id);
 
@@ -203,6 +203,7 @@ export function renderProduct(root, rawProductData, options = {}) {
       shortDescEl.classList.add('pd-richtext');
       renderSanitizedRichText(shortDescEl, shortRaw, {
         mode: getFieldTextMode(product, 'short_description'),
+        isV2,
       });
       shortDescEl.hidden = false;
     } else {
@@ -222,6 +223,7 @@ export function renderProduct(root, rawProductData, options = {}) {
       'Consulte formas de pagamento via WhatsApp / Cartão e Pix';
     renderSanitizedRichText(paymentTextEl, paymentRaw, {
       mode: getFieldTextMode(product, 'payment_info'),
+      isV2,
     });
   }
 
@@ -247,6 +249,7 @@ export function renderProduct(root, rawProductData, options = {}) {
       descFullEl.classList.add('pd-richtext');
       renderSanitizedRichText(descFullEl, descRaw, {
         mode: getFieldTextMode(product, 'description'),
+        isV2,
       });
       descFullEl.hidden = false;
     } else {
@@ -262,6 +265,7 @@ export function renderProduct(root, rawProductData, options = {}) {
       descUsageText.classList.add('pd-richtext');
       renderSanitizedRichText(descUsageText, usageRaw, {
         mode: getFieldTextMode(product, 'usage_instructions'),
+        isV2,
       });
       descUsageBlock.hidden = false;
     } else {
@@ -277,6 +281,7 @@ export function renderProduct(root, rawProductData, options = {}) {
       descCompositionText.classList.add('pd-richtext');
       renderSanitizedRichText(descCompositionText, compRaw, {
         mode: getFieldTextMode(product, 'composition'),
+        isV2,
       });
       descCompositionBlock.hidden = false;
     } else {
@@ -292,6 +297,7 @@ export function renderProduct(root, rawProductData, options = {}) {
       descPackageText.classList.add('pd-richtext');
       renderSanitizedRichText(descPackageText, pkgRaw, {
         mode: getFieldTextMode(product, 'package_info'),
+        isV2,
       });
       descPackageBlock.hidden = false;
     } else {
@@ -307,6 +313,7 @@ export function renderProduct(root, rawProductData, options = {}) {
       descAllergensText.classList.add('pd-richtext');
       renderSanitizedRichText(descAllergensText, allergensRaw, {
         mode: getFieldTextMode(product, 'allergen_info'),
+        isV2,
       });
       descAllergensBlock.hidden = false;
     } else {
@@ -323,6 +330,7 @@ export function renderProduct(root, rawProductData, options = {}) {
     descQualityText.classList.add('pd-richtext');
     renderSanitizedRichText(descQualityText, qualityRaw, {
       mode: getFieldTextMode(product, 'quality_note'),
+      isV2,
     });
     descQualityBlock.hidden = false;
   }

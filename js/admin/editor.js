@@ -6,6 +6,8 @@
 
 import {
   sanitizeRichText,
+  sanitizeRichHtml,
+  legacyPlainTextToHtml,
   sanitizeLinkHref,
   extractPlainText,
   normalizeTextMode,
@@ -266,7 +268,7 @@ export function createRichTextEditor(config) {
    */
   function getSanitizedValue() {
     const rawHtml = serializeDomChildren(editableArea);
-    return sanitizeRichText(rawHtml, { mode: currentMode });
+    return sanitizeRichHtml(rawHtml, { mode: currentMode });
   }
 
   /**
@@ -336,7 +338,7 @@ export function createRichTextEditor(config) {
 
     isApplyingHistory = true;
     const targetHtml = historyStack[historyIndex] || '';
-    renderSanitizedRichText(editableArea, targetHtml, { mode: currentMode });
+    renderSanitizedRichText(editableArea, targetHtml, { mode: currentMode, isV2: true });
     isApplyingHistory = false;
     syncEditorState(false);
   }
@@ -561,7 +563,7 @@ export function createRichTextEditor(config) {
     modeHintEl.textContent = getModeDescription(currentMode);
 
     const reSanitized = getSanitizedValue();
-    renderSanitizedRichText(editableArea, reSanitized, { mode: currentMode });
+    renderSanitizedRichText(editableArea, reSanitized, { mode: currentMode, isV2: true });
     syncEditorState(true);
   });
 
@@ -598,7 +600,7 @@ export function createRichTextEditor(config) {
       modeSelect.value = currentMode;
       modeHintEl.textContent = getModeDescription(currentMode);
     }
-    renderSanitizedRichText(editableArea, rawValue || '', { mode: currentMode });
+    renderSanitizedRichText(editableArea, rawValue || '', { mode: currentMode, isV2: true });
     const sanitized = getSanitizedValue();
     historyStack.length = 0;
     historyIndex = -1;

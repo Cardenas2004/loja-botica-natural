@@ -7,6 +7,9 @@
 import assert from 'node:assert/strict';
 import {
   sanitizeRichText,
+  sanitizeRichHtml,
+  legacyPlainTextToHtml,
+  normalizeTextOptions,
   sanitizeLinkHref,
   extractPlainText,
   normalizeTextMode,
@@ -174,6 +177,35 @@ test('extractPlainText extrai texto limpo para contadores e SEO', () => {
   const plain = extractPlainText('<p>Fórmula <strong>manipulada</strong> com <em>controle</em>.</p>');
   assert.equal(plain, 'Fórmula manipulada com controle.');
   assert.equal(normalizeTextMode('invalid', 'lines'), 'lines');
+});
+
+// 9. Prevenção do BUG-ESCAPE e Versionamento v2
+test('sanitizeRichHtml é idempotente em 5 ciclos com caracteres especiais (A & B < C > D "aspas")', () => {
+  const input = 'A &amp; B &lt; C &gt; D &quot;aspas&quot;';
+  for (const mode of ['paragraphs', 'lines', 'inline']) {
+    let cur = input;
+    for (let i = 0; i < 5; i++) {
+      cur = sanitizeRichHtml(cur, { mode });
+    }
+    assert.ok(!cur.includes('&amp;amp;'), `Falha em ${mode}: acumulou &amp;amp;`);
+    assert.ok(!cur.includes('&amp;lt;'), `Falha em ${mode}: acumulou &amp;lt;`);
+  }
+});
+
+test('legacyPlainTextToHtml escapa caracteres e preserva quebras sem acumular', () => {
+  const out = legacyPlainTextToHtml('Dose A & B < 5 mg\nLinha 2', { mode: 'lines' });
+  assert.equal(out, 'Dose A &amp; B &lt; 5 mg<br>Linha 2');
+  assert.ok(!out.includes('&amp;amp;'));
+});
+
+test('normalizeTextOptions isola _v e normaliza modos por campo', () => {
+  const raw = { _v: 2, short_description: 'lines', description: 'invalid', unexpected_key: 'inline' };
+  const normalized = normalizeTextOptions(raw);
+  assert.equal(normalized._v, 2);
+  assert.equal(normalized.short_description, 'lines');
+  assert.equal(normalized.description, 'paragraphs'); // fallback padrão
+  assert.equal(normalized.allergen_info, 'inline'); // default para allergen_info
+  assert.equal(normalized.unexpected_key, undefined); // chaves estranhas não viram modos
 });
 
 console.log(`\nResultado: ${passed} passaram, ${failed} falharam.\n`);

@@ -37,6 +37,7 @@ export const initialData = {
       payment_info: 'Pagamento via PIX ou cartão.',
       whatsapp_message: '',
       text_options: {
+        _v: 2,
         short_description: 'lines',
         description: 'paragraphs',
         usage_instructions: 'paragraphs',
@@ -72,11 +73,36 @@ export const initialData = {
   admin_users: ['user-admin-123'],
 };
 
-// Cópia mutável em memória
-let db = JSON.parse(JSON.stringify(initialData));
+const DB_STORAGE_KEY = '__bn_fake_db__';
+
+function loadDb() {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const stored = window.sessionStorage.getItem(DB_STORAGE_KEY);
+      if (stored) return JSON.parse(stored);
+    }
+  } catch {}
+  return JSON.parse(JSON.stringify(initialData));
+}
+
+function persistDb() {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem(DB_STORAGE_KEY, JSON.stringify(db));
+    }
+  } catch {}
+}
+
+// Cópia mutável em memória persistida no sessionStorage da aba
+let db = loadDb();
 
 export function resetFakeDatabase() {
   db = JSON.parse(JSON.stringify(initialData));
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem(DB_STORAGE_KEY);
+    }
+  } catch {}
   globalThis.__log = [];
 }
 
@@ -216,6 +242,7 @@ class FakeQueryBuilder {
         list.push(row);
         inserted.push(row);
       }
+      persistDb();
       return { data: inserted, error: null };
     }
 
@@ -230,6 +257,7 @@ class FakeQueryBuilder {
           updatedRows.push(row);
         }
       }
+      persistDb();
       return { data: updatedRows, error: null, count: matchedCount };
     }
 
@@ -245,6 +273,7 @@ class FakeQueryBuilder {
         }
       }
       db[this.table] = remaining;
+      persistDb();
       return { data: deleted, error: null };
     }
 
