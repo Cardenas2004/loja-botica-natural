@@ -760,6 +760,7 @@ export function renderProductFormView(container, context) {
         {
           type: 'button',
           role: 'tab',
+          dataset: { tab: t.id },
           className: `form-tab-btn ${isFirst ? 'is-active' : ''}`,
           'aria-selected': isFirst ? 'true' : 'false',
           onClick: () => activateTab(t.id),
