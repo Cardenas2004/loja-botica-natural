@@ -30,8 +30,8 @@
   --border: rgba(61, 30, 109, 0.12);
 
   /* WhatsApp: tom escurecido p/ contraste AA com texto branco; brand puro no ícone flutuante */
-  --wa: #138A47;
-  --wa-hover: #0F7A3D;
+  --wa: #127A3E;
+  --wa-hover: #0E6833;
   --wa-brand: #25D366;
 
   /* Swiper (carrossel de destaques) — cor da marca nas setas e bolinhas */
@@ -1736,6 +1736,14 @@ strong { font-weight: 600; }
 
 .footer__about p { margin: 1rem 0 1.25rem; color: rgba(255, 255, 255, 0.72); max-width: 36ch; font-size: 0.875rem; line-height: 1.65; }
 
+.footer .logo__text {
+  color: var(--white);
+}
+
+.footer .logo__text strong {
+  color: var(--accent-light);
+}
+
 .footer h3 {
   font-family: var(--font-body);
   font-size: 0.8125rem;
@@ -2346,7 +2354,7 @@ body {
   justify-content: space-between;
   margin-bottom: 1.75rem;
   font-size: 0.875rem;
-  color: var(--text-light);
+  color: var(--text-medium);
 }
 
 /* Grid de Produtos (Mobile-First: 1 coluna em <400px, 2 colunas em 400-768px, 3 em tablet, 4 em desktop) */
@@ -2487,7 +2495,7 @@ body {
   font-family: var(--font-body);
   font-size: 0.65rem;
   font-weight: 600;
-  color: var(--accent);
+  color: #5B2D9E;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.25rem;

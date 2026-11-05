@@ -299,7 +299,7 @@ export function createProductCardElement(product) {
   whatsappBtn.dataset.wa = 'vitrine-produto';
   whatsappBtn.setAttribute(
     'aria-label',
-    `Pedir ${productName} pelo WhatsApp por ${formatPriceBRL(numericPrice)}`
+    `Tenho interesse em ${productName} via WhatsApp por ${formatPriceBRL(numericPrice)}`
   );
 
   const waIcon = document.createElement('i');

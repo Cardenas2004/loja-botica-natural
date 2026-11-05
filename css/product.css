@@ -19,9 +19,20 @@
   font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: var(--text-light, #7E65A1);
+  color: var(--text-medium, #4A2871);
   min-width: 0;
   word-break: break-word;
+}
+
+.pdp-breadcrumb a {
+  color: #4A2871;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pdp-breadcrumb a:hover,
+.pdp-breadcrumb a:focus-visible {
+  color: var(--primary, #3D1E6D);
 }
 
 .pdp-breadcrumb [aria-current="page"] {
