@@ -600,3 +600,14 @@
   box-shadow: 0 0 0 6px rgba(156, 106, 222, 0.12);
 }
 
+/* Skeleton & Error layout sem inline styles */
+.pdp-skeleton-container { margin-top: 24px; }
+.pdp-skeleton-thumb { width: 76px; height: 76px; }
+.pdp-skeleton-main-img { height: 420px; width: 100%; }
+.pdp-skeleton-info { display: flex; flex-direction: column; gap: 16px; }
+.pdp-skeleton-title { height: 48px; width: 75%; }
+.pdp-skeleton-desc { height: 60px; width: 100%; }
+.pdp-skeleton-price { height: 40px; width: 40%; }
+.pdp-skeleton-btn { height: 52px; width: 100%; }
+.pdp-error-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+

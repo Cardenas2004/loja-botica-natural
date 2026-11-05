@@ -783,12 +783,12 @@ export function renderProductFormView(container, context) {
       ]),
       el('div', { className: 'form-row form-row--2col' }, [
         el('div', { className: 'form-group' }, [
-          el('div', { className: 'form-label-row', style: 'display: flex; justify-content: space-between; align-items: center;' }, [
+          el('div', { className: 'form-label-row form-label-row--between' }, [
             el('label', { for: 'prod-price', className: 'form-label' }, [
               'Preço de Venda (R$) ',
               el('span', { className: 'required-mark', textContent: '*' }),
             ]),
-            el('label', { className: 'form-check-label form-check-inline', style: 'display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; cursor: pointer;' }, [
+            el('label', { className: 'form-check-label form-check-inline form-check-inline--small' }, [
               sobConsultaCheckbox,
               el('span', { textContent: 'Sob consulta' }),
             ]),
