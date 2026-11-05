@@ -15,9 +15,9 @@ import {
 
 import {
   DEFAULT_PRODUCT_MESSAGE_TEMPLATE,
+  SETTING_KEY_PRODUCT_TEMPLATE,
   fetchProductWhatsAppTemplate,
-  saveProductWhatsAppTemplate,
-  saveIndividualProductWhatsAppMessage,
+  setCachedProductWhatsAppTemplate,
 } from '../whatsapp.js';
 
 import { state, setState } from './state.js';
@@ -699,13 +699,12 @@ export async function duplicateProductRecord(sourceProduct) {
     category_id: sourceProduct.category_id || null,
     price: Number(sourceProduct.price) || 0,
     short_description: sourceProduct.short_description || '',
-    payment_info:
-      sourceProduct.payment_info || 'Consulte formas de pagamento via WhatsApp / Cartão e Pix',
+    payment_info: sourceProduct.payment_info || '',
     description: sourceProduct.description || '',
     usage_instructions: sourceProduct.usage_instructions || '',
     composition: sourceProduct.composition || '',
     package_info: sourceProduct.package_info || '',
-    allergen_info: sourceProduct.allergen_info || 'Não contém lactose e glúten.',
+    allergen_info: sourceProduct.allergen_info || '',
     quality_note: sourceProduct.quality_note || '',
     whatsapp_message: sourceProduct.whatsapp_message || '',
     text_options: sourceProduct.text_options || {},
@@ -771,6 +770,125 @@ export async function deleteProductRecord(product) {
 /* ==========================================================================
    6. OPERAÇÕES DE TEMPLATE DO WHATSAPP
    ========================================================================== */
+
+/**
+ * Salva e persiste um novo template de mensagem no Supabase (`public.site_settings`).
+ * Requer privilégios de administrador validados por RLS (`public.is_admin()`).
+ *
+ * @param {string} newTemplate - Conteúdo do novo modelo com as variáveis.
+ * @param {string} [adminEmail=''] - Identificador do administrador para auditoria.
+ * @returns {Promise<{ success: boolean, template: string }>}
+ */
+export async function saveProductWhatsAppTemplate(newTemplate, adminEmail = '') {
+  if (typeof newTemplate !== 'string' || !newTemplate.trim()) {
+    throw new Error('A mensagem do WhatsApp não pode ser vazia.');
+  }
+
+  const cleanTemplate = newTemplate.trim();
+
+  if (!isSupabaseConfigured) {
+    throw new Error(
+      'O Supabase não está configurado. Verifique as credenciais em "js/supabaseClient.js".'
+    );
+  }
+
+  let adminIdentifier = String(adminEmail || 'admin').trim();
+  let userUuid = null;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session?.user) {
+      userUuid = sessionData.session.user.id;
+      if (!adminEmail && sessionData.session.user.email) {
+        adminIdentifier = sessionData.session.user.email;
+      }
+    }
+  } catch {
+    // Fallback silencioso
+  }
+
+  const payload = {
+    key: SETTING_KEY_PRODUCT_TEMPLATE,
+    value: cleanTemplate,
+    description:
+      'Template de mensagem personalizada pré-preenchida no WhatsApp para interesse em produtos do catálogo e PDP.',
+    updated_by: adminIdentifier,
+    updated_at: new Date().toISOString(),
+  };
+
+  let { error } = await supabase
+    .from(DB_TABLES.SETTINGS || 'site_settings')
+    .upsert(payload, { onConflict: 'key' });
+
+  // Se o banco estiver com a coluna updated_by tipada como UUID (erro 22P02),
+  // realiza nova tentativa transparente utilizando o UUID do usuário autenticado.
+  if (error && String(error.code) === '22P02' && userUuid) {
+    payload.updated_by = userUuid;
+    const retry = await supabase
+      .from(DB_TABLES.SETTINGS || 'site_settings')
+      .upsert(payload, { onConflict: 'key' });
+    error = retry.error;
+  }
+
+  if (error) {
+    const normalized = normalizeSupabaseError(error, 'Falha ao salvar template do WhatsApp');
+    throw new Error(normalized.userMessage);
+  }
+
+  setCachedProductWhatsAppTemplate(cleanTemplate);
+
+  return {
+    success: true,
+    template: cleanTemplate,
+  };
+}
+
+/**
+ * Salva a mensagem exclusiva do WhatsApp para um produto específico (`public.products.whatsapp_message`).
+ * Se `message` for vazia, limpa o campo fazendo com que o produto volte a usar o modelo geral da loja.
+ *
+ * @param {string} productId - UUID do produto.
+ * @param {string} message - Nova mensagem exclusiva (ou string vazia para herdar do geral).
+ * @param {string} [adminEmail=''] - Identificador do administrador para auditoria.
+ * @returns {Promise<{ success: boolean, whatsapp_message: string }>}
+ */
+export async function saveIndividualProductWhatsAppMessage(
+  productId,
+  message,
+  adminEmail = ''
+) {
+  const cleanId = String(productId || '').trim();
+  if (!cleanId) {
+    throw new Error('Identificador do produto inválido.');
+  }
+
+  if (!isSupabaseConfigured) {
+    throw new Error(
+      'O Supabase não está configurado. Verifique as credenciais em "js/supabaseClient.js".'
+    );
+  }
+
+  const cleanMessage = String(message || '').trim();
+
+  const payload = {
+    whatsapp_message: cleanMessage,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from(DB_TABLES.PRODUCTS)
+    .update(payload)
+    .eq('id', cleanId);
+
+  if (error) {
+    const normalized = normalizeSupabaseError(error, 'Falha ao salvar mensagem exclusiva do produto');
+    throw new Error(normalized.userMessage);
+  }
+
+  return {
+    success: true,
+    whatsapp_message: cleanMessage,
+  };
+}
 
 /**
  * Salva o template global ou a mensagem individual de um produto para o WhatsApp.

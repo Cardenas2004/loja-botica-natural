@@ -37,6 +37,7 @@ import { extractPlainText } from './shared/richtext.js';
 export const WHATSAPP_CONFIG = Object.freeze({
   PHONE_NUMBER: WHATSAPP_PHONE,
   BASE_URL: SITE_CONFIG.WHATSAPP_BASE_URL,
+  SHOW_INSTALLMENTS: SITE_CONFIG.SHOW_INSTALLMENTS,
   MAX_INSTALLMENTS: SITE_CONFIG.MAX_INSTALLMENTS,
   MAX_BESTSELLERS: SITE_CONFIG.MAX_BESTSELLERS,
 });
@@ -253,7 +254,7 @@ export function createProductCardElement(product) {
   const installmentsSpan = document.createElement('span');
   installmentsSpan.className = 'product-card__price-installments';
 
-  if (hasValidPrice) {
+  if (hasValidPrice && WHATSAPP_CONFIG.SHOW_INSTALLMENTS) {
     const installmentValue = numericPrice / WHATSAPP_CONFIG.MAX_INSTALLMENTS;
     installmentsSpan.appendChild(document.createTextNode('ou em até '));
 

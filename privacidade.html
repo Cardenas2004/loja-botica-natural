@@ -180,6 +180,7 @@
                     <li><a href="index.html#sobre">Quem somos</a></li>
                     <li><a href="index.html#duvidas">Dúvidas</a></li>
                     <li><a href="privacidade.html" aria-current="page">Política de Privacidade (LGPD)</a></li>
+                    <li><button type="button" class="footer-link-btn" data-cookie-manage-trigger>Preferências de Cookies</button></li>
                 </ul>
             </nav>
 
@@ -211,9 +212,39 @@
 
     <!-- Cookie LGPD -->
     <div class="cookie" role="region" aria-label="Aviso de cookies" hidden>
-        <p>Usamos apenas armazenamento essencial para funcionamento do site, em conformidade com a LGPD. Saiba mais em nossa <a href="privacidade.html">Política de Privacidade</a>.</p>
-        <button class="btn btn--primary btn--sm" type="button" data-cookie-accept>Entendi</button>
+        <p>Usamos cookies e armazenamento local para funcionamento seguro do site, em conformidade com a LGPD. Saiba mais em nossa <a href="privacidade.html">Política de Privacidade</a>.</p>
+        <div class="cookie__actions">
+            <button class="btn btn--primary btn--sm" type="button" data-cookie-accept>Aceitar todos</button>
+            <button class="btn btn--secondary btn--sm" type="button" data-cookie-reject>Recusar</button>
+            <button class="btn btn--ghost-dark btn--sm" type="button" data-cookie-manage>Gerenciar</button>
+        </div>
     </div>
+
+    <!-- Modal Gerenciador de Consentimento LGPD -->
+    <dialog class="cookie-modal" id="cookie-preferences-dialog" aria-labelledby="cookie-modal-title">
+        <div class="cookie-modal__content">
+            <h3 id="cookie-modal-title">Preferências de Privacidade e Cookies</h3>
+            <p>Em conformidade com a LGPD, escolha quais categorias de cookies e dados locais você autoriza em seu navegador:</p>
+            <div class="cookie-modal__options">
+                <label class="cookie-modal__option">
+                    <input type="checkbox" checked disabled>
+                    <span><strong>Essenciais (Obrigatórios)</strong><small>Necessários para segurança, integridade e navegação básica.</small></span>
+                </label>
+                <label class="cookie-modal__option">
+                    <input type="checkbox" id="cookie-pref-analytics" data-cookie-opt="analytics">
+                    <span><strong>Estatísticas e Desempenho</strong><small>Métricas anônimas para avaliar tempos de carregamento e navegação.</small></span>
+                </label>
+                <label class="cookie-modal__option">
+                    <input type="checkbox" id="cookie-pref-marketing" data-cookie-opt="marketing">
+                    <span><strong>Comunicação e Atendimento</strong><small>Auxiliam no pré-preenchimento ágil de orçamentos pelo WhatsApp.</small></span>
+                </label>
+            </div>
+            <div class="cookie-modal__actions">
+                <button class="btn btn--ghost-dark btn--sm" type="button" data-cookie-close-prefs>Cancelar</button>
+                <button class="btn btn--primary btn--sm" type="button" data-cookie-save-prefs>Salvar preferências</button>
+            </div>
+        </div>
+    </dialog>
 </body>
 </html>
 

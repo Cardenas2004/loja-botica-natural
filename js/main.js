@@ -31,11 +31,20 @@ import {
   /**
    * Verifica se o usuário concedeu consentimento explícito de cookies (LGPD).
    * Nenhum evento de analytics/pixel é disparado antes do consentimento.
+   * Suporta registro versionado { v: 1, ts, choices: { essential, analytics, marketing } }.
+   * @param {'analytics' | 'marketing' | 'essential'} [category='analytics']
    * @returns {boolean}
    */
-  const hasCookieConsent = () => {
+  const hasCookieConsent = (category = 'analytics') => {
     try {
-      return localStorage.getItem(CONFIG.cookieKey) === 'true';
+      const raw = localStorage.getItem(CONFIG.cookieKey);
+      if (!raw) return false;
+      if (raw === 'true') return true;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.v === 1 && parsed.choices) {
+        return Boolean(parsed.choices[category]);
+      }
+      return false;
     } catch {
       return false;
     }
@@ -641,31 +650,101 @@ import {
   /* 10. COOKIE CONSENT (LGPD) */
   const initCookieConsent = () => {
     const banner = $('.cookie');
+    const dialog = /** @type {HTMLDialogElement | null} */ ($('#cookie-preferences-dialog'));
     if (!banner) return;
 
-    let accepted = false;
-    try {
-      accepted = localStorage.getItem(CONFIG.cookieKey) === 'true';
-    } catch {
-      /* Storage restrito */
-    }
-    if (accepted) return;
-
-    const show = () => {
-      banner.hidden = false;
-      document.documentElement.classList.add('has-cookie');
+    const readConsentRecord = () => {
+      try {
+        const raw = localStorage.getItem(CONFIG.cookieKey);
+        if (!raw) return null;
+        if (raw === 'true') {
+          return { v: 1, ts: Date.now(), choices: { essential: true, analytics: true, marketing: true } };
+        }
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.v === 1 && parsed.choices) {
+          return parsed;
+        }
+      } catch {
+        /* storage restrito ou corrompido */
+      }
+      return null;
     };
 
-    setTimeout(show, 1500);
-
-    $('[data-cookie-accept]', banner)?.addEventListener('click', () => {
+    const saveConsentRecord = (choices) => {
       try {
-        localStorage.setItem(CONFIG.cookieKey, 'true');
+        const payload = {
+          v: 1,
+          ts: Date.now(),
+          choices: {
+            essential: true,
+            analytics: Boolean(choices?.analytics),
+            marketing: Boolean(choices?.marketing),
+          },
+        };
+        localStorage.setItem(CONFIG.cookieKey, JSON.stringify(payload));
       } catch {
         /* ignore */
       }
       banner.hidden = true;
       document.documentElement.classList.remove('has-cookie');
+    };
+
+    const existingConsent = readConsentRecord();
+    if (!existingConsent) {
+      setTimeout(() => {
+        banner.hidden = false;
+        document.documentElement.classList.add('has-cookie');
+      }, 1500);
+    }
+
+    $('[data-cookie-accept]', banner)?.addEventListener('click', () => {
+      saveConsentRecord({ analytics: true, marketing: true });
+    });
+
+    $('[data-cookie-reject]', banner)?.addEventListener('click', () => {
+      saveConsentRecord({ analytics: false, marketing: false });
+    });
+
+    const openPreferencesDialog = () => {
+      const record = readConsentRecord() || { choices: { analytics: false, marketing: false } };
+      const analyticsCheckbox = /** @type {HTMLInputElement | null} */ ($('#cookie-pref-analytics'));
+      const marketingCheckbox = /** @type {HTMLInputElement | null} */ ($('#cookie-pref-marketing'));
+      if (analyticsCheckbox) analyticsCheckbox.checked = Boolean(record.choices?.analytics);
+      if (marketingCheckbox) marketingCheckbox.checked = Boolean(record.choices?.marketing);
+
+      if (dialog && typeof dialog.showModal === 'function') {
+        dialog.showModal();
+      } else if (dialog) {
+        dialog.hidden = false;
+      }
+    };
+
+    $('[data-cookie-manage]', banner)?.addEventListener('click', openPreferencesDialog);
+
+    $$('[data-cookie-manage-trigger]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openPreferencesDialog();
+      });
+    });
+
+    $('[data-cookie-save-prefs]', dialog)?.addEventListener('click', () => {
+      const analytics = Boolean(/** @type {HTMLInputElement | null} */ ($('#cookie-pref-analytics'))?.checked);
+      const marketing = Boolean(/** @type {HTMLInputElement | null} */ ($('#cookie-pref-marketing'))?.checked);
+      saveConsentRecord({ analytics, marketing });
+      if (dialog && typeof dialog.close === 'function') {
+        dialog.close();
+      } else if (dialog) {
+        dialog.hidden = true;
+      }
+    });
+
+    $('[data-cookie-close-prefs]', dialog)?.addEventListener('click', () => {
+      if (dialog && typeof dialog.close === 'function') {
+        dialog.close();
+      } else if (dialog) {
+        dialog.hidden = true;
+      }
     });
   };
 

@@ -44,6 +44,12 @@ export const LGPD_CONSENT_KEY = 'bn_lgpd_consent';
 export const DEFAULT_WHATSAPP_GREETING = `Olá! Gostaria de fazer um orçamento na ${BRAND_NAME}.`;
 
 /**
+ * Indica se parcelamento comercial deve ser exibido publicamente nos cards.
+ * Definido como false por padrão até confirmação comercial/farmacêutica.
+ */
+export const SHOW_INSTALLMENTS = false;
+
+/**
  * Objeto congelado de configuração do WhatsApp e vitrine.
  */
 export const SITE_CONFIG = Object.freeze({
@@ -56,6 +62,7 @@ export const SITE_CONFIG = Object.freeze({
   DEFAULT_WHATSAPP_GREETING,
   WHATSAPP_BASE_URL: 'https://wa.me',
   ALLOWED_WHATSAPP_HOSTS: Object.freeze(['wa.me', 'api.whatsapp.com']),
+  SHOW_INSTALLMENTS,
   MAX_INSTALLMENTS: 6,
   MAX_BESTSELLERS: 6,
 });

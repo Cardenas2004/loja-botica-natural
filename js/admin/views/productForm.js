@@ -542,7 +542,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'allergen_info',
     label: 'Restrições e Alérgenos',
     placeholder: DEFAULT_ALLERGENS,
-    initialValue: getInitialFieldValue(editingProduct?.allergen_info ?? DEFAULT_ALLERGENS, 'allergen_info'),
+    initialValue: getInitialFieldValue(editingProduct?.allergen_info ?? '', 'allergen_info'),
     initialMode: getInitialFieldMode('allergen_info'),
     maxLength: FIELD_CHAR_LIMITS.allergen_info,
     minHeight: 68,
@@ -554,10 +554,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'quality_note',
     label: 'Nota de Rigor e Qualidade Farmacêutica',
     placeholder: DEFAULT_QUALITY_NOTE,
-    initialValue: getInitialFieldValue(
-      editingProduct ? (editingProduct.quality_note ?? '') : DEFAULT_QUALITY_NOTE,
-      'quality_note'
-    ),
+    initialValue: getInitialFieldValue(editingProduct?.quality_note ?? '', 'quality_note'),
     initialMode: getInitialFieldMode('quality_note'),
     maxLength: FIELD_CHAR_LIMITS.quality_note,
     minHeight: 88,
@@ -569,10 +566,7 @@ export function renderProductFormView(container, context) {
     fieldName: 'payment_info',
     label: 'Condições de Pagamento (Linha de Preço)',
     placeholder: DEFAULT_PAYMENT_INFO,
-    initialValue: getInitialFieldValue(
-      editingProduct ? (editingProduct.payment_info ?? '') : DEFAULT_PAYMENT_INFO,
-      'payment_info'
-    ),
+    initialValue: getInitialFieldValue(editingProduct?.payment_info ?? '', 'payment_info'),
     initialMode: getInitialFieldMode('payment_info'),
     maxLength: FIELD_CHAR_LIMITS.payment_info,
     minHeight: 64,

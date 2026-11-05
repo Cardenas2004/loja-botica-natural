@@ -419,6 +419,28 @@ if (importResolutionErrors === 0) {
   pass('Todos os 100% dos imports nomeados correspondem a exports válidos nos arquivos de destino.');
 }
 
+/* ==========================================================================
+   8. [MODO PRODUÇÃO] VERIFICAÇÃO DE PLACEHOLDERS [PREENCHER (APENAS --prod)
+   ========================================================================== */
+const IS_PROD = process.argv.includes('--prod');
+if (IS_PROD) {
+  console.log('\n8. [MODO PRODUÇÃO] Verificando ausência de placeholders [PREENCHER...');
+  let placeholdersFound = 0;
+  for (const file of [...HTML_FILES, ...JS_FILES]) {
+    const fullPath = path.resolve(ROOT_DIR, file);
+    if (!fs.existsSync(fullPath)) continue;
+    const content = fs.readFileSync(fullPath, 'utf8');
+    const matches = content.match(/\[PREENCHER:[^\]]+\]/g);
+    if (matches && matches.length > 0) {
+      fail(`${file}: contém ${matches.length} placeholder(s) pendente(s) [PREENCHER: ...]`);
+      placeholdersFound += matches.length;
+    }
+  }
+  if (placeholdersFound === 0) {
+    pass('Nenhum placeholder [PREENCHER: ...] encontrado nos arquivos de produção.');
+  }
+}
+
 
 /* ==========================================================================
    RESUMO FINAL
