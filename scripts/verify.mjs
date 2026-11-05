@@ -64,6 +64,10 @@ const REQUIRED_SEO_FILES = [
   'images/og-image.jpg',
   'supabase/migrations/20261104200000_security_hardening.sql',
   'supabase/migrations/20261104210000_product_richtext_options.sql',
+  'supabase/migrations/20261105200000_data_safety_defaults.sql',
+  'supabase/schema_reference.sql',
+  'supabase/legacy/README.md',
+  'supabase/audit/README.md',
   'supabase/tests/rls_checks.sql',
   'docs/admin-regressao.md',
   'docs/decisoes.md',
@@ -128,6 +132,28 @@ for (const unused of UNUSED_IMAGES) {
   }
 }
 
+// Verifica ausência de arquivos .sql soltos na raiz do projeto
+const rootSqlFiles = fs.readdirSync(ROOT_DIR).filter((f) => f.endsWith('.sql'));
+if (rootSqlFiles.length === 0) {
+  pass('Nenhum arquivo SQL executável solto na raiz do projeto.');
+} else {
+  fail(`Arquivos SQL encontrados na raiz do projeto: ${rootSqlFiles.join(', ')}`);
+}
+
+// Verifica trava de aborto em todos os SQLs legados em supabase/legacy/
+const legacyDir = path.join(ROOT_DIR, 'supabase/legacy');
+if (fs.existsSync(legacyDir)) {
+  const legacyFiles = fs.readdirSync(legacyDir).filter((f) => f.endsWith('.sql'));
+  for (const lf of legacyFiles) {
+    const content = fs.readFileSync(path.join(legacyDir, lf), 'utf8');
+    if (content.includes("RAISE EXCEPTION 'ARQUIVO LEGADO — NÃO EXECUTAR")) {
+      pass(`Trava de aborto ativa no script legado: supabase/legacy/${lf}`);
+    } else {
+      fail(`Script legado sem trava de aborto: supabase/legacy/${lf}`);
+    }
+  }
+}
+
 /* ==========================================================================
    2. CONSISTÊNCIA DO NÚMERO DE WHATSAPP EM TODOS OS ARQUIVOS
    ========================================================================== */
@@ -135,8 +161,9 @@ console.log(`\n2. Verificando consistência do WhatsApp (${WHATSAPP_PHONE})...`)
 const filesToScanWhatsApp = [
   ...HTML_FILES,
   ...JS_FILES,
-  'supabase_full_schema.sql',
+  'supabase/schema_reference.sql',
   'supabase/migrations/20261104200000_security_hardening.sql',
+  'supabase/migrations/20261105200000_data_safety_defaults.sql',
 ];
 
 let whatsappConsistent = true;
@@ -170,8 +197,9 @@ console.log('\n3. Verificando ausência de dados fictícios e hardcoded...');
 const filesToScanForbidden = [
   ...HTML_FILES,
   ...JS_FILES,
-  'supabase_full_schema.sql',
+  'supabase/schema_reference.sql',
   'supabase/migrations/20261104200000_security_hardening.sql',
+  'supabase/migrations/20261105200000_data_safety_defaults.sql',
 ];
 
 for (const { pattern, label } of FORBIDDEN_PATTERNS) {
