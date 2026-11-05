@@ -105,15 +105,34 @@ export function validateImageFile(file) {
 }
 
 /**
- * Converte e redimensiona uma imagem no navegador para `image/webp` garantindo `<= 2 MB`.
+ * Testa se o navegador atual suporta codificação real para `image/webp` via canvas.
+ * @returns {boolean}
+ */
+export function supportsWebpExport() {
+  try {
+    const testCanvas = document.createElement('canvas');
+    testCanvas.width = 1;
+    testCanvas.height = 1;
+    const dataUrl = testCanvas.toDataURL('image/webp');
+    return Boolean(dataUrl && dataUrl.startsWith('data:image/webp'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Converte e redimensiona uma imagem no navegador para `image/webp` (ou `image/jpeg` caso WebP não seja suportado) garantindo `<= 2 MB`.
  * @param {File} file
  * @param {{ maxDimension?: number, quality?: number, onProgress?: (pct: number) => void }} [options]
- * @returns {Promise<Blob>}
+ * @returns {Promise<{ blob: Blob, mimeType: string, extension: string }>}
  */
 export function convertImageFileToWebp(file, options = {}) {
   const maxDimension = options.maxDimension ?? 1280;
   const initialQuality = options.quality ?? 0.84;
   const onProgress = options.onProgress;
+  const isWebpSupported = supportsWebpExport();
+  const mimeType = isWebpSupported ? 'image/webp' : 'image/jpeg';
+  const extension = isWebpSupported ? 'webp' : 'jpg';
 
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
@@ -160,7 +179,7 @@ export function convertImageFileToWebp(file, options = {}) {
         canvas.toBlob(
           (blob) => {
             if (!blob) {
-              reject(new Error('Não foi possível converter a imagem para WebP.'));
+              reject(new Error(`Não foi possível converter a imagem para ${isWebpSupported ? 'WebP' : 'JPEG'}.`));
               return;
             }
             if (blob.size > MAX_STORAGE_UPLOAD_BYTES && q > 0.5) {
@@ -172,9 +191,9 @@ export function convertImageFileToWebp(file, options = {}) {
               return;
             }
             if (onProgress) onProgress(80);
-            resolve(blob);
+            resolve({ blob, mimeType, extension });
           },
-          'image/webp',
+          mimeType,
           q
         );
       };
@@ -192,7 +211,7 @@ export function convertImageFileToWebp(file, options = {}) {
 }
 
 /**
- * Faz upload de uma imagem convertida em WebP para o bucket `product-images`.
+ * Faz upload de uma imagem convertida para o bucket `product-images`.
  * @param {File} file
  * @param {{ folder?: 'catalogo' | 'carousel', maxDimension?: number, quality?: number, onProgress?: (pct: number) => void }} [options]
  * @returns {Promise<{ imagePath: string, imageUrl: string }>}
@@ -208,7 +227,7 @@ export async function uploadStorageWebpImage(file, options = {}) {
   const quality = options.quality ?? (folder === 'carousel' ? 0.85 : 0.84);
 
   if (options.onProgress) options.onProgress(15);
-  const webpBlob = await convertImageFileToWebp(file, {
+  const converted = await convertImageFileToWebp(file, {
     maxDimension,
     quality,
     onProgress: options.onProgress,
@@ -217,12 +236,12 @@ export async function uploadStorageWebpImage(file, options = {}) {
   const baseName = file.name.replace(/\.[^/.]+$/, '');
   const safeBaseName = generateSlug(baseName) || (folder === 'carousel' ? 'banner' : 'produto');
   const randomSuffix = Math.random().toString(36).substring(2, 8);
-  const storagePath = `${folder}/${Date.now()}-${randomSuffix}-${safeBaseName}.webp`;
+  const storagePath = `${folder}/${Date.now()}-${randomSuffix}-${safeBaseName}.${converted.extension}`;
 
   const { error: uploadError } = await supabase.storage
     .from(STORAGE_BUCKET)
-    .upload(storagePath, webpBlob, {
-      contentType: 'image/webp',
+    .upload(storagePath, converted.blob, {
+      contentType: converted.mimeType,
       cacheControl: '3600',
       upsert: false,
     });
@@ -237,16 +256,19 @@ export async function uploadStorageWebpImage(file, options = {}) {
 }
 
 /**
- * Remove um arquivo antigo do Supabase Storage de forma silenciosa para evitar órfãos.
+ * Remove um arquivo antigo do Supabase Storage de forma segura para evitar órfãos.
  * @param {string | null | undefined} imagePath
  */
 export async function removeStorageImageIfPresent(imagePath) {
   const cleanPath = String(imagePath || '').trim();
   if (!cleanPath) return;
   try {
-    await supabase.storage.from(STORAGE_BUCKET).remove([cleanPath]);
+    const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([cleanPath]);
+    if (error) {
+      console.warn('[AdminAPI] Falha ao remover imagem antiga do Storage:', error.message || error);
+    }
   } catch (err) {
-    console.warn('[AdminAPI] Aviso ao remover imagem antiga do Storage:', err);
+    console.warn('[AdminAPI] Exceção ao remover imagem antiga do Storage:', err);
   }
 }
 
@@ -306,14 +328,32 @@ export async function fetchCategories() {
   return list;
 }
 
+export const PRODUCT_LIST_SELECT_COLUMNS =
+  'id, name, sku_ref, price, is_active, is_best_seller, category_id, categories(name), image_url, image_path, updated_at';
+
 /**
- * Busca todos os produtos ordenados pelos mais recentes.
+ * Busca produtos otimizados para a listagem do painel.
+ * Se houver paginação explícita ou mais de 50 produtos, utiliza `.range()`.
+ *
+ * @param {{ page?: number, pageSize?: number }} [options]
+ * @returns {Promise<Array<any>>}
  */
-export async function fetchProducts() {
-  const { data, error } = await supabase
+export async function fetchProducts(options = {}) {
+  const page = options.page || 1;
+  const pageSize = options.pageSize || 50;
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize - 1;
+
+  let query = supabase
     .from(DB_TABLES.PRODUCTS)
-    .select('*, categories(id, name, slug)')
+    .select(PRODUCT_LIST_SELECT_COLUMNS, { count: 'exact' })
     .order('created_at', { ascending: false });
+
+  if (options.pageSize) {
+    query = query.range(start, end);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     const normalized = normalizeSupabaseError(error, 'Erro ao carregar produtos');
@@ -324,6 +364,28 @@ export async function fetchProducts() {
   const list = Array.isArray(data) ? data : [];
   setState({ products: list });
   return list;
+}
+
+/**
+ * Busca o registro completo de um produto pelo ID para preenchimento no formulário de edição.
+ * @param {string} productId
+ * @returns {Promise<any | null>}
+ */
+export async function fetchProductById(productId) {
+  if (!productId) return null;
+  const { data, error } = await supabase
+    .from(DB_TABLES.PRODUCTS)
+    .select('*, categories(id, name, slug)')
+    .eq('id', productId)
+    .maybeSingle();
+
+  if (error) {
+    const normalized = normalizeSupabaseError(error, 'Erro ao carregar detalhes do produto');
+    showToast(normalized.userMessage, 'error');
+    return null;
+  }
+
+  return data;
 }
 
 /**
@@ -522,11 +584,13 @@ export async function reorderCarouselSlides(orderedIds) {
    ========================================================================== */
 
 /**
- * Cria ou atualiza um produto com suporte a `text_options` (e fallback caso a coluna ainda não exista).
+ * Cria ou atualiza um produto com suporte a versionamento v2 e detecção de concorrência.
  * @param {Record<string, any>} payload
  * @param {{
  *   editingId?: string,
  *   oldImagePath?: string,
+ *   originalUpdatedAt?: string | null,
+ *   forceOverwrite?: boolean,
  *   file?: File | null,
  *   onProgress?: (pct: number) => void
  * }} [options]
@@ -535,12 +599,35 @@ export async function reorderCarouselSlides(orderedIds) {
 export async function saveProductRecord(payload, options = {}) {
   const editingId = options.editingId || '';
   const oldImagePath = options.oldImagePath || '';
+  const originalUpdatedAt = options.originalUpdatedAt || null;
+  const forceOverwrite = Boolean(options.forceOverwrite);
   const file = options.file || null;
 
   /** @type {{ imagePath: string, imageUrl: string } | null} */
   let uploaded = null;
 
   try {
+    // Checagem de concorrência: verifica se o produto foi modificado por outro usuário/aba
+    if (editingId && originalUpdatedAt && !forceOverwrite) {
+      const { data: currentDbProduct } = await supabase
+        .from(DB_TABLES.PRODUCTS)
+        .select('updated_at')
+        .eq('id', editingId)
+        .maybeSingle();
+
+      if (
+        currentDbProduct?.updated_at &&
+        new Date(currentDbProduct.updated_at).getTime() > new Date(originalUpdatedAt).getTime()
+      ) {
+        const conflictErr = new Error('CONCURRENT_MODIFICATION');
+        // @ts-ignore
+        conflictErr.isConflict = true;
+        // @ts-ignore
+        conflictErr.serverUpdatedAt = currentDbProduct.updated_at;
+        throw conflictErr;
+      }
+    }
+
     if (file) {
       uploaded = await uploadStorageWebpImage(file, {
         folder: 'catalogo',
@@ -577,17 +664,11 @@ export async function saveProductRecord(payload, options = {}) {
         .maybeSingle();
     };
 
-    let { data, error } = await executeQuery(record);
+    const { data, error } = await executeQuery(record);
 
-    // Fallback defensivo se a migração `text_options` ainda não foi rodada no banco
-    if (error && String(error.message || '').includes('text_options')) {
-      const { text_options: _ignored, ...fallbackRecord } = record;
-      const retry = await executeQuery(fallbackRecord);
-      data = retry.data;
-      error = retry.error;
+    if (error) {
+      throw error;
     }
-
-    if (error) throw error;
 
     if (editingId && uploaded && oldImagePath && oldImagePath !== uploaded.imagePath) {
       await removeStorageImageIfPresent(oldImagePath);

@@ -33,6 +33,7 @@ import {
   createIcon,
   showToast,
   setButtonLoading,
+  confirmAction,
 } from '../ui.js';
 
 const DEFAULT_QUALITY_NOTE =
@@ -57,6 +58,7 @@ export function renderProductFormView(container, context) {
 
   const isEditing = Boolean(editingProduct);
   let currentProductId = editingProduct?.id || '';
+  let originalUpdatedAt = editingProduct?.updated_at || null;
   let oldImagePath = editingProduct?.image_path || '';
   let existingImageUrl = editingProduct?.image_url || '';
   /** @type {File | null} */
@@ -64,6 +66,9 @@ export function renderProductFormView(container, context) {
   /** @type {string | null} */
   let activeBlobUrl = null;
   let isInitializing = true;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let draftDebounceTimer = null;
+  const DRAFT_STORAGE_KEY = `botica_draft_product_${context.productId || 'new'}`;
 
   setState({ isFormDirty: false });
 
@@ -74,8 +79,115 @@ export function renderProductFormView(container, context) {
     }
   };
 
+  function scheduleDraftSave() {
+    if (isInitializing) return;
+    if (draftDebounceTimer) clearTimeout(draftDebounceTimer);
+    draftDebounceTimer = setTimeout(() => {
+      try {
+        const stateToDraft = collectCurrentFormState();
+        localStorage.setItem(
+          DRAFT_STORAGE_KEY,
+          JSON.stringify({
+            timestamp: Date.now(),
+            productId: context.productId || 'new',
+            data: stateToDraft,
+          })
+        );
+      } catch {}
+    }, 1000);
+  }
+
+  function clearDraftStorage() {
+    if (draftDebounceTimer) clearTimeout(draftDebounceTimer);
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {}
+  }
+
   // Instância do Live Preview (Fase 3)
   const livePreview = createLiveProductPreview();
+
+  // Banner discreto de restauração/descarte de rascunho salvo
+  const draftBanner = el('div', { className: 'draft-alert-banner', hidden: true });
+
+  function checkDraftBanner() {
+    try {
+      const rawDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!rawDraft) return;
+      const draft = JSON.parse(rawDraft);
+      if (!draft || !draft.timestamp || !draft.data) return;
+
+      const productUpdatedAt = editingProduct?.updated_at
+        ? new Date(editingProduct.updated_at).getTime()
+        : 0;
+
+      if (draft.timestamp > productUpdatedAt) {
+        const draftDateStr = new Date(draft.timestamp).toLocaleString('pt-BR');
+        draftBanner.replaceChildren(
+          el('div', { className: 'draft-alert-banner__content' }, [
+            createIcon('fa-solid fa-clock-rotate-left'),
+            el('span', {
+              textContent: `Existe um rascunho salvo localmente deste produto (${draftDateStr}).`,
+            }),
+          ]),
+          el('div', { className: 'draft-alert-banner__actions' }, [
+            el(
+              'button',
+              {
+                type: 'button',
+                className: 'btn btn-sm btn-primary',
+                onClick: () => restoreDraft(draft.data),
+              },
+              [createIcon('fa-solid fa-arrow-rotate-left'), el('span', { textContent: 'Restaurar Rascunho' })]
+            ),
+            el(
+              'button',
+              {
+                type: 'button',
+                className: 'btn btn-sm btn-secondary',
+                onClick: () => {
+                  clearDraftStorage();
+                  draftBanner.hidden = true;
+                  showToast('Rascunho descartado.', 'info');
+                },
+              },
+              [createIcon('fa-solid fa-trash-can'), el('span', { textContent: 'Descartar' })]
+            ),
+          ])
+        );
+        draftBanner.hidden = false;
+      }
+    } catch {}
+  }
+
+  function restoreDraft(data) {
+    if (!data) return;
+    if (data.name !== undefined) nameInput.value = data.name;
+    if (data.sku_ref !== undefined) skuInput.value = data.sku_ref;
+    if (data.category_id !== undefined) categorySelect.value = data.category_id;
+    if (data.price !== undefined) {
+      const isZero = Number(data.price) <= 0;
+      sobConsultaCheckbox.checked = isZero;
+      priceInput.disabled = isZero;
+      priceInput.value = Number(data.price).toFixed(2);
+    }
+    if (data.is_active !== undefined) activeCheckbox.checked = Boolean(data.is_active);
+    if (data.is_best_seller !== undefined) bestsellerCheckbox.checked = Boolean(data.is_best_seller);
+    if (data.whatsapp_message !== undefined) waTextarea.value = data.whatsapp_message;
+
+    if (data.short_description !== undefined) shortDescEditor.setValue(data.short_description, data.text_options?.short_description);
+    if (data.description !== undefined) descriptionEditor.setValue(data.description, data.text_options?.description);
+    if (data.usage_instructions !== undefined) usageEditor.setValue(data.usage_instructions, data.text_options?.usage_instructions);
+    if (data.composition !== undefined) compositionEditor.setValue(data.composition, data.text_options?.composition);
+    if (data.package_info !== undefined) packageEditor.setValue(data.package_info, data.text_options?.package_info);
+    if (data.allergen_info !== undefined) allergensEditor.setValue(data.allergen_info, data.text_options?.allergen_info);
+    if (data.quality_note !== undefined) qualityEditor.setValue(data.quality_note, data.text_options?.quality_note);
+    if (data.payment_info !== undefined) paymentEditor.setValue(data.payment_info, data.text_options?.payment_info);
+
+    draftBanner.hidden = true;
+    markDirty();
+    showToast('Rascunho restaurado com sucesso!', 'success');
+  }
 
   // Indicador de estado sujo na barra inferior fixa
   const dirtyBadge = el(
@@ -95,6 +207,7 @@ export function renderProductFormView(container, context) {
       );
     }
     syncLivePreviewAndSeo();
+    scheduleDraftSave();
   }
 
   function markSaved() {
@@ -159,6 +272,26 @@ export function renderProductFormView(container, context) {
   );
   categorySelect.value = editingProduct?.category_id || '';
 
+  const isInitialSobConsulta = editingProduct ? Number(editingProduct.price) <= 0 : false;
+
+  const sobConsultaCheckbox = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'checkbox',
+      id: 'prod-price-sob-consulta',
+      className: 'form-check-input',
+      checked: isInitialSobConsulta,
+      onChange: () => {
+        if (sobConsultaCheckbox.checked) {
+          priceInput.value = '0.00';
+          priceInput.disabled = true;
+        } else {
+          priceInput.disabled = false;
+        }
+        markDirty();
+      },
+    })
+  );
+
   const priceInput = /** @type {HTMLInputElement} */ (
     el('input', {
       type: 'number',
@@ -168,6 +301,7 @@ export function renderProductFormView(container, context) {
       step: '0.01',
       placeholder: '0.00',
       required: true,
+      disabled: isInitialSobConsulta,
       value:
         editingProduct?.price !== undefined
           ? Number(editingProduct.price).toFixed(2)
@@ -420,7 +554,10 @@ export function renderProductFormView(container, context) {
     fieldName: 'quality_note',
     label: 'Nota de Rigor e Qualidade Farmacêutica',
     placeholder: DEFAULT_QUALITY_NOTE,
-    initialValue: getInitialFieldValue(editingProduct?.quality_note ?? DEFAULT_QUALITY_NOTE, 'quality_note'),
+    initialValue: getInitialFieldValue(
+      editingProduct ? (editingProduct.quality_note ?? '') : DEFAULT_QUALITY_NOTE,
+      'quality_note'
+    ),
     initialMode: getInitialFieldMode('quality_note'),
     maxLength: FIELD_CHAR_LIMITS.quality_note,
     minHeight: 88,
@@ -432,7 +569,10 @@ export function renderProductFormView(container, context) {
     fieldName: 'payment_info',
     label: 'Condições de Pagamento (Linha de Preço)',
     placeholder: DEFAULT_PAYMENT_INFO,
-    initialValue: getInitialFieldValue(editingProduct?.payment_info ?? DEFAULT_PAYMENT_INFO, 'payment_info'),
+    initialValue: getInitialFieldValue(
+      editingProduct ? (editingProduct.payment_info ?? '') : DEFAULT_PAYMENT_INFO,
+      'payment_info'
+    ),
     initialMode: getInitialFieldMode('payment_info'),
     maxLength: FIELD_CHAR_LIMITS.payment_info,
     minHeight: 64,
@@ -551,8 +691,11 @@ export function renderProductFormView(container, context) {
 
   function collectCurrentFormState() {
     const selectedCat = state.categories.find((c) => c.id === categorySelect.value);
-    const rawPrice = Number.parseFloat(priceInput.value || '0');
-    const numericPrice = Number.isFinite(rawPrice) && rawPrice >= 0 ? rawPrice : 0;
+    let numericPrice = 0;
+    if (!sobConsultaCheckbox.checked) {
+      const rawPrice = Number.parseFloat(priceInput.value || '0');
+      numericPrice = Number.isFinite(rawPrice) && rawPrice >= 0 ? rawPrice : 0;
+    }
 
     const text_options = {
       _v: 2,
@@ -575,13 +718,13 @@ export function renderProductFormView(container, context) {
       categories: selectedCat ? { id: selectedCat.id, name: selectedCat.name, slug: selectedCat.slug } : null,
       price: numericPrice,
       short_description: shortDescEditor.getValue(),
-      payment_info: paymentEditor.getValue() || DEFAULT_PAYMENT_INFO,
+      payment_info: paymentEditor.getValue(),
       description: descriptionEditor.getValue(),
       usage_instructions: usageEditor.getValue(),
       composition: compositionEditor.getValue(),
       package_info: packageEditor.getValue(),
       allergen_info: allergensEditor.getValue(),
-      quality_note: qualityEditor.getValue() || DEFAULT_QUALITY_NOTE,
+      quality_note: qualityEditor.getValue(),
       whatsapp_message: waTextarea.value.trim(),
       text_options,
       image_url: existingImageUrl,
@@ -646,9 +789,15 @@ export function renderProductFormView(container, context) {
       ]),
       el('div', { className: 'form-row form-row--2col' }, [
         el('div', { className: 'form-group' }, [
-          el('label', { for: 'prod-price', className: 'form-label' }, [
-            'Preço de Venda (R$) ',
-            el('span', { className: 'required-mark', textContent: '*' }),
+          el('div', { className: 'form-label-row', style: 'display: flex; justify-content: space-between; align-items: center;' }, [
+            el('label', { for: 'prod-price', className: 'form-label' }, [
+              'Preço de Venda (R$) ',
+              el('span', { className: 'required-mark', textContent: '*' }),
+            ]),
+            el('label', { className: 'form-check-label form-check-inline', style: 'display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; cursor: pointer;' }, [
+              sobConsultaCheckbox,
+              el('span', { textContent: 'Sob consulta' }),
+            ]),
           ]),
           el('div', { className: 'input-prefix-wrap' }, [
             el('span', { className: 'input-prefix', textContent: 'R$' }),
@@ -656,7 +805,7 @@ export function renderProductFormView(container, context) {
           ]),
           el('span', {
             className: 'form-hint',
-            textContent: 'Use 0.00 para exibir "Sob consulta" na vitrine.',
+            textContent: 'Marque "Sob consulta" caso a fórmula requeira avaliação prévia de receita.',
           }),
         ]),
         paymentEditor.element,
@@ -828,7 +977,7 @@ export function renderProductFormView(container, context) {
 
   let isSavingNow = false;
 
-  async function performSave({ stayOnPage = false } = {}) {
+  async function performSave({ stayOnPage = false, forceOverwrite = false } = {}) {
     if (isSavingNow) return;
 
     const data = collectCurrentFormState();
@@ -844,6 +993,39 @@ export function renderProductFormView(container, context) {
       showToast('Selecione uma categoria para o produto.', 'warning');
       categorySelect.focus();
       return;
+    }
+
+    // Validação estrita de preço
+    if (!sobConsultaCheckbox.checked) {
+      const rawPrice = priceInput.value.trim();
+      if (!rawPrice) {
+        activateTab('basico');
+        showToast('Informe o valor do preço ou marque a opção "Sob consulta".', 'warning');
+        priceInput.focus();
+        return;
+      }
+      const numPrice = Number(rawPrice);
+      if (Number.isNaN(numPrice) || numPrice < 0) {
+        activateTab('basico');
+        showToast('Preço inválido. O valor não pode ser negativo ou vazio.', 'warning');
+        priceInput.focus();
+        return;
+      }
+      if (numPrice === 0) {
+        const confirmZero = await confirmAction({
+          title: 'Confirmar Preço Sob Consulta',
+          message: 'O valor do produto está preenchido como R$ 0,00. Deseja registrar formalmente como "Sob consulta"?',
+          confirmLabel: 'Confirmar como Sob consulta',
+          cancelLabel: 'Corrigir preço',
+        });
+        if (!confirmZero) {
+          activateTab('basico');
+          priceInput.focus();
+          return;
+        }
+        sobConsultaCheckbox.checked = true;
+        priceInput.disabled = true;
+      }
     }
 
     const overLimitEditor = allRichEditors.find((ed) => ed.isOverLimit());
@@ -886,6 +1068,8 @@ export function renderProductFormView(container, context) {
       const saved = await saveProductRecord(payload, {
         editingId: currentProductId,
         oldImagePath,
+        originalUpdatedAt,
+        forceOverwrite: Boolean(forceOverwrite),
         file: selectedFile,
         onProgress: (pct) => {
           progressFill.style.width = `${pct}%`;
@@ -894,6 +1078,7 @@ export function renderProductFormView(container, context) {
 
       if (saved) {
         currentProductId = saved.id;
+        originalUpdatedAt = saved.updated_at || originalUpdatedAt;
         oldImagePath = saved.image_path || oldImagePath;
         existingImageUrl = saved.image_url || existingImageUrl;
       }
@@ -905,6 +1090,7 @@ export function renderProductFormView(container, context) {
         updateImagePreviewUI(resolveAdminImageUrl(saved));
       }
 
+      clearDraftStorage();
       markSaved();
       showToast(
         isEditing || currentProductId
@@ -920,6 +1106,24 @@ export function renderProductFormView(container, context) {
         window.history.replaceState(null, '', `#/produtos/${currentProductId}`);
       }
     } catch (err) {
+      if (err?.isConflict) {
+        const shouldOverwrite = await confirmAction({
+          title: 'Edição concorrente detectada',
+          message:
+            'Este produto foi alterado por outro usuário (ou em outra aba) enquanto você editava. Deseja sobrescrever as alterações remotas ou descartar e recarregar a versão mais recente?',
+          confirmLabel: 'Sobrescrever mesmo assim',
+          cancelLabel: 'Recarregar mais recente',
+        });
+        if (shouldOverwrite) {
+          isSavingNow = false;
+          await performSave({ stayOnPage, forceOverwrite: true });
+          return;
+        } else {
+          clearDraftStorage();
+          context.navigate('#/produtos');
+          return;
+        }
+      }
       const normalized = normalizeSupabaseError(err, 'Não foi possível salvar o produto');
       showToast(normalized.userMessage, 'error');
     } finally {
@@ -979,6 +1183,7 @@ export function renderProductFormView(container, context) {
   ]);
 
   const formColumn = el('div', { className: 'product-editor-column admin-panel' }, [
+    draftBanner,
     el('div', { className: 'admin-panel__header' }, [
       el('div', {}, [
         el('span', { className: 'admin-panel__eyebrow' }, [
@@ -1042,6 +1247,9 @@ export function renderProductFormView(container, context) {
     ])
   );
 
+  // Verifica se há rascunho salvo em localStorage
+  checkDraftBanner();
+
   // Conclui inicialização e envia carga inicial para o preview
   isInitializing = false;
   syncLivePreviewAndSeo();
@@ -1064,6 +1272,7 @@ export function renderProductFormView(container, context) {
   }
 
   return () => {
+    if (draftDebounceTimer) clearTimeout(draftDebounceTimer);
     window.removeEventListener('keydown', onKeyDownSave);
     if (cleanupVisualViewport) cleanupVisualViewport();
     revokePreviewBlob();

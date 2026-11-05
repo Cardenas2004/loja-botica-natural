@@ -218,13 +218,17 @@ export function renderProduct(root, rawProductData, options = {}) {
   }
 
   if (paymentTextEl) {
-    const paymentRaw =
-      String(product.payment_info || '').trim() ||
-      'Consulte formas de pagamento via WhatsApp / Cartão e Pix';
-    renderSanitizedRichText(paymentTextEl, paymentRaw, {
-      mode: getFieldTextMode(product, 'payment_info'),
-      isV2,
-    });
+    const paymentRaw = String(product.payment_info || '').trim();
+    if (paymentRaw) {
+      renderSanitizedRichText(paymentTextEl, paymentRaw, {
+        mode: getFieldTextMode(product, 'payment_info'),
+        isV2,
+      });
+      paymentTextEl.hidden = false;
+    } else {
+      paymentTextEl.replaceChildren();
+      paymentTextEl.hidden = true;
+    }
   }
 
   // 6. Botão Comprar via WhatsApp
@@ -324,15 +328,18 @@ export function renderProduct(root, rawProductData, options = {}) {
 
   // 12. Nota de Qualidade Farmacêutica
   if (descQualityBlock && descQualityText) {
-    const qualityRaw =
-      String(product.quality_note || '').trim() ||
-      'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
-    descQualityText.classList.add('pd-richtext');
-    renderSanitizedRichText(descQualityText, qualityRaw, {
-      mode: getFieldTextMode(product, 'quality_note'),
-      isV2,
-    });
-    descQualityBlock.hidden = false;
+    const qualityRaw = String(product.quality_note || '').trim();
+    if (qualityRaw) {
+      descQualityText.classList.add('pd-richtext');
+      renderSanitizedRichText(descQualityText, qualityRaw, {
+        mode: getFieldTextMode(product, 'quality_note'),
+        isV2,
+      });
+      descQualityBlock.hidden = false;
+    } else {
+      descQualityText.replaceChildren();
+      descQualityBlock.hidden = true;
+    }
   }
 
   // Exibe conteúdo principal e oculta skeleton/erro

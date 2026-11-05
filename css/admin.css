@@ -650,7 +650,35 @@ button:disabled, .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .admin-footer { margin-top: auto; padding: 14px var(--space-6); border-top: 1px solid var(--border-subtle); background: var(--bg-surface); font-size: 0.76rem; color: var(--text-muted); }
 .admin-footer__inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 
-/* 13. RESPONSIVIDADE (1120px, 960px, 768px) */
+/* 14. BANNER DE ALERTA DE RASCUNHO SALVO */
+.draft-alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background-color: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+  font-size: 0.875rem;
+}
+
+.draft-alert-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.draft-alert-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 1120px) {
   .product-editor-split-layout { grid-template-columns: 1fr; }
   .mobile-editor-preview-switcher { display: flex; }

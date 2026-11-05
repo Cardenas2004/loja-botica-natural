@@ -11,7 +11,7 @@ import {
   normalizeSupabaseError,
 } from '../supabaseClient.js';
 
-import { setState, resetAuthenticatedState } from './state.js';
+import { state, setState, resetAuthenticatedState } from './state.js';
 
 /**
  * Verifica no servidor via RPC `public.is_admin()` se o usuário logado pertence a `public.admin_users`.
@@ -84,6 +84,7 @@ export async function loginAdmin(email, password) {
     setState({
       session,
       userEmail: session.user?.email || 'Administrador',
+      currentUserId: session.user?.id || '',
     });
 
     return { ok: true, session };
@@ -125,6 +126,7 @@ export async function initAuthLifecycle(callbacks) {
       setState({
         session: initialSession,
         userEmail: initialSession.user?.email || 'Administrador',
+        currentUserId: initialSession.user?.id || '',
       });
       await callbacks.onAuthenticated(initialSession);
     } else {
@@ -138,16 +140,35 @@ export async function initAuthLifecycle(callbacks) {
     callbacks.onUnauthenticated();
   }
 
-  supabase.auth.onAuthStateChange(async (event, nextSession) => {
-    if (event === 'SIGNED_OUT' || !nextSession) {
-      resetAuthenticatedState();
-      callbacks.onUnauthenticated();
-    } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+  // Listener com desacoplamento via setTimeout para evitar deadlock em chamadas RPC internas
+  supabase.auth.onAuthStateChange((event, nextSession) => {
+    setTimeout(async () => {
+      if (event === 'SIGNED_OUT' || !nextSession) {
+        resetAuthenticatedState();
+        callbacks.onUnauthenticated();
+        return;
+      }
+
+      const nextUserId = nextSession.user?.id || '';
+      const previousUserId = state.currentUserId;
+
+      // Se for o mesmo usuário autenticado (TOKEN_REFRESHED ou foco com SIGNED_IN)
+      if (previousUserId && nextUserId === previousUserId) {
+        // Atualiza apenas a sessão em memória sem remontar telas nem refazer consultas
+        setState({
+          session: nextSession,
+          userEmail: nextSession.user?.email || state.userEmail,
+        });
+        return;
+      }
+
+      // Novo usuário autenticado
       const isAdmin = await verifyServerAdminRole();
       if (isAdmin) {
         setState({
           session: nextSession,
           userEmail: nextSession.user?.email || 'Administrador',
+          currentUserId: nextUserId,
         });
         await callbacks.onAuthenticated(nextSession);
       } else {
@@ -157,7 +178,7 @@ export async function initAuthLifecycle(callbacks) {
           'Acesso negado: esta conta não possui privilégios de administrador.'
         );
       }
-    }
+    }, 0);
   });
 }
 

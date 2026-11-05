@@ -10,6 +10,7 @@ const SIDEBAR_STORAGE_KEY = 'botica_admin_sidebar_collapsed';
  * @typedef {Object} AdminState
  * @property {any | null} session
  * @property {string} userEmail
+ * @property {string} currentUserId
  * @property {{ view: string, param: string | null }} route
  * @property {'light' | 'dark'} theme
  * @property {boolean} sidebarCollapsed
@@ -39,6 +40,7 @@ const SIDEBAR_STORAGE_KEY = 'botica_admin_sidebar_collapsed';
 export const state = {
   session: null,
   userEmail: '',
+  currentUserId: '',
   route: { view: 'dashboard', param: null },
   theme: getInitialTheme(),
   sidebarCollapsed: getInitialSidebarCollapsed(),
@@ -164,6 +166,7 @@ export function subscribe(listener) {
 export function resetAuthenticatedState() {
   state.session = null;
   state.userEmail = '';
+  state.currentUserId = '';
   state.categories = [];
   state.products = [];
   state.carouselSlides = [];
