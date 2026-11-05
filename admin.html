@@ -1,51 +1,75 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bloqueio de indexação para área administrativa restrita -->
     <meta name="robots" content="noindex, nofollow">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Painel Administrativo | Botica Natural</title>
+    <meta name="description" content="Painel administrativo restrito para gerenciamento de produtos, categorias, banners e mensagens da Botica Natural.">
     <meta name="theme-color" content="#3D1E6D">
-    <title>Painel Administrativo | Botica Natural — Gestão de Catálogo</title>
 
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+    <!-- Favicons -->
+    <link rel="icon" type="image/jpeg" href="images/logo.jpg">
+    <link rel="apple-touch-icon" href="images/logo.jpg">
 
-    <!-- Tipografia Oficial do Painel Administrativo (Inter UI) -->
+    <!-- Google Fonts (Inter + Playfair Display para fidelidade tipográfica) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 
-    <!-- Ícones (Font Awesome 6.5.1) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Font Awesome 6.5.1 com SRI -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+    >
 
-    <!-- Estilos Exclusivos do Painel Administrativo -->
-    <link rel="stylesheet" href="css/admin.css?v=20261029_typography">
+    <!-- Folha de Estilos do Design System Administrativo -->
+    <link rel="stylesheet" href="css/admin.css?v=20261104">
 </head>
 <body>
+
     <!-- =====================================================================
-         ESTADO 1: TELA DE AUTENTICAÇÃO (#login-view)
-         Exibida por padrão até que o token JWT e a role admin sejam validados.
+         1. VIEW DE AUTENTICAÇÃO (#login-view)
          ===================================================================== -->
-    <section id="login-view" class="auth-container" aria-labelledby="login-title">
+    <section id="login-view" class="auth-view" aria-labelledby="login-heading">
         <div class="auth-card">
-            <header class="auth-card__header">
-                <a href="index.html" class="auth-brand" aria-label="Voltar para a vitrine da Botica Natural">
-                    <img src="images/logo.jpg" alt="Logo Botica Natural" class="auth-brand__img" width="52" height="52">
+            <div class="auth-card__header">
+                <a href="index.html" class="auth-brand" aria-label="Voltar para a loja pública da Botica Natural">
+                    <picture>
+                        <source srcset="images/logo.webp" type="image/webp">
+                        <img
+                            src="images/logo.jpg"
+                            alt="Logo da Botica Natural"
+                            class="auth-brand__img"
+                            width="52"
+                            height="52"
+                            decoding="async"
+                        >
+                    </picture>
                     <div class="auth-brand__text">
                         <span class="auth-brand__name">Botica <strong>Natural</strong></span>
-                        <span class="auth-brand__tag"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Acesso Restrito</span>
+                        <span class="auth-brand__tag">
+                            <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                            Gestão de Catálogo
+                        </span>
                     </div>
                 </a>
-                <h1 id="login-title" class="auth-card__title">Painel Administrativo</h1>
-                <p class="auth-card__subtitle">Autentique-se com suas credenciais de administrador para gerenciar categorias, produtos e destaques da vitrine.</p>
-            </header>
 
-            <!-- Alerta de Erro / Feedback de Autenticação -->
+                <h2 id="login-heading" class="auth-card__title">Acesso Restrito</h2>
+                <p class="auth-card__subtitle">
+                    Entre com suas credenciais administrativas para gerenciar produtos, banners e configurações.
+                </p>
+            </div>
+
             <div id="login-feedback" class="login-feedback" role="alert" aria-live="assertive" hidden></div>
 
-            <form id="login-form" class="auth-form" novalidate>
+            <form id="login-form" class="auth-form" action="javascript:void(0);" novalidate>
                 <div class="form-group">
-                    <label for="email" class="form-label">E-mail administrativo <span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="email" class="form-label">E-mail administrativo</label>
                     <div class="input-icon-wrap">
                         <i class="fa-regular fa-envelope input-icon" aria-hidden="true"></i>
                         <input
@@ -53,16 +77,15 @@
                             id="email"
                             name="email"
                             class="form-control form-control--with-icon"
-                            placeholder="admin@boticanatural.com.br"
-                            autocomplete="username"
-                            inputmode="email"
+                            placeholder="seu-email@dominio.com.br"
+                            autocomplete="email"
                             required
                         >
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="password" class="form-label">Senha <span class="required-mark" aria-hidden="true">*</span></label>
+                    <label for="password" class="form-label">Senha de acesso</label>
                     <div class="input-icon-wrap">
                         <i class="fa-solid fa-lock input-icon" aria-hidden="true"></i>
                         <input
@@ -83,871 +106,200 @@
                 </button>
             </form>
 
-            <footer class="auth-card__footer">
+            <div class="auth-card__footer">
                 <a href="index.html" class="auth-back-link">
-                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para a vitrine
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    Voltar para a Loja Pública
                 </a>
                 <span class="auth-security-note">
-                    <i class="fa-solid fa-lock" aria-hidden="true"></i> Supabase RLS &amp; JWT
+                    <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                    Protegido por Supabase Auth + RLS
                 </span>
-            </footer>
+            </div>
         </div>
     </section>
 
     <!-- =====================================================================
-         ESTADO 2: DASHBOARD ADMINISTRATIVO (#dashboard-view)
-         Iniciado obrigatoriamente com `hidden` (Zero-Trust UI).
+         2. SHELL DO PAINEL ADMINISTRATIVO (#dashboard-view)
+         Sidebar colapsável + Top Bar + Outlet de Rotas por Hash
          ===================================================================== -->
-    <div id="dashboard-view" class="dashboard-layout" hidden>
-        <!-- ================= HEADER ADMINISTRATIVO ================= -->
-        <header class="admin-header">
-            <div class="admin-container admin-header__inner">
-                <div class="admin-header__brand">
-                    <img src="images/logo.jpg" alt="Botica Natural" class="admin-header__logo" width="44" height="44">
-                    <div>
-                        <div class="admin-header__title-row">
-                            <span class="admin-header__title">Botica <strong>Natural</strong></span>
-                            <span class="admin-header__env-badge">Admin CMS</span>
-                        </div>
-                        <p class="admin-header__subtitle">Gerenciamento Dinâmico de Catálogo &amp; Vitrine</p>
+    <div id="dashboard-view" class="admin-shell" hidden>
+
+        <!-- Backdrop para Drawer Mobile/Tablet -->
+        <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
+
+        <!-- SIDEBAR LATERAL COLAPSÁVEL -->
+        <aside id="admin-sidebar" class="admin-sidebar" aria-label="Menu principal do painel">
+            <div class="admin-sidebar__header">
+                <a href="#/" class="sidebar-brand" aria-label="Ir para a visão geral do painel">
+                    <picture>
+                        <source srcset="images/logo.webp" type="image/webp">
+                        <img
+                            src="images/logo.jpg"
+                            alt="Logo da Botica Natural"
+                            class="sidebar-brand__logo"
+                            width="40"
+                            height="40"
+                            decoding="async"
+                        >
+                    </picture>
+                    <div class="sidebar-brand__text">
+                        <span class="sidebar-brand__title">Botica <strong>Natural</strong></span>
+                        <span class="sidebar-brand__badge">Painel Admin</span>
                     </div>
-                </div>
+                </a>
 
-                <div class="admin-header__actions">
-                    <div class="admin-user-pill" title="Administrador autenticado">
-                        <span class="admin-user-pill__dot" aria-hidden="true"></span>
-                        <i class="fa-regular fa-user" aria-hidden="true"></i>
-                        <span id="admin-user-email" class="admin-user-pill__email">Verificando sessão...</span>
-                    </div>
-
-                    <a href="index.html" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
-                        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                        <span>Ver Vitrine</span>
-                    </a>
-
-                    <button type="button" id="btn-logout" class="btn btn-danger btn-sm" aria-label="Encerrar sessão administrativa">
-                        <i class="fa-solid fa-power-off" aria-hidden="true"></i>
-                        <span>Sair</span>
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    id="btn-close-mobile-nav"
+                    class="btn btn-icon sidebar-mobile-close"
+                    aria-label="Fechar menu de navegação"
+                >
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
             </div>
-        </header>
 
-        <!-- ================= CONTEÚDO PRINCIPAL DO PAINEL ================= -->
-        <main class="admin-main admin-container">
-            <!-- 1. BARRA DE MÉTRICAS RÁPIDAS (KPI CARDS) -->
-            <section class="kpi-section" aria-label="Indicadores do catálogo">
-                <div class="kpi-grid">
-                    <article class="kpi-card">
-                        <div class="kpi-card__icon kpi-card__icon--primary" aria-hidden="true">
-                            <i class="fa-solid fa-boxes-stacked"></i>
-                        </div>
-                        <div class="kpi-card__content">
-                            <span class="kpi-card__label">Total de Produtos</span>
-                            <strong id="kpi-total-products" class="kpi-card__value">0</strong>
-                        </div>
-                    </article>
-
-                    <article class="kpi-card">
-                        <div class="kpi-card__icon kpi-card__icon--success" aria-hidden="true">
-                            <i class="fa-solid fa-circle-check"></i>
-                        </div>
-                        <div class="kpi-card__content">
-                            <span class="kpi-card__label">Produtos Ativos</span>
-                            <strong id="kpi-active-products" class="kpi-card__value">0</strong>
-                        </div>
-                    </article>
-
-                    <article class="kpi-card">
-                        <div class="kpi-card__icon kpi-card__icon--gold" aria-hidden="true">
-                            <i class="fa-solid fa-fire"></i>
-                        </div>
-                        <div class="kpi-card__content">
-                            <span class="kpi-card__label">Mais Vendidos</span>
-                            <strong id="kpi-bestsellers" class="kpi-card__value">0</strong>
-                        </div>
-                    </article>
-
-                    <article class="kpi-card">
-                        <div class="kpi-card__icon kpi-card__icon--accent" aria-hidden="true">
-                            <i class="fa-solid fa-layer-group"></i>
-                        </div>
-                        <div class="kpi-card__content">
-                            <span class="kpi-card__label">Categorias Ativas</span>
-                            <strong id="kpi-categories" class="kpi-card__value">0</strong>
-                        </div>
-                    </article>
-                </div>
-            </section>
-
-            <!-- NAVEGAÇÃO RÁPIDA ENTRE SEÇÕES -->
-            <nav class="admin-quick-nav" aria-label="Navegação rápida das seções do painel">
-                <a href="#panel-carousel-title" class="admin-quick-nav__link">
+            <nav class="sidebar-nav" aria-label="Seções do painel">
+                <a href="#/" class="sidebar-nav__link is-active" data-view="dashboard" aria-current="page">
+                    <i class="fa-solid fa-chart-pie" aria-hidden="true"></i>
+                    <span class="sidebar-nav__label">Visão Geral</span>
+                </a>
+                <a href="#/produtos" class="sidebar-nav__link" data-view="products">
+                    <i class="fa-solid fa-capsules" aria-hidden="true"></i>
+                    <span class="sidebar-nav__label">Produtos</span>
+                </a>
+                <a href="#/produtos/novo" class="sidebar-nav__link sidebar-nav__link--sub" data-view="product-new">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                    <span class="sidebar-nav__label">Novo Produto</span>
+                </a>
+                <a href="#/banners" class="sidebar-nav__link" data-view="banners">
                     <i class="fa-solid fa-images" aria-hidden="true"></i>
-                    <span>Banners Hero</span>
+                    <span class="sidebar-nav__label">Banners Carrossel</span>
                 </a>
-                <a href="#panel-categories-title" class="admin-quick-nav__link">
-                    <i class="fa-solid fa-tags" aria-hidden="true"></i>
-                    <span>Categorias</span>
+                <a href="#/categorias" class="sidebar-nav__link" data-view="categories">
+                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                    <span class="sidebar-nav__label">Categorias</span>
                 </a>
-                <a href="#panel-products-title" class="admin-quick-nav__link">
-                    <i class="fa-solid fa-flask" aria-hidden="true"></i>
-                    <span>Cadastrar Produto</span>
-                </a>
-                <a href="#panel-whatsapp-title" class="admin-quick-nav__link">
+                <a href="#/whatsapp" class="sidebar-nav__link" data-view="whatsapp">
                     <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
-                    <span>Mensagens do WhatsApp</span>
-                </a>
-                <a href="#catalog-table-title" class="admin-quick-nav__link">
-                    <i class="fa-solid fa-table-list" aria-hidden="true"></i>
-                    <span>Catálogo &amp; Estoque</span>
+                    <span class="sidebar-nav__label">WhatsApp</span>
                 </a>
             </nav>
 
-            <!-- 1.5. MÓDULO DE GESTÃO DE BANNERS DO CARROSSEL PRINCIPAL (HERO) -->
-            <section class="admin-panel admin-panel--carousel" aria-labelledby="panel-carousel-title">
-                <header class="admin-panel__header">
-                    <div>
-                        <span class="admin-panel__eyebrow"><i class="fa-solid fa-images" aria-hidden="true"></i> Destaque Principal (Hero)</span>
-                        <h2 id="panel-carousel-title" class="admin-panel__title">Gerenciador de Banners do Carrossel</h2>
-                    </div>
-                    <span id="carousel-count-badge" class="badge badge-order">0 fotos</span>
-                </header>
+            <div class="admin-sidebar__footer">
+                <a
+                    href="index.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="sidebar-nav__link sidebar-store-link"
+                    title="Abrir loja pública em nova aba"
+                >
+                    <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                    <span class="sidebar-nav__label">Ver Loja Pública</span>
+                </a>
 
-                <div class="carousel-manager-layout">
-                    <!-- Coluna Esquerda: Formulário de Upload / Edição de Slide (#carousel-form) -->
-                    <form id="carousel-form" class="admin-form" novalidate>
-                        <input type="hidden" id="slide-id" name="id">
-                        <input type="hidden" id="slide-old-image-path" name="old_image_path">
-
-                        <div class="form-group">
-                            <label for="slide-image" class="form-label">Foto do Banner (Widescreen) <span id="slide-image-required-mark" class="required-mark" aria-hidden="true">*</span></label>
-                            <div class="upload-zone">
-                                <input
-                                    type="file"
-                                    id="slide-image"
-                                    name="image"
-                                    class="upload-zone__input"
-                                    accept="image/jpeg,image/png,image/webp"
-                                >
-                                <div class="upload-zone__prompt">
-                                    <span class="upload-zone__icon" aria-hidden="true"><i class="fa-solid fa-panorama"></i></span>
-                                    <div class="upload-zone__text">
-                                        <strong>Clique para selecionar ou arraste a foto do banner</strong>
-                                        <span>Tamanho oficial: <strong>1920x650 px</strong> (Panorâmico). Mantenha textos a pelo menos 10% das bordas (Margem de Segurança). Compressão automática em WebP HD.</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Container de Preview Panorâmico Widescreen Oficial (1920x650) -->
-                            <div id="slide-preview-container" class="slide-preview-card" hidden>
-                                <div class="slide-preview-card__frame">
-                                    <img id="slide-preview" src="" alt="Pré-visualização panorâmica do banner do carrossel" width="320" height="108">
-                                </div>
-                                <div class="slide-preview-card__info">
-                                    <span class="badge badge-success"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> WebP HD 1920px (85%)</span>
-                                    <p class="image-preview-card__note">Pré-visualização exata em proporção panorâmica oficial (1920x650 px).</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="slide-title" class="form-label">Título / Descrição Curta (Acessibilidade Alt)</label>
-                            <input
-                                type="text"
-                                id="slide-title"
-                                name="title"
-                                class="form-control"
-                                placeholder="Descrição curta do banner (ex: Promoção de Inverno)"
-                                maxlength="160"
-                            >
-                            <small class="form-hint">Usado como texto alternativo (<code>alt</code>) para leitores de tela e SEO.</small>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="slide-order" class="form-label">Ordem de Exibição</label>
-                                <input
-                                    type="number"
-                                    id="slide-order"
-                                    name="display_order"
-                                    class="form-control"
-                                    value="0"
-                                    min="0"
-                                    step="1"
-                                >
-                                <small class="form-hint">Menor número aparece primeiro no carrossel.</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="slide-link" class="form-label">Link do Banner (Opcional)</label>
-                                <input
-                                    type="url"
-                                    id="slide-link"
-                                    name="button_link"
-                                    class="form-control"
-                                    placeholder="Ex.: https://wa.me/555197731564 ou produtos.html"
-                                >
-                                <small class="form-hint">Preencha apenas se quiser que o banner seja clicável.</small>
-                            </div>
-                        </div>
-
-                        <div class="toggle-group">
-                            <label class="toggle-card" for="slide-active">
-                                <input type="checkbox" id="slide-active" name="is_active" class="toggle-switch" checked>
-                                <span class="toggle-content">
-                                    <strong class="toggle-title">Banner Ativo no Carrossel</strong>
-                                    <small class="toggle-desc">Exibir esta foto imediatamente no carrossel principal da Landing Page</small>
-                                </span>
-                            </label>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" id="btn-save-slide" class="btn btn-primary">
-                                <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
-                                <span>Adicionar Foto ao Carrossel</span>
-                            </button>
-                            <button type="button" id="btn-cancel-slide" class="btn btn-secondary" hidden>
-                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                <span>Cancelar Edição</span>
-                            </button>
-                        </div>
-                    </form>
-
-                    <!-- Coluna Direita: Galeria Visual dos Slides Atuais (#carousel-admin-grid) -->
-                    <div class="carousel-gallery-column">
-                        <div class="categories-list-section__header">
-                            <h3 class="categories-list-section__title">Fotos Atuais do Carrossel</h3>
-                            <span class="categories-list-section__hint">Ordenadas por prioridade de exibição</span>
-                        </div>
-
-                        <div id="carousel-admin-grid" class="carousel-admin-grid" aria-live="polite">
-                            <!-- Cards de slides renderizados dinamicamente via js/admin.js -->
-                        </div>
-
-                        <!-- Estado Vazio da Galeria do Carrossel (#carousel-empty-state) -->
-                        <div id="carousel-empty-state" class="empty-state" hidden>
-                            <div class="empty-state__icon" aria-hidden="true">
-                                <i class="fa-regular fa-images"></i>
-                            </div>
-                            <h3 class="empty-state__title">Nenhuma foto personalizada no carrossel</h3>
-                            <p class="empty-state__desc">
-                                Utilize o formulário ao lado para enviar seu primeiro banner. Enquanto não houver slides ativos no banco, a vitrine exibirá automaticamente os banners padrão de segurança.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 2. GRID PRINCIPAL DE 2 COLUNAS (CATEGORIAS À ESQUERDA + PRODUTOS À DIREITA) -->
-            <div class="admin-grid">
-                <!-- ================= MÓDULO 1: GESTÃO DE CATEGORIAS ================= -->
-                <section class="admin-panel" aria-labelledby="panel-categories-title">
-                    <header class="admin-panel__header">
-                        <div>
-                            <span class="admin-panel__eyebrow"><i class="fa-solid fa-tags" aria-hidden="true"></i> Taxonomia</span>
-                            <h2 id="panel-categories-title" class="admin-panel__title">Gestão de Categorias</h2>
-                        </div>
-                    </header>
-
-                    <form id="category-form" class="admin-form" novalidate>
-                        <input type="hidden" id="cat-id" name="id">
-
-                        <div class="form-group">
-                            <label for="cat-name" class="form-label">Nome da Categoria <span class="required-mark" aria-hidden="true">*</span></label>
-                            <input
-                                type="text"
-                                id="cat-name"
-                                name="name"
-                                class="form-control"
-                                placeholder="Ex.: Dermocosméticos"
-                                maxlength="80"
-                                required
-                            >
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="cat-slug" class="form-label">Slug (URL amigável)</label>
-                                <input
-                                    type="text"
-                                    id="cat-slug"
-                                    name="slug"
-                                    class="form-control"
-                                    placeholder="dermocosmeticos"
-                                    readonly
-                                    tabindex="-1"
-                                >
-                                <small class="form-hint">Gerado automaticamente a partir do nome.</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="cat-order" class="form-label">Ordem de Exibição</label>
-                                <input
-                                    type="number"
-                                    id="cat-order"
-                                    name="display_order"
-                                    class="form-control"
-                                    value="0"
-                                    min="0"
-                                    step="1"
-                                >
-                                <small class="form-hint">Menor número aparece primeiro.</small>
-                            </div>
-                        </div>
-
-                        <div class="toggle-group">
-                            <label class="toggle-card" for="cat-active">
-                                <input type="checkbox" id="cat-active" name="is_active" class="toggle-switch" checked>
-                                <span class="toggle-content">
-                                    <strong class="toggle-title">Categoria Ativa</strong>
-                                    <small class="toggle-desc">Exibir esta categoria nos filtros da vitrine pública</small>
-                                </span>
-                            </label>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" id="btn-save-cat" class="btn btn-primary">
-                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-                                <span>Salvar Categoria</span>
-                            </button>
-                            <button type="button" id="btn-cancel-cat" class="btn btn-secondary" hidden>
-                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                <span>Cancelar Edição</span>
-                            </button>
-                        </div>
-                    </form>
-
-                    <div class="admin-divider" role="separator"></div>
-
-                    <div class="categories-list-section">
-                        <div class="categories-list-section__header">
-                            <h3 class="categories-list-section__title">Categorias Cadastradas</h3>
-                            <span class="categories-list-section__hint">Ordenadas por prioridade</span>
-                        </div>
-
-                        <ul id="categories-list" class="categories-list" aria-live="polite">
-                            <!-- Populado dinamicamente por js/admin.js -->
-                        </ul>
-                    </div>
-                </section>
-
-                <!-- ================= MÓDULO 2: GESTÃO DE PRODUTOS ================= -->
-                <section class="admin-panel" aria-labelledby="panel-products-title">
-                    <header class="admin-panel__header">
-                        <div>
-                            <span class="admin-panel__eyebrow"><i class="fa-solid fa-flask" aria-hidden="true"></i> Fórmulas &amp; Itens</span>
-                            <h2 id="panel-products-title" class="admin-panel__title">Cadastrar / Editar Produto</h2>
-                        </div>
-                    </header>
-
-                    <form id="product-form" class="admin-form" novalidate>
-                        <input type="hidden" id="prod-id" name="id">
-                        <input type="hidden" id="prod-old-image-path" name="old_image_path">
-
-                        <!-- 1. DADOS BÁSICOS E TOPO DO PRODUTO -->
-                        <div class="form-section-title">
-                            <i class="fa-solid fa-tag" aria-hidden="true"></i>
-                            <span>1. Informações Básicas e Topo</span>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="prod-name" class="form-label">Nome do Produto / Fórmula <span class="required-mark" aria-hidden="true">*</span></label>
-                                <input
-                                    type="text"
-                                    id="prod-name"
-                                    name="name"
-                                    class="form-control"
-                                    placeholder="Ex.: Magno 6"
-                                    maxlength="140"
-                                    required
-                                >
-                            </div>
-
-                            <div class="form-group">
-                                <label for="prod-sku" class="form-label">Código de Referência (REF / SKU)</label>
-                                <input
-                                    type="text"
-                                    id="prod-sku"
-                                    name="sku_ref"
-                                    class="form-control"
-                                    placeholder="Ex.: REF: 4299"
-                                    maxlength="60"
-                                >
-                                <small class="form-hint">Exibido abaixo do título na página de detalhes.</small>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="prod-category" class="form-label">Categoria <span class="required-mark" aria-hidden="true">*</span></label>
-                                <select id="prod-category" name="category_id" class="form-control form-select" required>
-                                    <option value="">Selecione uma categoria...</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="prod-price" class="form-label">Preço (R$) <span class="required-mark" aria-hidden="true">*</span></label>
-                                <div class="input-prefix-wrap">
-                                    <span class="input-prefix" aria-hidden="true">R$</span>
-                                    <input
-                                        type="number"
-                                        id="prod-price"
-                                        name="price"
-                                        class="form-control form-control--with-prefix"
-                                        placeholder="0,00"
-                                        step="0.01"
-                                        min="0"
-                                        required
-                                    >
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="prod-short-desc" class="form-label">Resumo Curto de Benefícios</label>
-                            <textarea
-                                id="prod-short-desc"
-                                name="short_description"
-                                class="form-control form-textarea"
-                                rows="2"
-                                placeholder="Aumenta o desempenho físico e mental. Melhora concentração e memória. Auxilia no sono..."
-                            ></textarea>
-                            <small class="form-hint">Exibido no topo ao lado da foto e nos cards da vitrine.</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="prod-payment-info" class="form-label">Texto de Formas de Pagamento</label>
-                            <input
-                                type="text"
-                                id="prod-payment-info"
-                                name="payment_info"
-                                class="form-control"
-                                value="Consulte formas de pagamento via WhatsApp / Cartão e Pix"
-                                placeholder="Consulte formas de pagamento via WhatsApp / Cartão e Pix"
-                            >
-                            <small class="form-hint">Exibido ao lado do ícone de cartão de crédito.</small>
-                        </div>
-
-                        <!-- 2. FICHA TÉCNICA DETALHADA ("DESCRIÇÃO DO PRODUTO") -->
-                        <div class="form-section-title">
-                            <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
-                            <span>2. Ficha Técnica Detalhada (Página de Detalhes)</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="prod-desc" class="form-label">Descrição Completa e Mecanismo de Ação</label>
-                            <textarea
-                                id="prod-desc"
-                                name="description"
-                                class="form-control form-textarea"
-                                rows="4"
-                                placeholder="Descreva os benefícios clínicos, indicações e ação da fórmula..."
-                            ></textarea>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="prod-usage" class="form-label">Modo de Usar (Posologia)</label>
-                                <textarea
-                                    id="prod-usage"
-                                    name="usage_instructions"
-                                    class="form-control form-textarea"
-                                    rows="2"
-                                    placeholder="Ex.: Tomar 3 cápsulas pela manhã e 3 cápsulas à noite nas 2 primeiras semanas..."
-                                ></textarea>
-                                <small class="form-hint">Renderizado como <strong>MODO DE USAR:</strong> na página.</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="prod-composition" class="form-label">Composição e Ativos ("Contém:")</label>
-                                <textarea
-                                    id="prod-composition"
-                                    name="composition"
-                                    class="form-control form-textarea"
-                                    rows="2"
-                                    placeholder="Ex.: 3 tipos de Magnésio (citrato, bisglicinato e aspartato) 80mg, Vitamina B6 5mg e Zinco 5mg."
-                                ></textarea>
-                                <small class="form-hint">Renderizado em destaque em <em>itálico</em>.</small>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="prod-package" class="form-label">Apresentação / Embalagem</label>
-                                <input
-                                    type="text"
-                                    id="prod-package"
-                                    name="package_info"
-                                    class="form-control"
-                                    placeholder="Ex.: Frasco com 90 cápsulas."
-                                >
-                            </div>
-
-                            <div class="form-group">
-                                <label for="prod-allergens" class="form-label">Restrições / Alergênicos</label>
-                                <input
-                                    type="text"
-                                    id="prod-allergens"
-                                    name="allergen_info"
-                                    class="form-control"
-                                    value="Não contém lactose e glúten."
-                                    placeholder="Ex.: Não contém lactose e glúten."
-                                >
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="prod-quality-note" class="form-label">Garantia e Rigor Farmacêutico</label>
-                            <input
-                                type="text"
-                                id="prod-quality-note"
-                                name="quality_note"
-                                class="form-control"
-                                value="Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia."
-                                placeholder="Nota de compromisso farmacêutico em negrito no rodapé da descrição."
-                            >
-                        </div>
-
-                        <!-- 3. MENSAGEM EXCLUSIVA DO WHATSAPP (OPCIONAL) -->
-                        <div class="form-section-title">
-                            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
-                            <span>3. Mensagem Exclusiva do WhatsApp deste Produto (Opcional)</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="prod-whatsapp-message" class="form-label">
-                                Mensagem Personalizada do WhatsApp
-                            </label>
-                            
-                            <div class="variables-toolbar variables-toolbar--compact" role="toolbar" aria-label="Variáveis para a mensagem">
-                                <span class="variables-toolbar__label">Inserir variável:</span>
-                                <div class="variables-toolbar__pills">
-                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{produto}" title="Nome comercial"><code>{produto}</code></button>
-                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{categoria}" title="Categoria"><code>{categoria}</code></button>
-                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{preco}" title="Preço"><code>{preco}</code></button>
-                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{link}" title="Link da página"><code>{link}</code></button>
-                                    <button type="button" class="var-pill-btn var-pill-btn--prod" data-var="{sku}" title="REF / SKU"><code>{sku}</code></button>
-                                </div>
-                            </div>
-
-                            <textarea
-                                id="prod-whatsapp-message"
-                                name="whatsapp_message"
-                                class="form-control form-textarea"
-                                rows="3"
-                                placeholder="Deixe em branco para herdar o modelo geral da loja. Se preencher, o cliente abrirá esta mensagem específica ao clicar em Comprar..."
-                                maxlength="1000"
-                            ></textarea>
-                            <small class="form-hint">
-                                Caso não preenchido, o produto herdará automaticamente o modelo geral configurado na seção "Mensagens do WhatsApp".
-                            </small>
-                        </div>
-
-                        <!-- Flags de Controle de Vitrine (Toggle Switches lado a lado) -->
-                        <div class="form-row toggle-row" role="group" aria-label="Configurações de visibilidade na vitrine">
-                            <label class="toggle-card" for="prod-active">
-                                <input type="checkbox" id="prod-active" name="is_active" class="toggle-switch" checked>
-                                <span class="toggle-content">
-                                    <strong class="toggle-title">Produto Ativo</strong>
-                                    <small class="toggle-desc">Visível na vitrine pública</small>
-                                </span>
-                            </label>
-
-                            <label class="toggle-card toggle-card--gold" for="prod-bestseller">
-                                <input type="checkbox" id="prod-bestseller" name="is_best_seller" class="toggle-switch toggle-switch--gold">
-                                <span class="toggle-content">
-                                    <strong class="toggle-title"><i class="fa-solid fa-fire" aria-hidden="true"></i> Mais Vendido</strong>
-                                    <small class="toggle-desc">Destacar na seção principal</small>
-                                </span>
-                            </label>
-                        </div>
-
-                        <!-- Área de Upload Inteligente com Preview -->
-                        <div class="form-group">
-                            <label for="prod-image" class="form-label">Foto do Produto</label>
-                            <div class="upload-zone">
-                                <input
-                                    type="file"
-                                    id="prod-image"
-                                    name="image"
-                                    class="upload-zone__input"
-                                    accept="image/jpeg,image/png,image/webp"
-                                >
-                                <div class="upload-zone__prompt">
-                                    <span class="upload-zone__icon" aria-hidden="true">
-                                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                                    </span>
-                                    <div class="upload-zone__text">
-                                        <strong>Clique para selecionar ou arraste uma imagem</strong>
-                                        <span>Formatos aceitos: JPG, PNG ou WebP (máx. 2MB · conversão automática para WebP)</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Container de Preview da Imagem (oculto quando vazio) -->
-                            <div id="image-preview-container" class="image-preview-card" hidden>
-                                <img id="image-preview" src="" alt="Preview da imagem do produto" width="96" height="96">
-                                <div class="image-preview-card__info">
-                                    <span class="badge badge-success">
-                                        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Otimização WebP Ativa
-                                    </span>
-                                    <p class="image-preview-card__note">A imagem será comprimida e convertida automaticamente para WebP antes do envio ao bucket <code>product-images</code> (limite de 2MB).</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" id="btn-save-prod" class="btn btn-primary">
-                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-                                <span>Salvar Produto</span>
-                            </button>
-                            <button type="button" id="btn-cancel-prod" class="btn btn-secondary" hidden>
-                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                <span>Cancelar Edição</span>
-                            </button>
-                        </div>
-                    </form>
-                </section>
+                <button
+                    type="button"
+                    id="btn-collapse-sidebar"
+                    class="btn btn-secondary btn-sm sidebar-collapse-btn"
+                    aria-expanded="true"
+                    title="Recolher menu lateral"
+                >
+                    <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+                    <span class="sidebar-nav__label">Recolher menu</span>
+                </button>
             </div>
+        </aside>
 
-            <!-- 2.5. MÓDULO DE MENSAGENS PERSONALIZADAS DO WHATSAPP -->
-            <section id="panel-whatsapp-section" class="admin-panel admin-panel--whatsapp" aria-labelledby="panel-whatsapp-title">
-                <header class="admin-panel__header">
-                    <div>
-                        <span class="admin-panel__eyebrow"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Comunicação &amp; Conversão</span>
-                        <h2 id="panel-whatsapp-title" class="admin-panel__title">Mensagens do WhatsApp</h2>
-                    </div>
-                    <span id="whatsapp-sync-badge" class="badge badge-success" title="Status da sincronização com Supabase">
-                        <i class="fa-solid fa-cloud-check" aria-hidden="true"></i> Configuração Ativa
-                    </span>
-                </header>
+        <!-- ÁREA PRINCIPAL (TOP BAR + CONTEÚDO DA ROTA) -->
+        <div class="admin-workspace">
 
-                <div class="whatsapp-editor-layout">
-                    <!-- Coluna Esquerda: Editor de Mensagem e Inserção de Variáveis -->
-                    <div class="whatsapp-editor-column">
-                        <p class="admin-panel__lead">
-                            Personalize a mensagem automática que será aberta no WhatsApp quando o cliente clicar em <strong>Comprar / Tenho interesse</strong> nos cards do catálogo ou na página de detalhes. Você pode editar o <strong>Modelo Geral da Loja</strong> ou definir uma mensagem <strong>exclusiva para cada produto</strong> separadamente.
-                        </p>
+            <!-- TOP BAR -->
+            <header class="admin-topbar">
+                <div class="admin-topbar__left">
+                    <button
+                        type="button"
+                        id="btn-open-mobile-nav"
+                        class="btn btn-secondary btn-icon topbar-mobile-btn"
+                        aria-label="Abrir menu de navegação"
+                        aria-expanded="false"
+                        aria-controls="admin-sidebar"
+                    >
+                        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+                    </button>
 
-                        <!-- Seletor de Escopo: Modelo Geral vs Produto Individual -->
-                        <div class="form-group wa-scope-selector-card">
-                            <label for="whatsapp-scope-select" class="form-label wa-scope-label">
-                                <i class="fa-solid fa-sliders" aria-hidden="true"></i> Escolha o que deseja editar:
-                            </label>
-                            <div class="wa-scope-select-wrap">
-                                <select id="whatsapp-scope-select" class="form-control wa-scope-select">
-                                    <option value="__global__">🌐 Modelo Geral da Loja (Padrão para produtos sem mensagem própria)</option>
-                                    <optgroup label="Personalizar Produto Específico do Catálogo" id="whatsapp-products-optgroup">
-                                        <!-- Populado dinamicamente com todos os produtos -->
-                                    </optgroup>
-                                </select>
-                            </div>
-                            <div id="whatsapp-scope-status" class="wa-scope-status-banner">
-                                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-                                <span>Você está editando o <strong>Modelo Geral da Loja</strong>. Produtos sem mensagem exclusiva herdam este modelo automaticamente.</span>
-                            </div>
-                        </div>
-
-                        <!-- Barra de Ferramentas com Pílulas de Variáveis -->
-                        <div class="variables-toolbar" role="toolbar" aria-label="Variáveis dinâmicas para a mensagem">
-                            <span class="variables-toolbar__label">Inserir variável:</span>
-                            <div class="variables-toolbar__pills">
-                                <button type="button" class="var-pill-btn" data-var="{produto}" title="Nome comercial da fórmula">
-                                    <code>{produto}</code>
-                                    <span>Nome</span>
-                                </button>
-                                <button type="button" class="var-pill-btn" data-var="{categoria}" title="Categoria farmacêutica">
-                                    <code>{categoria}</code>
-                                    <span>Categoria</span>
-                                </button>
-                                <button type="button" class="var-pill-btn" data-var="{preco}" title="Preço formatado (ex: R$ 50,00)">
-                                    <code>{preco}</code>
-                                    <span>Preço</span>
-                                </button>
-                                <button type="button" class="var-pill-btn" data-var="{link}" title="Link direto da página do produto">
-                                    <code>{link}</code>
-                                    <span>Link</span>
-                                </button>
-                                <button type="button" class="var-pill-btn" data-var="{sku}" title="Código de referência ou REF">
-                                    <code>{sku}</code>
-                                    <span>REF / SKU</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Formulário / Textarea do Editor -->
-                        <form id="whatsapp-settings-form" class="admin-form" novalidate>
-                            <div class="form-group">
-                                <label for="whatsapp-template-text" class="form-label">
-                                    Texto da Mensagem <span class="required-mark" aria-hidden="true">*</span>
-                                </label>
-                                <textarea
-                                    id="whatsapp-template-text"
-                                    name="template_text"
-                                    class="form-control form-textarea whatsapp-textarea"
-                                    rows="5"
-                                    placeholder="Escreva a mensagem personalizada para o WhatsApp..."
-                                    maxlength="1000"
-                                    required
-                                ></textarea>
-                                
-                                <div class="editor-meta-row">
-                                    <small id="whatsapp-char-counter" class="char-counter">0 / 1000 caracteres</small>
-                                    <small id="whatsapp-validation-hint" class="validation-hint"></small>
-                                </div>
-                            </div>
-
-                            <div class="form-actions">
-                                <button type="submit" id="btn-save-whatsapp-template" class="btn btn-primary">
-                                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-                                    <span id="btn-save-whatsapp-label">Salvar Mensagem Geral</span>
-                                </button>
-                                <button type="button" id="btn-restore-whatsapp-template" class="btn btn-secondary" title="Retorna ao modelo padrão da Botica Natural">
-                                    <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
-                                    <span id="btn-restore-whatsapp-label">Restaurar Mensagem Padrão</span>
-                                </button>
-                                <button type="button" id="btn-cycle-preview-prod" class="btn btn-secondary btn--ghost" title="Alternar produto de exemplo na pré-visualização">
-                                    <i class="fa-solid fa-shuffle" aria-hidden="true"></i>
-                                    <span>Alternar Exemplo</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Coluna Direita: Pré-visualização em Tempo Real (WhatsApp Chat Bubble) -->
-                    <div class="whatsapp-preview-column">
-                        <div class="preview-header-row">
-                            <h3 class="categories-list-section__title">
-                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Pré-visualização da Mensagem
-                            </h3>
-                            <span id="wa-preview-sample-badge" class="badge badge-order" title="Fórmula sendo utilizada no teste">
-                                Exemplo de teste
-                            </span>
-                        </div>
-
-                        <!-- Card de Simulação do WhatsApp -->
-                        <div class="wa-mockup-card">
-                            <div class="wa-mockup-header">
-                                <div class="wa-mockup-avatar">
-                                    <img src="images/logo.jpg" alt="Botica Natural" width="36" height="36">
-                                </div>
-                                <div class="wa-mockup-info">
-                                    <strong class="wa-mockup-name">Botica Natural</strong>
-                                    <span class="wa-mockup-status"><i class="fa-solid fa-circle wa-status-dot" aria-hidden="true"></i> Conversa com o cliente</span>
-                                </div>
-                            </div>
-
-                            <div class="wa-mockup-body">
-                                <div class="wa-bubble-wrap">
-                                    <div class="wa-bubble">
-                                        <p id="wa-preview-bubble-text" class="wa-bubble__text">
-                                            Carregando pré-visualização...
-                                        </p>
-                                        <div class="wa-bubble__meta">
-                                            <span id="wa-preview-bubble-time" class="wa-bubble__time">12:00</span>
-                                            <i class="fa-solid fa-check-double wa-bubble__ticks" aria-hidden="true"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="wa-mockup-footer">
-                                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-                                <span>As variáveis são substituídas dinamicamente para cada fórmula da vitrine e da página de produto.</span>
-                            </div>
-                        </div>
+                    <div class="topbar-heading-group">
+                        <nav id="admin-breadcrumb" class="admin-breadcrumb" aria-label="Breadcrumb">
+                            <a href="#/" class="breadcrumb-link">Painel</a>
+                            <span class="breadcrumb-sep" aria-hidden="true">/</span>
+                            <span class="breadcrumb-current" aria-current="page">Visão Geral</span>
+                        </nav>
+                        <h1 id="admin-page-title" class="topbar__title">Visão Geral</h1>
                     </div>
                 </div>
-            </section>
 
-            <!-- 3. MÓDULO 3: CATÁLOGO ADMINISTRATIVO COM BUSCA E FILTROS -->
-            <section class="admin-panel admin-panel--catalog" aria-labelledby="catalog-table-title">
-                <header class="admin-panel__header admin-panel__header--catalog">
-                    <div>
-                        <span class="admin-panel__eyebrow"><i class="fa-solid fa-table-list" aria-hidden="true"></i> Inventário da Vitrine</span>
-                        <h2 id="catalog-table-title" class="admin-panel__title">Catálogo de Produtos Cadastrados</h2>
+                <div class="admin-topbar__right">
+                    <div class="topbar-search">
+                        <i class="fa-solid fa-magnifying-glass topbar-search__icon" aria-hidden="true"></i>
+                        <input
+                            type="search"
+                            id="admin-global-search"
+                            class="form-control form-control--with-icon topbar-search__input"
+                            placeholder="Buscar produto e pressionar Enter..."
+                            aria-label="Busca rápida de produtos"
+                        >
                     </div>
 
-                    <!-- Barra de Ferramentas: Busca e Filtros -->
-                    <div class="catalog-toolbar" role="search" aria-label="Filtrar produtos cadastrados">
-                        <div class="catalog-toolbar__search">
-                            <i class="fa-solid fa-magnifying-glass catalog-toolbar__search-icon" aria-hidden="true"></i>
-                            <input
-                                type="search"
-                                id="search-products"
-                                class="form-control form-control--with-icon"
-                                placeholder="Buscar por nome ou descrição..."
-                                aria-label="Buscar produto por nome"
-                            >
-                        </div>
+                    <button
+                        type="button"
+                        id="btn-toggle-theme"
+                        class="btn btn-secondary btn-icon"
+                        aria-label="Alternar tema claro ou escuro"
+                        title="Alternar tema"
+                    >
+                        <i class="fa-solid fa-moon" aria-hidden="true"></i>
+                    </button>
 
-                        <div class="catalog-toolbar__filters">
-                            <select id="filter-category" class="form-control form-select" aria-label="Filtrar por categoria">
-                                <option value="all">Todas as categorias</option>
-                            </select>
-
-                            <select id="filter-status" class="form-control form-select" aria-label="Filtrar por status ou destaque">
-                                <option value="all">Todos os status</option>
-                                <option value="active">Somente Ativos</option>
-                                <option value="inactive">Somente Inativos</option>
-                                <option value="bestseller">Mais Vendidos (Destaques)</option>
-                            </select>
-                        </div>
+                    <div class="admin-user-pill" title="Administrador autenticado">
+                        <span class="admin-user-pill__dot" aria-hidden="true"></span>
+                        <span id="admin-user-email" class="admin-user-pill__email">Carregando...</span>
                     </div>
-                </header>
 
-                <!-- Wrapper Responsivo da Tabela -->
-                <div class="table-responsive">
-                    <table id="products-table" class="admin-table">
-                        <thead>
-                            <tr>
-                                <th scope="col" class="col-thumb">Foto</th>
-                                <th scope="col" class="col-product">Produto / Descrição</th>
-                                <th scope="col" class="col-category">Categoria</th>
-                                <th scope="col" class="col-price">Preço</th>
-                                <th scope="col" class="col-status">Status &amp; Vitrine</th>
-                                <th scope="col" class="col-actions">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="products-tbody">
-                            <!-- Linhas renderizadas dinamicamente por js/admin.js -->
-                        </tbody>
-                    </table>
+                    <button
+                        type="button"
+                        id="btn-logout"
+                        class="btn btn-secondary btn-sm"
+                        aria-label="Encerrar sessão administrativa"
+                    >
+                        <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                        <span class="topbar-logout-label">Sair</span>
+                    </button>
                 </div>
+            </header>
 
-                <!-- Estado Vazio Amigável (#products-empty-state) -->
-                <div id="products-empty-state" class="empty-state" hidden>
-                    <div class="empty-state__icon" aria-hidden="true">
-                        <i class="fa-solid fa-mortar-pestle"></i>
-                    </div>
-                    <h3 class="empty-state__title">Nenhum produto encontrado</h3>
-                    <p class="empty-state__desc">Não há produtos correspondentes aos filtros aplicados ou o catálogo ainda está vazio. Utilize o formulário acima para cadastrar sua primeira fórmula.</p>
+            <!-- OUTLET DE VIEWS RENDERIZADAS POR ROTA -->
+            <main id="admin-view-outlet" class="admin-main" tabindex="-1"></main>
+
+            <footer class="admin-footer">
+                <div class="admin-footer__inner">
+                    <span>&copy; 2026 Botica Natural — Painel Administrativo</span>
+                    <span>Segurança RLS Ativa · Zero-Trust UI</span>
                 </div>
-            </section>
-        </main>
-
-        <footer class="admin-footer">
-            <div class="admin-container admin-footer__inner">
-                <span>&copy; 2026 <strong>Botica Natural</strong> — Painel Administrativo de Catálogo</span>
-                <span>Arquitetura Serverless Supabase · Zero-Trust RLS</span>
-            </div>
-        </footer>
+            </footer>
+        </div>
     </div>
 
     <!-- =====================================================================
-         MODAL NATIVO DE CONFIRMAÇÃO (<dialog id="confirm-modal">)
-         Substitui window.confirm() em exclusões críticas.
+         3. MODAL NATIVO DE CONFIRMAÇÃO (<dialog id="confirm-modal">)
          ===================================================================== -->
     <dialog id="confirm-modal" class="confirm-modal" aria-labelledby="modal-title" aria-describedby="modal-message">
         <div class="confirm-modal__card">
-            <div class="confirm-modal__icon" aria-hidden="true">
+            <div id="modal-icon-wrap" class="confirm-modal__icon" aria-hidden="true">
                 <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
             <div class="confirm-modal__body">
-                <h2 id="modal-title" class="confirm-modal__title">Confirmar exclusão</h2>
-                <p id="modal-message" class="confirm-modal__message">Tem certeza de que deseja excluir permanentemente este registro? Esta ação não poderá ser desfeita.</p>
+                <h2 id="modal-title" class="confirm-modal__title">Confirmar ação</h2>
+                <p id="modal-message" class="confirm-modal__message">Tem certeza de que deseja continuar?</p>
             </div>
             <div class="confirm-modal__actions">
                 <button type="button" id="modal-btn-cancel" class="btn btn-secondary">
@@ -955,19 +307,18 @@
                 </button>
                 <button type="button" id="modal-btn-confirm" class="btn btn-danger">
                     <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
-                    <span>Confirmar Exclusão</span>
+                    <span>Confirmar</span>
                 </button>
             </div>
         </div>
     </dialog>
 
     <!-- =====================================================================
-         CONTAINER DE NOTIFICAÇÕES FLUTUANTES (#toast-container)
-         Substitui window.alert() com acessibilidade WAI-ARIA.
+         4. CONTAINER DE NOTIFICAÇÕES FLUTUANTES (#toast-container)
          ===================================================================== -->
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Controlador ES Module do Painel Administrativo -->
-    <script type="module" src="./js/admin.js"></script>
+    <!-- Módulo único de entrada do Painel Administrativo com cache-busting atualizado -->
+    <script type="module" src="js/admin/main.js?v=20261104_hotfix1"></script>
 </body>
 </html>

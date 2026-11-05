@@ -6,16 +6,40 @@
  * Contadores, FAQ, LGPD e Blindagem de Links do WhatsApp.
  * (Carrossel Hero e Catálogo de Produtos são controlados 100% por js/app.js via Supabase)
  */
+import {
+  BRAND_NAME,
+  WHATSAPP_PHONE,
+  LGPD_CONSENT_KEY,
+  DEFAULT_WHATSAPP_GREETING,
+  SITE_CONFIG,
+} from './config.js';
+
 (() => {
   'use strict';
 
+  document.documentElement.classList.add('js');
+
   const CONFIG = Object.freeze({
-    whatsappNumber: '555197731564',
-    defaultMessage: 'Olá! Gostaria de fazer um orçamento na Botica Natural.',
-    cookieKey: 'bn_lgpd_consent',
+    brandName: BRAND_NAME,
+    whatsappNumber: WHATSAPP_PHONE,
+    defaultMessage: DEFAULT_WHATSAPP_GREETING,
+    cookieKey: LGPD_CONSENT_KEY,
     autoplayMs: 4500,
-    allowedWhatsAppHosts: Object.freeze(['wa.me', 'api.whatsapp.com']),
+    allowedWhatsAppHosts: SITE_CONFIG.ALLOWED_WHATSAPP_HOSTS,
   });
+
+  /**
+   * Verifica se o usuário concedeu consentimento explícito de cookies (LGPD).
+   * Nenhum evento de analytics/pixel é disparado antes do consentimento.
+   * @returns {boolean}
+   */
+  const hasCookieConsent = () => {
+    try {
+      return localStorage.getItem(CONFIG.cookieKey) === 'true';
+    } catch {
+      return false;
+    }
+  };
 
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
   const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
@@ -83,6 +107,9 @@
 
       const ctaLocation = sanitizeSlug(link.dataset.wa) || 'geral';
       const payload = { event: 'whatsapp_click', cta_location: ctaLocation };
+
+      // LGPD: Só envia eventos para camadas de analytics/pixel após consentimento explícito
+      if (!hasCookieConsent()) return;
 
       try {
         (window.dataLayer = window.dataLayer || []).push(payload);
@@ -533,18 +560,41 @@
     startAutoplayTimer();
   };
 
-  /* 8. CONTADORES */
+  /* 8. CONTADORES (lê apenas valores numéricos reais do HTML; preserva placeholders [PREENCHER: ...]) */
   const initCounters = () => {
     const counters = $$('[data-counter]');
     if (!counters.length || prefersReducedMotion || !('IntersectionObserver' in window)) return;
 
     const fmt = new Intl.NumberFormat('pt-BR');
-    counters.forEach((el) => {
+
+    /**
+     * Extrai o valor numérico real do atributo `data-counter` ou do texto do elemento.
+     * Retorna `null` quando o elemento contém placeholder `[PREENCHER` ou valor não numérico,
+     * evitando inventar números ou sobrescrever placeholders com zero.
+     * @param {HTMLElement} el
+     * @returns {number | null}
+     */
+    const parseRealCounterTarget = (el) => {
+      const rawAttr = String(el.dataset.counter || '').trim();
+      const rawText = String(el.textContent || '').trim();
+      const candidate = rawAttr || rawText;
+      if (!candidate || candidate.includes('[PREENCHER')) return null;
+      if (!/^\d+([.,]\d+)?$/.test(candidate)) return null;
+      const numeric = Number(candidate.replace(/\./g, '').replace(',', '.'));
+      return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+    };
+
+    const validCounters = counters
+      .map((el) => ({ el, target: parseRealCounterTarget(el) }))
+      .filter((item) => item.target !== null);
+
+    if (!validCounters.length) return;
+
+    validCounters.forEach(({ el }) => {
       el.textContent = '0';
     });
 
-    const animate = (el) => {
-      const target = Math.max(0, Number(el.dataset.counter) || 0);
+    const animate = (el, target) => {
       const duration = 1800;
       const start = performance.now();
       const tick = (now) => {
@@ -556,18 +606,23 @@
       requestAnimationFrame(tick);
     };
 
+    const targetMap = new WeakMap(validCounters.map(({ el, target }) => [el, target]));
+
     const observer = new IntersectionObserver(
       (entries, obs) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
-          animate(entry.target);
+          const target = targetMap.get(entry.target);
+          if (typeof target === 'number') {
+            animate(entry.target, target);
+          }
           obs.unobserve(entry.target);
         });
       },
       { threshold: 0.6 }
     );
 
-    counters.forEach((c) => observer.observe(c));
+    validCounters.forEach(({ el }) => observer.observe(el));
   };
 
   /* 9. FAQ — Acordeão exclusivo */

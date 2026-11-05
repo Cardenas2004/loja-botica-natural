@@ -7,9 +7,13 @@
     <meta name="description" content="Explore o catálogo completo da Botica Natural: dermocosméticos, suplementos, emagrecimento, fitoterápicos e veterinária. Peça pelo WhatsApp com orientação farmacêutica.">
     <meta name="theme-color" content="#3D1E6D">
     <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://njdkuhgoophzjxmmempu.supabase.co; connect-src 'self' https://njdkuhgoophzjxmmempu.supabase.co wss://njdkuhgoophzjxmmempu.supabase.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; form-action 'self';">
     <meta name="format-detection" content="telephone=no">
+    <!-- [PREENCHER: confirmar domínio oficial de produção] -->
     <link rel="canonical" href="https://www.boticanatural.com.br/produtos.html">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
@@ -18,20 +22,22 @@
     <meta property="og:title" content="Catálogo de Produtos | Botica Natural">
     <meta property="og:description" content="Fórmulas sob medida com ativos padronizados, controle de qualidade e envio rápido. Peça pelo WhatsApp.">
     <meta property="og:url" content="https://www.boticanatural.com.br/produtos.html">
-
-    <script>document.documentElement.classList.add('js');</script>
+    <meta property="og:image" content="https://www.boticanatural.com.br/images/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap">
 
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Icons (Font Awesome 6.5.1 com SRI) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- App Styles & Scripts -->
-    <link rel="stylesheet" href="css/style.css?v=20261029_typography">
-    <script src="js/main.js?v=20261026" defer></script>
+    <link rel="stylesheet" href="css/style.css?v=20261104">
+    <script type="module" src="js/main.js?v=20261104"></script>
 </head>
 <body>
     <a class="skip-link" href="#catalogo">Pular para os produtos</a>
@@ -41,7 +47,10 @@
     <header class="header header--solid">
         <div class="container header__inner">
             <a href="index.html#inicio" class="logo" aria-label="Botica Natural — início">
-                <img src="images/logo.jpg" alt="Botica Natural" class="logo__img">
+                <picture>
+                    <source srcset="images/logo.webp" type="image/webp">
+                    <img src="images/logo.jpg" alt="Logo da Botica Natural" class="logo__img" width="44" height="44" decoding="async">
+                </picture>
                 <span class="logo__text">Botica <strong>Natural</strong></span>
             </a>
 
@@ -51,12 +60,12 @@
                     <li><a class="nav__link" href="index.html#mais-vendidos">Mais Vendidos</a></li>
                     <li><a class="nav__link" href="index.html#especialidades">Formas Farmacêuticas</a></li>
                     <li><a class="nav__link" href="index.html#como-funciona">Como funciona</a></li>
-                    <li><a class="nav__link" href="index.html#depoimentos">Depoimentos</a></li>
+                    <!-- TODO: Reativar link quando a seção #depoimentos tiver avaliações reais verificadas -->
                     <li><a class="nav__link" href="index.html#sobre">Quem somos</a></li>
                     <li><a class="nav__link" href="index.html#duvidas">Dúvidas</a></li>
                 </ul>
                 <div class="nav__footer">
-                    <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="menu-catalogo">
+                    <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="menu-catalogo">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar receita
                     </a>
                     <p class="nav__hours"><i class="fa-regular fa-clock" aria-hidden="true"></i> Seg à Sex 8:30–12:00 e 13:30–18:00 · Sáb 08:30–12:00</p>
@@ -64,7 +73,7 @@
             </nav>
 
             <div class="header__actions">
-                <a class="btn btn--secondary btn--sm header__cta" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="header-catalogo">
+                <a class="btn btn--secondary btn--sm header__cta" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="header-catalogo">
                     <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
                     <span class="header__cta-text">Enviar receita</span>
                 </a>
@@ -103,6 +112,7 @@
         </section>
 
         <!-- ================= CATÁLOGO COM ABAS ================= -->
+        <!-- REVISAR COM RT: RDC 67/2007 e normas de publicidade da Anvisa (exibição de preços de manipulados no catálogo) -->
         <section class="section" id="catalogo" aria-label="Lista de produtos por categoria">
             <div class="container">
                 <!-- Barra de Filtros Dinâmicos de Categoria -->
@@ -160,7 +170,7 @@
                     <i class="fa-solid fa-box-open catalog-empty__icon" aria-hidden="true"></i>
                     <h3 class="catalog-empty__title" id="catalog-empty-title">Nenhum produto disponível nesta categoria no momento.</h3>
                     <p class="catalog-empty__desc" id="catalog-empty-desc">Não encontrou o produto desejado? Nós manipulamos qualquer fórmula sob prescrição médica ou indicação personalizada!</p>
-                    <a class="btn btn--secondary btn--lg" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20procurei%20uma%20f%C3%B3rmula%20no%20cat%C3%A1logo%20e%20queria%20saber%20se%20voc%C3%AAs%20manipulam." target="_blank" rel="noopener noreferrer" data-wa="catalogo-empty-cta">
+                    <a class="btn btn--secondary btn--lg" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20procurei%20uma%20f%C3%B3rmula%20no%20cat%C3%A1logo%20e%20queria%20saber%20se%20voc%C3%AAs%20manipulam." target="_blank" rel="noopener noreferrer" data-wa="catalogo-empty-cta">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com o Farmacêutico no WhatsApp
                     </a>
                 </div>
@@ -169,7 +179,7 @@
                 <div class="catalog-custom-banner">
                     <h3>Tem uma receita médica ou odontológica?</h3>
                     <p>Manipulamos fórmulas personalizadas sob medida na dosagem exata indicada pelo seu médico, nutricionista ou veterinário. Envie a foto da receita e receba o orçamento em minutos.</p>
-                    <a class="btn btn--secondary btn--lg btn--pulse" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tenho%20uma%20receita%20e%20gostaria%20de%20fazer%20um%20or%C3%A7amento." data-wa="catalogo-custom-recipe">
+                    <a class="btn btn--secondary btn--lg btn--pulse" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tenho%20uma%20receita%20e%20gostaria%20de%20fazer%20um%20or%C3%A7amento." data-wa="catalogo-custom-recipe">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar foto da receita pelo WhatsApp
                     </a>
                 </div>
@@ -182,14 +192,17 @@
         <div class="container footer__grid">
             <div class="footer__about">
                 <a href="index.html#inicio" class="logo" aria-label="Botica Natural — voltar ao início">
-                    <img src="images/logo.jpg" alt="Botica Natural" class="logo__img">
+                    <picture>
+                        <source srcset="images/logo.webp" type="image/webp">
+                        <img src="images/logo.jpg" alt="Logo da Botica Natural" class="logo__img" width="44" height="44" loading="lazy" decoding="async">
+                    </picture>
                     <span class="logo__text">Botica <strong>Natural</strong></span>
                 </a>
                 <p>Manipulando saúde, bem-estar e qualidade de vida com excelência e responsabilidade.</p>
                 <ul class="social">
                     <li><a href="https://www.instagram.com/boticanatural" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a></li>
                     <li><a href="https://www.facebook.com/boticanatural" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a></li>
-                    <li><a href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer-social" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a></li>
+                    <li><a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer-social" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a></li>
                 </ul>
             </div>
 
@@ -200,9 +213,9 @@
                     <li><a href="index.html#mais-vendidos">Mais Vendidos</a></li>
                     <li><a href="index.html#especialidades">Formas Farmacêuticas</a></li>
                     <li><a href="index.html#como-funciona">Como funciona</a></li>
-                    <li><a href="index.html#depoimentos">Depoimentos</a></li>
                     <li><a href="index.html#sobre">Quem somos</a></li>
                     <li><a href="index.html#duvidas">Dúvidas</a></li>
+                    <li><a href="privacidade.html">Política de Privacidade (LGPD)</a></li>
                 </ul>
             </nav>
 
@@ -218,9 +231,9 @@
             <div class="footer__col">
                 <h3>Contato</h3>
                 <ul class="footer__contact">
-                    <li><a href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 9773-1564</a></li>
-                    <li><a href="tel:+555197731564"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 9773-1564</a></li>
-                    <li><a href="mailto:contato@boticanatural.com.br"><i class="fa-solid fa-envelope" aria-hidden="true"></i> contato@boticanatural.com.br</a></li>
+                    <li><a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 8554-3448</a></li>
+                    <li><a href="tel:+555185543448"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 8554-3448</a></li>
+                    <li><span><i class="fa-solid fa-envelope" aria-hidden="true"></i> [PREENCHER: e-mail oficial]</span></li>
                     <li><a href="https://www.google.com/maps/search/?api=1&amp;query=Rua+Assis+Brasil+31+Centro+Triunfo+RS" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Rua Assis Brasil, 31 – Centro, Triunfo/RS</a></li>
                 </ul>
             </div>
@@ -228,31 +241,31 @@
 
         <div class="container footer__bottom">
             <p>© <span data-year>2026</span> Botica Natural Farmácia de Manipulação. Todos os direitos reservados.</p>
-            <p>CNPJ 00.000.000/0001-00 · Farm. Resp.: Dr. João Silva – CRF-RS 12345</p>
+            <p>CNPJ [PREENCHER: CNPJ] · Farm. Resp.: [PREENCHER: Nome do Farmacêutico] – CRF-RS [PREENCHER: número CRF] · Licença Sanitária / AFE nº [PREENCHER: número da AFE/Licença]</p>
         </div>
     </footer>
 
     <!-- ================= FLOATING CTAs ================= -->
-    <a class="wa-float" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20um%20farmac%C3%AAutico." data-wa="float" aria-label="Fale conosco no WhatsApp">
+    <a class="wa-float" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20um%20farmac%C3%AAutico." data-wa="float" aria-label="Fale conosco no WhatsApp">
         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
         <span class="wa-float__tooltip" aria-hidden="true">Fale com um farmacêutico</span>
     </a>
 
     <!-- Mobile Sticky CTA -->
     <div class="mobile-cta">
-        <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20sobre%20os%20produtos%20do%20cat%C3%A1logo." data-wa="sticky-mobile-catalogo">
+        <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20sobre%20os%20produtos%20do%20cat%C3%A1logo." data-wa="sticky-mobile-catalogo">
             <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Tirar dúvidas no WhatsApp
         </a>
     </div>
 
     <!-- Cookie LGPD -->
     <div class="cookie" role="region" aria-label="Aviso de cookies" hidden>
-        <p>Usamos cookies essenciais para melhorar sua experiência, em conformidade com a LGPD. Saiba mais em nossas <a href="index.html#duvidas">Dúvidas e Privacidade</a>.</p>
+        <p>Usamos apenas armazenamento essencial para funcionamento do site, em conformidade com a LGPD. Saiba mais em nossa <a href="privacidade.html">Política de Privacidade</a>.</p>
         <button class="btn btn--primary btn--sm" type="button" data-cookie-accept>Entendi</button>
     </div>
 
     <!-- Motor Dinâmico da Vitrine (Supabase ES Module) -->
-    <script type="module" src="./js/app.js"></script>
+    <script type="module" src="./js/app.js?v=20261104"></script>
 </body>
 </html>
 

@@ -24,6 +24,12 @@ import {
   normalizeSupabaseError,
 } from './supabaseClient.js';
 
+import {
+  BRAND_NAME,
+  SITE_DOMAIN,
+  WHATSAPP_PHONE as CONFIG_WHATSAPP_PHONE,
+} from './config.js';
+
 /* ==========================================================================
    1. CONSTANTES & CONTRATOS IMUTÁVEIS
    ========================================================================== */
@@ -32,7 +38,7 @@ import {
  * Número oficial de WhatsApp da Botica Natural (DDI + DDD + Número limpo).
  * @type {string}
  */
-export const WHATSAPP_PHONE = '555197731564';
+export const WHATSAPP_PHONE = CONFIG_WHATSAPP_PHONE;
 
 /**
  * Chave de registro do template na tabela `public.site_settings`.
@@ -45,7 +51,7 @@ export const SETTING_KEY_PRODUCT_TEMPLATE = 'whatsapp_product_message_template';
  * @type {string}
  */
 export const DEFAULT_PRODUCT_MESSAGE_TEMPLATE =
-  'Olá! Tenho interesse no produto *{produto}* (Categoria: {categoria} | Valor: {preco}). Vi no site da Botica Natural ({link}) e gostaria de tirar dúvidas com o farmacêutico e fazer meu pedido!';
+  `Olá! Tenho interesse no produto *{produto}* (Categoria: {categoria} | Valor: {preco}). Vi no site da ${BRAND_NAME} ({link}) e gostaria de tirar dúvidas com o farmacêutico e fazer meu pedido!`;
 
 /**
  * Catálogo de variáveis dinâmicas disponíveis para inserção no editor.
@@ -168,9 +174,11 @@ function resolveCategoryName(product) {
 function resolveProductUrl(product) {
   const productId = String(product?.id || '').trim();
   const origin =
-    typeof window !== 'undefined' && window.location?.origin
+    typeof window !== 'undefined' &&
+    window.location?.origin &&
+    /^https?:/i.test(window.location.origin)
       ? window.location.origin
-      : 'https://www.boticanatural.com.br';
+      : SITE_DOMAIN;
 
   if (!productId) {
     return typeof window !== 'undefined' ? window.location.href : `${origin}/produtos.html`;
@@ -250,6 +258,12 @@ export function interpolateTemplate(template, product) {
 
   return output.trim();
 }
+
+/**
+ * Alias de compatibilidade com módulos do admin
+ */
+export const interpolateProductMessage = interpolateTemplate;
+
 
 /**
  * Constrói a mensagem final interpolada para o produto.

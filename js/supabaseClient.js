@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/+esm';
 
 /* ==========================================================================
    1. TIPAGEM JSDOC (SCHEMA POSTGRESQL -> INTELLISENSE VS CODE)
@@ -304,11 +304,37 @@ export async function getCurrentSession() {
 }
 
 /**
+ * Verifica se uma URL pertence estritamente ao host oficial do Supabase Storage deste projeto.
+ * Impede renderização de imagens de domínios externos arbitrários (anti-SSRF/tracking/spoofing).
+ *
+ * @param {string | null | undefined} rawUrl - URL candidata.
+ * @returns {boolean} `true` se o protocolo for HTTPS e o host for o do Supabase Storage configurado.
+ */
+export function isTrustedSupabaseStorageUrl(rawUrl) {
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) {
+    return false;
+  }
+
+  try {
+    const expectedHost = new URL(SUPABASE_URL).hostname.toLowerCase();
+    const parsed = new URL(rawUrl.trim());
+    return (
+      parsed.protocol === 'https:' &&
+      parsed.hostname.toLowerCase() === expectedHost &&
+      parsed.pathname.startsWith(`/storage/v1/object/public/${STORAGE_CONFIG.BUCKET_NAME}/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Resolve e retorna a URL pública otimizada de uma imagem armazenada no bucket `product-images`.
- * Aceita tanto um caminho relativo do Storage (`image_path`) quanto uma URL absoluta já resolvida.
+ * Aceita tanto um caminho relativo do Storage (`image_path`) quanto uma URL absoluta do próprio Storage.
+ * Rejeita qualquer URL cujo host não seja o do próprio Supabase Storage.
  *
  * @param {string | null | undefined} imagePath - Caminho do arquivo no bucket (`image_path`) ou URL completa.
- * @returns {string} URL pública válida da imagem ou string vazia (`''`) quando ausente/inválido.
+ * @returns {string} URL pública válida do Supabase Storage ou string vazia (`''`) quando ausente/inválido.
  */
 export function getPublicImageUrl(imagePath) {
   if (typeof imagePath !== 'string') {
@@ -320,9 +346,9 @@ export function getPublicImageUrl(imagePath) {
     return '';
   }
 
-  // Se já for uma URL absoluta HTTPS/HTTP ou caminho local de asset estático, preserva de forma segura
-  if (/^https?:\/\//i.test(trimmedPath) || trimmedPath.startsWith('images/')) {
-    return trimmedPath;
+  // Se for uma URL com esquema ou protocolo relativo, aceita somente se for do host do Supabase Storage
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(trimmedPath) || trimmedPath.startsWith('//')) {
+    return isTrustedSupabaseStorageUrl(trimmedPath) ? trimmedPath : '';
   }
 
   // Higieniza barras iniciais duplicadas e previne path traversal
@@ -336,7 +362,8 @@ export function getPublicImageUrl(imagePath) {
       .from(STORAGE_CONFIG.BUCKET_NAME)
       .getPublicUrl(sanitizedStoragePath);
 
-    return data?.publicUrl || '';
+    const candidateUrl = data?.publicUrl || '';
+    return isTrustedSupabaseStorageUrl(candidateUrl) ? candidateUrl : '';
   } catch (err) {
     console.error('[SupabaseClient][StorageUrlError] Erro ao construir URL pública da imagem:', {
       imagePath,
@@ -344,6 +371,30 @@ export function getPublicImageUrl(imagePath) {
     });
     return '';
   }
+}
+
+/**
+ * Resolve com segurança o par `image_url` / `image_path` vindo do banco de dados,
+ * garantindo que somente URLs do próprio Supabase Storage sejam renderizadas.
+ *
+ * @param {string | null | undefined} imageUrl - Campo `image_url` vindo do banco.
+ * @param {string | null | undefined} imagePath - Campo `image_path` vindo do banco.
+ * @param {string} [fallback=''] - Valor de fallback caso nenhum dos dois seja válido.
+ * @returns {string}
+ */
+export function resolveSafeStorageImageUrl(imageUrl, imagePath, fallback = '') {
+  if (isTrustedSupabaseStorageUrl(imageUrl)) {
+    return String(imageUrl).trim();
+  }
+
+  if (typeof imagePath === 'string' && imagePath.trim()) {
+    const fromPath = getPublicImageUrl(imagePath);
+    if (fromPath) {
+      return fromPath;
+    }
+  }
+
+  return fallback;
 }
 
 /**
@@ -539,4 +590,12 @@ export function normalizeSupabaseError(
     status,
   };
 }
+
+/* ==========================================================================
+   7. ALIASES DE RETROCOMPATIBILIDADE (MODULOS CONSUMIDORES)
+   ========================================================================== */
+export const STORAGE_BUCKET = STORAGE_CONFIG.BUCKET_NAME;
+export const getProductImageUrl = getPublicImageUrl;
+export const isTrustedStorageUrl = isTrustedSupabaseStorageUrl;
+
 

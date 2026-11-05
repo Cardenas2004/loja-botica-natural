@@ -7,8 +7,13 @@
     <meta name="description" content="Confira a ficha técnica, composição, posologia e faça seu pedido direto pelo WhatsApp com orientação farmacêutica especializada na Botica Natural.">
     <meta name="theme-color" content="#3D1E6D">
     <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://njdkuhgoophzjxmmempu.supabase.co; connect-src 'self' https://njdkuhgoophzjxmmempu.supabase.co wss://njdkuhgoophzjxmmempu.supabase.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; form-action 'self';">
     <meta name="format-detection" content="telephone=no">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+    <!-- [PREENCHER: confirmar domínio oficial de produção] -->
+    <link rel="canonical" href="https://www.boticanatural.com.br/produto.html">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
 
     <!-- Open Graph -->
     <meta property="og:type" content="product">
@@ -16,21 +21,22 @@
     <meta property="og:site_name" content="Botica Natural">
     <meta property="og:title" content="Detalhes do Produto | Botica Natural">
     <meta property="og:description" content="Fórmulas manipuladas com matérias-primas certificadas e rigoroso controle de qualidade farmacêutico.">
-
-    <script>document.documentElement.classList.add('js');</script>
+    <meta property="og:url" content="https://www.boticanatural.com.br/produto.html">
+    <meta property="og:image" content="https://www.boticanatural.com.br/images/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap">
 
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Icons (Font Awesome 6.5.1 com SRI) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- App Styles -->
-    <link rel="stylesheet" href="css/style.css?v=20261029_typography">
-    <link rel="stylesheet" href="css/product.css?v=20261029_typography">
-    <script src="js/main.js?v=20261027" defer></script>
+    <link rel="stylesheet" href="css/style.css?v=20261104">
+    <link rel="stylesheet" href="css/product.css?v=20261104">
+    <script type="module" src="js/main.js?v=20261104"></script>
 </head>
 <body>
     <a class="skip-link" href="#conteudo-produto">Pular para os detalhes do produto</a>
@@ -40,7 +46,10 @@
     <header class="header header--solid">
         <div class="container header__inner">
             <a href="index.html#inicio" class="logo" aria-label="Botica Natural — início">
-                <img src="images/logo.jpg" alt="Botica Natural" class="logo__img">
+                <picture>
+                    <source srcset="images/logo.webp" type="image/webp">
+                    <img src="images/logo.jpg" alt="Logo da Botica Natural" class="logo__img" width="44" height="44" decoding="async">
+                </picture>
                 <span class="logo__text">Botica <strong>Natural</strong></span>
             </a>
 
@@ -50,12 +59,12 @@
                     <li><a class="nav__link" href="index.html#mais-vendidos">Mais Vendidos</a></li>
                     <li><a class="nav__link" href="index.html#especialidades">Formas Farmacêuticas</a></li>
                     <li><a class="nav__link" href="index.html#como-funciona">Como funciona</a></li>
-                    <li><a class="nav__link" href="index.html#depoimentos">Depoimentos</a></li>
+                    <!-- TODO: Reativar link quando a seção #depoimentos tiver avaliações reais verificadas -->
                     <li><a class="nav__link" href="index.html#sobre">Quem somos</a></li>
                     <li><a class="nav__link" href="index.html#duvidas">Dúvidas</a></li>
                 </ul>
                 <div class="nav__footer">
-                    <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="menu-produto">
+                    <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="menu-produto">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar receita
                     </a>
                     <p class="nav__hours"><i class="fa-regular fa-clock" aria-hidden="true"></i> Seg à Sex 8:30–12:00 e 13:30–18:00 · Sáb 08:30–12:00</p>
@@ -63,7 +72,7 @@
             </nav>
 
             <div class="header__actions">
-                <a class="btn btn--secondary btn--sm header__cta" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="header-produto">
+                <a class="btn btn--secondary btn--sm header__cta" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="header-produto">
                     <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
                     <span class="header__cta-text">Enviar receita</span>
                 </a>
@@ -109,18 +118,18 @@
                 </div>
             </div>
 
-            <!-- 2. ESTADO DE ERRO (Caso o ID seja inválido ou o produto não exista) -->
+            <!-- 2. ESTADO DE ERRO (Caso o ID seja inválido, o produto não exista ou o Supabase falhe) -->
             <section id="pdp-error" class="pdp-error-card" hidden role="alert">
                 <div class="pdp-error-icon" aria-hidden="true">
                     <i class="fa-solid fa-mortar-pestle"></i>
                 </div>
-                <h1 class="pdp-error-title">Produto não encontrado</h1>
+                <h2 class="pdp-error-title">Produto não encontrado</h2>
                 <p id="pdp-error-message" class="pdp-error-desc">
                     O produto solicitado não está disponível ou o link informado está incorreto.
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a class="btn btn--primary" href="index.html">
-                        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Voltar para o Início
+                    <a class="btn btn--primary" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20consultar%20uma%20f%C3%B3rmula%20na%20Botica%20Natural." target="_blank" rel="noopener noreferrer" data-wa="pdp-error-wa">
+                        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com Farmacêutico no WhatsApp
                     </a>
                     <a class="btn btn--secondary" href="produtos.html">
                         <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i> Ver Catálogo Completo
@@ -135,14 +144,14 @@
                     <!-- Coluna 1: Galeria de Miniaturas à Esquerda -->
                     <div class="pdp-thumb-col">
                         <button type="button" id="pdp-thumb-btn" class="pdp-thumb-btn" aria-label="Visualizar imagem principal">
-                            <img id="pdp-thumb-img" class="pdp-thumb-img" src="" alt="Miniatura do produto">
+                            <img id="pdp-thumb-img" class="pdp-thumb-img" src="" alt="Miniatura do produto" width="72" height="72" loading="lazy" decoding="async">
                         </button>
                     </div>
 
                     <!-- Coluna 2: Foto Principal Centralizada -->
-                    <div class="pdp-main-image-col">
+                    <div class="pdp-main-image-col" data-field="image">
                         <div class="pdp-main-image-wrap">
-                            <img id="pdp-main-img" class="pdp-main-img" src="" alt="Foto do produto" width="440" height="440">
+                            <img id="pdp-main-img" class="pdp-main-img" src="" alt="Foto do produto" width="440" height="440" fetchpriority="high" decoding="async">
                         </div>
                     </div>
 
@@ -151,24 +160,28 @@
                         <!-- Cabeçalho com Logo Oficial da Botica Natural + Título + REF -->
                         <div class="pdp-title-header">
                             <div class="pdp-brand-badge">
-                                <img src="images/logo.jpg" alt="Botica Natural" class="pdp-brand-badge__img">
+                                <picture>
+                                    <source srcset="images/logo.webp" type="image/webp">
+                                    <img src="images/logo.jpg" alt="Logo da Botica Natural" class="pdp-brand-badge__img" width="44" height="44" decoding="async">
+                                </picture>
                             </div>
                             <div class="pdp-title-box">
-                                <h1 id="pdp-title" class="pdp-product-title">Nome do Produto</h1>
-                                <span id="pdp-sku" class="pdp-sku-badge" hidden>REF: 0000</span>
+                                <h1 id="pdp-title" class="pdp-product-title" data-field="name">Nome do Produto</h1>
+                                <span id="pdp-sku" class="pdp-sku-badge" data-field="sku_ref" hidden>REF: 0000</span>
                             </div>
                         </div>
 
                         <!-- Resumo de Benefícios -->
-                        <p id="pdp-short-desc" class="pdp-short-desc"></p>
+                        <div id="pdp-short-desc" class="pdp-short-desc pd-richtext" data-field="short_description"></div>
 
                         <!-- Preço em Destaque -->
-                        <div class="pdp-price-box">
-                            <strong id="pdp-price" class="pdp-price-val">R$ 0,00</strong>
+                        <!-- REVISAR COM RT: RDC 67/2007 e normas de publicidade da Anvisa (exibição de preço de manipulados vs. "Sob consulta") -->
+                        <div class="pdp-price-box" data-field="price">
+                            <strong id="pdp-price" class="pdp-price-val">Sob consulta</strong>
                         </div>
 
                         <!-- Informações de Pagamento -->
-                        <div id="pdp-payment-wrap" class="pdp-payment-row">
+                        <div id="pdp-payment-wrap" class="pdp-payment-row" data-field="payment_info">
                             <i class="fa-regular fa-credit-card" aria-hidden="true"></i>
                             <span id="pdp-payment-text">Consulte formas de pagamento via WhatsApp / Cartão e Pix</span>
                         </div>
@@ -177,7 +190,8 @@
                         <a
                             id="pdp-btn-buy"
                             class="btn-pdp-buy"
-                            href="https://wa.me/555197731564"
+                            data-field="whatsapp_message"
+                            href="https://wa.me/555185543448"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="Comprar produto pelo WhatsApp"
@@ -196,32 +210,32 @@
 
                     <div class="pdp-desc-content">
                         <!-- Parágrafo de Descrição Detalhada -->
-                        <p id="pdp-desc-full" class="pdp-desc-prose" hidden></p>
+                        <div id="pdp-desc-full" class="pdp-desc-prose pd-richtext" data-field="description" hidden></div>
 
                         <!-- Modo de Usar (Posologia) -->
-                        <p id="pdp-desc-usage-block" class="pdp-desc-usage" hidden>
-                            <strong>MODO DE USAR:</strong> <span id="pdp-desc-usage-text"></span>
-                        </p>
+                        <div id="pdp-desc-usage-block" class="pdp-desc-usage" data-field="usage_instructions" hidden>
+                            <strong>MODO DE USAR:</strong> <div id="pdp-desc-usage-text" class="pd-richtext pd-richtext--inline-block"></div>
+                        </div>
 
                         <!-- Composição / Contém -->
-                        <p id="pdp-desc-composition-block" class="pdp-desc-composition" hidden>
-                            <strong>Contém:</strong> <em id="pdp-desc-composition-text"></em>
-                        </p>
+                        <div id="pdp-desc-composition-block" class="pdp-desc-composition" data-field="composition" hidden>
+                            <strong>Contém:</strong> <div id="pdp-desc-composition-text" class="pd-richtext pd-richtext--inline-block"></div>
+                        </div>
 
                         <!-- Apresentação / Embalagem -->
-                        <p id="pdp-desc-package-block" hidden>
-                            <span id="pdp-desc-package-text"></span>
-                        </p>
+                        <div id="pdp-desc-package-block" data-field="package_info" hidden>
+                            <div id="pdp-desc-package-text" class="pd-richtext"></div>
+                        </div>
 
                         <!-- Restrições / Alergênicos -->
-                        <p id="pdp-desc-allergens-block" hidden>
-                            <span id="pdp-desc-allergens-text"></span>
-                        </p>
+                        <div id="pdp-desc-allergens-block" data-field="allergen_info" hidden>
+                            <div id="pdp-desc-allergens-text" class="pd-richtext"></div>
+                        </div>
 
                         <!-- Garantia de Rigor Farmacêutico -->
-                        <p id="pdp-desc-quality-block" class="pdp-desc-quality" hidden>
-                            <strong id="pdp-desc-quality-text"></strong>
-                        </p>
+                        <div id="pdp-desc-quality-block" class="pdp-desc-quality" data-field="quality_note" hidden>
+                            <div id="pdp-desc-quality-text" class="pd-richtext"></div>
+                        </div>
                     </div>
                 </section>
             </article>
@@ -233,14 +247,17 @@
         <div class="container footer__grid">
             <div class="footer__about">
                 <a href="index.html#inicio" class="logo" aria-label="Botica Natural — voltar ao início">
-                    <img src="images/logo.jpg" alt="Botica Natural" class="logo__img">
+                    <picture>
+                        <source srcset="images/logo.webp" type="image/webp">
+                        <img src="images/logo.jpg" alt="Logo da Botica Natural" class="logo__img" width="44" height="44" loading="lazy" decoding="async">
+                    </picture>
                     <span class="logo__text">Botica <strong>Natural</strong></span>
                 </a>
                 <p>Manipulando saúde, bem-estar e qualidade de vida com excelência e responsabilidade.</p>
                 <ul class="social">
                     <li><a href="https://www.instagram.com/boticanatural" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a></li>
                     <li><a href="https://www.facebook.com/boticanatural" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a></li>
-                    <li><a href="https://wa.me/555197731564" data-wa="footer-social" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a></li>
+                    <li><a href="https://wa.me/555185543448" data-wa="footer-social" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a></li>
                 </ul>
             </div>
 
@@ -251,9 +268,9 @@
                     <li><a href="index.html#mais-vendidos">Mais Vendidos</a></li>
                     <li><a href="index.html#especialidades">Formas Farmacêuticas</a></li>
                     <li><a href="index.html#como-funciona">Como funciona</a></li>
-                    <li><a href="index.html#depoimentos">Depoimentos</a></li>
                     <li><a href="index.html#sobre">Quem somos</a></li>
                     <li><a href="index.html#duvidas">Dúvidas</a></li>
+                    <li><a href="privacidade.html">Política de Privacidade (LGPD)</a></li>
                 </ul>
             </nav>
 
@@ -269,9 +286,9 @@
             <div class="footer__col">
                 <h3>Contato</h3>
                 <ul class="footer__contact">
-                    <li><a href="https://wa.me/555197731564" data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 9773-1564</a></li>
-                    <li><a href="tel:+555197731564"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 9773-1564</a></li>
-                    <li><a href="mailto:contato@boticanatural.com.br"><i class="fa-solid fa-envelope" aria-hidden="true"></i> contato@boticanatural.com.br</a></li>
+                    <li><a href="https://wa.me/555185543448" data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 8554-3448</a></li>
+                    <li><a href="tel:+555185543448"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 8554-3448</a></li>
+                    <li><span><i class="fa-solid fa-envelope" aria-hidden="true"></i> [PREENCHER: e-mail oficial]</span></li>
                     <li><a href="https://www.google.com/maps/search/?api=1&amp;query=Rua+Assis+Brasil+31+Centro+Triunfo+RS" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Rua Assis Brasil, 31 – Centro, Triunfo/RS</a></li>
                 </ul>
             </div>
@@ -279,17 +296,23 @@
 
         <div class="container footer__bottom">
             <p>© <span data-year>2026</span> Botica Natural Farmácia de Manipulação. Todos os direitos reservados.</p>
-            <p>CNPJ 00.000.000/0001-00 · Farm. Resp.: Dr. João Silva – CRF-RS 12345</p>
+            <p>CNPJ [PREENCHER: CNPJ] · Farm. Resp.: [PREENCHER: Nome do Farmacêutico] – CRF-RS [PREENCHER: número CRF] · Licença Sanitária / AFE nº [PREENCHER: número da AFE/Licença]</p>
         </div>
     </footer>
 
     <!-- ================= FLOATING CTAs ================= -->
-    <a class="wa-float" href="https://wa.me/555197731564" data-wa="float-pdp" aria-label="Fale conosco no WhatsApp">
+    <a class="wa-float" href="https://wa.me/555185543448" data-wa="float-pdp" aria-label="Fale conosco no WhatsApp">
         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
         <span class="wa-float__tooltip" aria-hidden="true">Fale com um farmacêutico</span>
     </a>
 
+    <!-- Cookie LGPD -->
+    <div class="cookie" role="region" aria-label="Aviso de cookies" hidden>
+        <p>Usamos apenas armazenamento essencial para funcionamento do site, em conformidade com a LGPD. Saiba mais em nossa <a href="privacidade.html">Política de Privacidade</a>.</p>
+        <button class="btn btn--primary btn--sm" type="button" data-cookie-accept>Entendi</button>
+    </div>
+
     <!-- Controller Modular em ES6+ do Produto -->
-    <script type="module" src="js/product.js"></script>
+    <script type="module" src="js/product.js?v=20261104"></script>
 </body>
 </html>

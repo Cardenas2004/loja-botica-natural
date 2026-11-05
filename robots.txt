@@ -1,0 +1,8 @@
+# Botica Natural — robots.txt
+# [PREENCHER: confirmar domínio oficial de produção no Sitemap abaixo]
+User-agent: *
+Allow: /
+Disallow: /admin.html
+
+Sitemap: https://www.boticanatural.com.br/sitemap.xml
+

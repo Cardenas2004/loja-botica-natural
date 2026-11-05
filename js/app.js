@@ -11,6 +11,7 @@ import {
   DB_TABLES,
   isSupabaseConfigured,
   getPublicImageUrl,
+  resolveSafeStorageImageUrl,
   normalizeSupabaseError,
 } from './supabaseClient.js';
 
@@ -19,15 +20,25 @@ import {
   fetchProductWhatsAppTemplate,
 } from './whatsapp.js';
 
+import {
+  BRAND_NAME,
+  SITE_DOMAIN,
+  WHATSAPP_PHONE,
+  DEFAULT_WHATSAPP_GREETING,
+  SITE_CONFIG,
+} from './config.js';
+
+import { extractPlainText } from './shared/richtext.js';
+
 /* ==========================================================================
    1. CONFIGURAÇÕES GLOBAIS E FORMATAÇÃO (SINGLE SOURCE OF TRUTH)
    ========================================================================== */
 
 export const WHATSAPP_CONFIG = Object.freeze({
-  PHONE_NUMBER: '555197731564',
-  BASE_URL: 'https://wa.me',
-  MAX_INSTALLMENTS: 6,
-  MAX_BESTSELLERS: 6,
+  PHONE_NUMBER: WHATSAPP_PHONE,
+  BASE_URL: SITE_CONFIG.WHATSAPP_BASE_URL,
+  MAX_INSTALLMENTS: SITE_CONFIG.MAX_INSTALLMENTS,
+  MAX_BESTSELLERS: SITE_CONFIG.MAX_BESTSELLERS,
 });
 
 const brlCurrencyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -57,6 +68,8 @@ const catalogState = {
   searchQuery: '',
   /** @type {boolean} Controle de estado de carregamento */
   isLoading: true,
+  /** @type {boolean} Indica falha de conexão/consulta ao Supabase */
+  hasError: false,
 };
 
 /* ==========================================================================
@@ -102,20 +115,11 @@ function resolveProductCategoryName(product) {
 }
 
 function resolveProductImageUrl(product) {
-  const directUrl = String(product?.image_url || '').trim();
-  if (directUrl) {
-    return directUrl;
-  }
-
-  const storagePath = String(product?.image_path || '').trim();
-  if (storagePath) {
-    const publicUrl = getPublicImageUrl(storagePath);
-    if (publicUrl) {
-      return publicUrl;
-    }
-  }
-
-  return FALLBACK_PRODUCT_IMAGE;
+  return resolveSafeStorageImageUrl(
+    product?.image_url,
+    product?.image_path,
+    FALLBACK_PRODUCT_IMAGE
+  );
 }
 
 export function buildProductWhatsAppUrl(product) {
@@ -133,11 +137,9 @@ export function createProductCardElement(product) {
   article.dataset.category = String(product?.category_id || '');
 
   const productName = String(product?.name || 'Fórmula Manipulada').trim();
-  const productDescription = String(
-    product?.short_description ||
-      product?.description ||
-      'Fórmula manipulada sob medida com matérias-primas certificadas e rigoroso controle de qualidade farmacêutico.'
-  ).trim();
+  const productDescription =
+    extractPlainText(product?.short_description || product?.description) ||
+    'Fórmula manipulada sob medida com matérias-primas certificadas e rigoroso controle de qualidade farmacêutico.';
   const categoryName = resolveProductCategoryName(product);
   const numericPrice = Number(product?.price);
   const hasValidPrice = Number.isFinite(numericPrice) && numericPrice > 0;
@@ -233,6 +235,7 @@ export function createProductCardElement(product) {
   bodyContainer.appendChild(descEl);
 
   // 4. Rodapé do Card (.product-card__footer: Preço + Botões de Ação alinhados na base)
+  // REVISAR COM RT: RDC 67/2007 e normas de publicidade da Anvisa (exibição de preços de fórmulas manipuladas vs. "Sob consulta")
   const footerContainer = document.createElement('div');
   footerContainer.className = 'product-card__footer';
 
@@ -314,37 +317,62 @@ export function createProductCardElement(product) {
    4.5. RENDERIZAÇÃO DINÂMICA DO CARROSSEL PRINCIPAL (100% SUPABASE)
    ========================================================================== */
 
+/**
+ * Valida o link de um banner por whitelist estrita (apenas `https:`, `http:` ou caminho relativo).
+ * Rejeita `javascript:`, `data:`, `vbscript:`, URLs protocol-relative (`//`) e caracteres de controle.
+ *
+ * @param {string | null | undefined} rawUrl
+ * @returns {string}
+ */
 function sanitizeBannerLink(rawUrl) {
-  const trimmed = String(rawUrl || '').trim();
+  const trimmed = String(rawUrl || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim();
   if (!trimmed) return '';
-  if (/^(javascript|data|vbscript):/i.test(trimmed)) return '';
-  return trimmed;
+
+  // Bloqueia URLs protocol-relative (//evil.com) ou barras invertidas
+  if (trimmed.startsWith('//') || trimmed.startsWith('\\')) {
+    return '';
+  }
+
+  try {
+    const baseOrigin =
+      typeof window !== 'undefined' &&
+      window.location &&
+      /^https?:$/i.test(window.location.protocol)
+        ? window.location.origin
+        : SITE_DOMAIN;
+
+    const parsed = new URL(trimmed, baseOrigin);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return '';
+    }
+
+    // Se tem esquema explícito, exige http:// ou https:// no início
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+      if (!/^https?:\/\//i.test(trimmed)) {
+        return '';
+      }
+      return parsed.href;
+    }
+
+    // Caminho relativo ou âncora segura
+    return trimmed;
+  } catch {
+    return '';
+  }
 }
 
 function resolveCarouselSlideImageUrl(slide) {
-  const directUrl = String(slide?.image_url || '').trim();
-  if (directUrl) return directUrl;
-
-  const storagePath = String(slide?.image_path || '').trim();
-  if (storagePath) {
-    const publicUrl = getPublicImageUrl(storagePath);
-    if (publicUrl) return publicUrl;
-  }
-
-  return '';
+  return resolveSafeStorageImageUrl(slide?.image_url, slide?.image_path, '');
 }
 
 function resolveCarouselSlideMobileImageUrl(slide) {
-  const directMobileUrl = String(slide?.mobile_image_url || '').trim();
-  if (directMobileUrl) return directMobileUrl;
-
-  const mobileStoragePath = String(slide?.mobile_image_path || '').trim();
-  if (mobileStoragePath) {
-    const publicUrl = getPublicImageUrl(mobileStoragePath);
-    if (publicUrl) return publicUrl;
-  }
-
-  return '';
+  return resolveSafeStorageImageUrl(
+    slide?.mobile_image_url,
+    slide?.mobile_image_path,
+    ''
+  );
 }
 
 function createHeroCarouselSlideElement(slide, index) {
@@ -536,6 +564,47 @@ function renderHeroCarousel() {
    5. RENDERIZAÇÃO DA SEÇÃO "MAIS VENDIDOS" (100% SUPABASE)
    ========================================================================== */
 
+/**
+ * Cria um bloco de fallback amigável com CTA direto para o WhatsApp quando o Supabase falha.
+ * @returns {HTMLElement}
+ */
+function createStorefrontFallbackElement() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'catalog-empty';
+  wrapper.style.gridColumn = '1 / -1';
+
+  const iconWrap = document.createElement('div');
+  iconWrap.className = 'catalog-empty__icon';
+  iconWrap.setAttribute('aria-hidden', 'true');
+  const icon = document.createElement('i');
+  icon.className = 'fa-brands fa-whatsapp';
+  iconWrap.appendChild(icon);
+
+  const title = document.createElement('h3');
+  title.className = 'catalog-empty__title';
+  title.textContent = 'Catálogo em atualização no momento';
+
+  const desc = document.createElement('p');
+  desc.className = 'catalog-empty__desc';
+  desc.textContent =
+    'Não foi possível carregar a vitrine online agora. Fale diretamente com nossa equipe farmacêutica pelo WhatsApp para consultar fórmulas, preços e enviar sua receita.';
+
+  const cta = document.createElement('a');
+  cta.className = 'btn btn--primary';
+  cta.href = `${WHATSAPP_CONFIG.BASE_URL}/${WHATSAPP_CONFIG.PHONE_NUMBER}?text=${encodeURIComponent(DEFAULT_WHATSAPP_GREETING)}`;
+  cta.target = '_blank';
+  cta.rel = 'noopener noreferrer';
+  cta.dataset.wa = 'fallback-supabase';
+
+  const waIcon = document.createElement('i');
+  waIcon.className = 'fa-brands fa-whatsapp';
+  waIcon.setAttribute('aria-hidden', 'true');
+  cta.append(waIcon, document.createTextNode(' Solicitar atendimento no WhatsApp'));
+
+  wrapper.append(iconWrap, title, desc, cta);
+  return wrapper;
+}
+
 function renderBestSellers() {
   const bestSellersSection = document.getElementById('mais-vendidos');
   const container =
@@ -555,6 +624,12 @@ function renderBestSellers() {
   }
 
   if (featuredProducts.length === 0) {
+    if (catalogState.hasError) {
+      bestSellersSection.hidden = false;
+      container.replaceChildren(createStorefrontFallbackElement());
+      container.setAttribute('aria-busy', 'false');
+      return;
+    }
     container.replaceChildren();
     bestSellersSection.hidden = true;
     container.setAttribute('aria-busy', 'false');
@@ -752,10 +827,19 @@ function renderCatalogProducts() {
 
     if (emptyStateEl) {
       const emptyTitle = emptyStateEl.querySelector('.catalog-empty__title');
+      const emptyDesc = emptyStateEl.querySelector('.catalog-empty__desc');
       if (emptyTitle) {
-        emptyTitle.textContent = normalizedQuery
-          ? 'Nenhum produto encontrado para sua busca.'
-          : 'Nenhum produto cadastrado nesta categoria no momento.';
+        if (catalogState.hasError) {
+          emptyTitle.textContent = 'Catálogo temporariamente indisponível.';
+        } else {
+          emptyTitle.textContent = normalizedQuery
+            ? 'Nenhum produto encontrado para sua busca.'
+            : 'Nenhum produto cadastrado nesta categoria no momento.';
+        }
+      }
+      if (emptyDesc && catalogState.hasError) {
+        emptyDesc.textContent =
+          'Não foi possível conectar ao catálogo agora. Solicite seu orçamento ou consulte qualquer fórmula diretamente pelo nosso WhatsApp.';
       }
       emptyStateEl.hidden = false;
     }
@@ -790,16 +874,18 @@ async function loadCatalogData() {
 
   if (!configured) {
     console.warn(
-      '[Botica Natural] Credenciais do Supabase pendentes. Nenhum produto ou banner será exibido até configurar o banco.'
+      '[Botica Natural] Credenciais do Supabase pendentes. Exibindo fallback de atendimento via WhatsApp.'
     );
     catalogState.carouselSlides = [];
     catalogState.categories = [];
     catalogState.products = [];
+    catalogState.hasError = true;
     catalogState.isLoading = false;
     return;
   }
 
   try {
+    catalogState.hasError = false;
     const [carouselResponse, categoriesResponse, productsResponse] = await Promise.all([
       supabase
         .from(DB_TABLES.CAROUSEL)
@@ -849,6 +935,7 @@ async function loadCatalogData() {
     catalogState.carouselSlides = [];
     catalogState.categories = [];
     catalogState.products = [];
+    catalogState.hasError = true;
   } finally {
     catalogState.isLoading = false;
   }

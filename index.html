@@ -7,9 +7,13 @@
     <meta name="description" content="Botica Natural: farmácia de manipulação com fórmulas personalizadas, fitoterápicos, dermocosméticos e suplementos. Envie sua receita pelo WhatsApp e receba o orçamento em minutos.">
     <meta name="theme-color" content="#3D1E6D">
     <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https://njdkuhgoophzjxmmempu.supabase.co; connect-src 'self' https://njdkuhgoophzjxmmempu.supabase.co wss://njdkuhgoophzjxmmempu.supabase.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; form-action 'self';">
     <meta name="format-detection" content="telephone=no">
+    <!-- [PREENCHER: confirmar domínio oficial de produção] -->
     <link rel="canonical" href="https://www.boticanatural.com.br/">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
 
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website">
@@ -19,39 +23,37 @@
     <meta property="og:description" content="Fórmulas personalizadas para sua saúde e bem-estar. Orçamento rápido pelo WhatsApp e entrega em domicílio.">
     <meta property="og:url" content="https://www.boticanatural.com.br/">
     <meta property="og:image" content="https://www.boticanatural.com.br/images/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-
-    <!-- Marca o documento como "JS ativo" antes do primeiro paint -->
-    <script>document.documentElement.classList.add('js');</script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap">
 
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Icons (Font Awesome 6.5.1 com SRI) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
-    <!-- Carrossel (Swiper) -->
+    <!-- Carrossel (Swiper 11.2.4 fixado) -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11.2.4/swiper-bundle.min.css" crossorigin="anonymous">
 
     <!-- App Styles & Scripts -->
-    <link rel="stylesheet" href="css/style.css?v=20261029_typography">
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js" defer></script>
-    <script src="js/main.js?v=20261029_db_only" defer></script>
+    <link rel="stylesheet" href="css/style.css?v=20261104">
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11.2.4/swiper-bundle.min.js" crossorigin="anonymous" defer></script>
+    <script type="module" src="js/main.js?v=20261104"></script>
 
-    <!-- Structured Data -->
+    <!-- Structured Data (Apenas dados verificáveis) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Pharmacy",
       "name": "Botica Natural",
       "image": "https://www.boticanatural.com.br/images/logo.png",
-      "@id": "https://www.boticanatural.com.br",
-      "url": "https://www.boticanatural.com.br",
-      "telephone": "+555197731564",
-      "priceRange": "$$",
+      "@id": "https://www.boticanatural.com.br/",
+      "url": "https://www.boticanatural.com.br/",
+      "telephone": "+555185543448",
       "address": {
         "@type": "PostalAddress",
         "streetAddress": "Rua Assis Brasil, 31 - Centro",
@@ -62,11 +64,10 @@
       },
       "geo": { "@type": "GeoCoordinates", "latitude": -29.9344, "longitude": -51.7161 },
       "openingHoursSpecification": [
-        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "08:30", "closes": "18:00" },
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "08:30", "closes": "12:00" },
+        { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "13:30", "closes": "18:00" },
         { "@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "08:30", "closes": "12:00" }
-      ],
-      "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "reviewCount": "1240" },
-      "sameAs": ["https://www.facebook.com/boticanatural", "https://www.instagram.com/boticanatural"]
+      ]
     }
     </script>
 </head>
@@ -78,7 +79,10 @@
     <header class="header header--solid">
         <div class="container header__inner">
             <a href="#inicio" class="logo" aria-label="Botica Natural — início">
-                <img src="images/logo.jpg" alt="Botica Natural" class="logo__img" width="44" height="44" decoding="async">
+                <picture>
+                    <source srcset="images/logo.webp" type="image/webp">
+                    <img src="images/logo.jpg" alt="Logo da Botica Natural" class="logo__img" width="44" height="44" decoding="async">
+                </picture>
                 <span class="logo__text">Botica <strong>Natural</strong></span>
             </a>
 
@@ -88,12 +92,12 @@
                     <li><a class="nav__link" href="#mais-vendidos">Mais Vendidos</a></li>
                     <li><a class="nav__link" href="#especialidades">Formas Farmacêuticas</a></li>
                     <li><a class="nav__link" href="#como-funciona">Como funciona</a></li>
-                    <li><a class="nav__link" href="#depoimentos">Depoimentos</a></li>
+                    <!-- TODO: Reativar link quando a seção #depoimentos tiver avaliações reais verificadas -->
                     <li><a class="nav__link" href="#sobre">Quem somos</a></li>
                     <li><a class="nav__link" href="#duvidas">Dúvidas</a></li>
                 </ul>
                 <div class="nav__footer">
-                    <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="menu">
+                    <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="menu">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar receita
                     </a>
                     <p class="nav__hours"><i class="fa-regular fa-clock" aria-hidden="true"></i> Seg à Sex 8:30–12:00 e 13:30–18:00 · Sáb 08:30–12:00</p>
@@ -101,7 +105,7 @@
             </nav>
 
             <div class="header__actions">
-                <a class="btn btn--secondary btn--sm header__cta" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="header">
+                <a class="btn btn--secondary btn--sm header__cta" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="header">
                     <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
                     <span class="header__cta-text">Enviar receita</span>
                 </a>
@@ -136,6 +140,7 @@
         </section>
 
         <!-- ================= MAIS VENDIDOS (100% GERENCIADO PELO SUPABASE ADMIN) ================= -->
+        <!-- REVISAR COM RT: RDC 67/2007 e normas de publicidade da Anvisa (exibição de preços de manipulados no catálogo) -->
         <section class="section bestsellers-home" id="mais-vendidos" aria-labelledby="mais-vendidos-title">
             <div class="container">
                 <header class="section-header reveal">
@@ -202,33 +207,30 @@
                     <p class="hero__lead">Fórmulas manipuladas sob medida, com rigor científico e ativos de alta pureza. Envie a foto da sua receita e receba o orçamento em minutos.</p>
 
                     <div class="hero__actions">
-                        <a class="btn btn--primary btn--lg btn--pulse" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20fazer%20um%20or%C3%A7amento%20na%20Botica%20Natural." data-wa="hero">
+                        <a class="btn btn--primary btn--lg btn--pulse" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20fazer%20um%20or%C3%A7amento%20na%20Botica%20Natural." data-wa="hero">
                             <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Fazer orçamento agora
                         </a>
                         <a class="btn btn--ghost btn--lg" href="#especialidades">Ver opções</a>
                     </div>
 
                     <ul class="hero__trust">
-                        <li><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Certificada ANVISA</li>
-                        <li><i class="fa-solid fa-user-doctor" aria-hidden="true"></i> Farmacêutico CRF-RS</li>
-                        <li><i class="fa-solid fa-star" aria-hidden="true"></i> 4,9 no Google</li>
+                        <li><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Licença Sanitária / AFE nº [PREENCHER: número da AFE/Licença]</li>
+                        <li><i class="fa-solid fa-user-doctor" aria-hidden="true"></i> Farm. Resp.: [PREENCHER: Nome do Farmacêutico] – CRF-RS [PREENCHER: número CRF]</li>
+                        <li><i class="fa-solid fa-mortar-pestle" aria-hidden="true"></i> Manipulação sob prescrição e orientação farmacêutica</li>
                     </ul>
                 </div>
 
                 <aside class="hero__card" aria-label="Como é o atendimento">
-                    <p class="status"><span class="status__dot" aria-hidden="true"></span> Farmacêutico online agora</p>
-                    <h2 class="hero__card-title">Orçamento em minutos, direto no WhatsApp</h2>
+                    <p class="status"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Atendimento farmacêutico pelo WhatsApp</p>
+                    <h2 class="hero__card-title">Orçamento rápido, direto no WhatsApp</h2>
                     <ul class="checklist">
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i> Envie apenas a foto da receita</li>
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i> Orçamento sem compromisso</li>
                         <li><i class="fa-solid fa-check" aria-hidden="true"></i> Pix, cartão em até 6x ou boleto</li>
-                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Entrega expressa em Triunfo e região</li>
+                        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Entrega em Triunfo e região</li>
                     </ul>
                     <div class="hero__card-footer">
-                        <div class="avatars" aria-hidden="true">
-                            <span class="avatar">MS</span><span class="avatar">JC</span><span class="avatar">CE</span>
-                        </div>
-                        <p><strong>+10 mil</strong> clientes atendidos</p>
+                        <p><strong>[PREENCHER: clientes atendidos]</strong> clientes atendidos em Triunfo e região</p>
                     </div>
                 </aside>
             </div>
@@ -277,7 +279,7 @@
                             <span class="service-card__icon" aria-hidden="true"><i class="fa-solid fa-capsules"></i></span>
                             <h3>Cápsula</h3>
                         </div>
-                        <a class="service-card__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20c%C3%A1psulas." data-wa="forma-capsulas">
+                        <a class="service-card__link" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20c%C3%A1psulas." data-wa="forma-capsulas">
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
@@ -287,37 +289,46 @@
                             <span class="service-card__icon" aria-hidden="true"><i class="fa-solid fa-pump-medical"></i></span>
                             <h3>Creme / Gel / Pomada</h3>
                         </div>
-                        <a class="service-card__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20creme%2C%20gel%20ou%20pomada." data-wa="forma-creme">
+                        <a class="service-card__link" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20creme%2C%20gel%20ou%20pomada." data-wa="forma-creme">
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
 
                     <article class="service-card reveal">
                         <div class="service-card__head">
-                            <img class="service-card__img" src="images/icone-serum-transparent.png" alt="" width="52" height="52" loading="lazy" decoding="async" aria-hidden="true">
+                            <picture>
+                                <source srcset="images/icone-serum-transparent.webp" type="image/webp">
+                                <img class="service-card__img" src="images/icone-serum-transparent.png" alt="Ícone de conta-gotas para sérum manipulado" width="52" height="52" loading="lazy" decoding="async">
+                            </picture>
                             <h3>Sérum</h3>
                         </div>
-                        <a class="service-card__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20s%C3%A9rum." data-wa="forma-serum">
+                        <a class="service-card__link" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20s%C3%A9rum." data-wa="forma-serum">
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
 
                     <article class="service-card reveal">
                         <div class="service-card__head">
-                            <img class="service-card__img" src="images/icone-xarope-transparent.png" alt="" width="52" height="52" loading="lazy" decoding="async" aria-hidden="true">
+                            <picture>
+                                <source srcset="images/icone-xarope-transparent.webp" type="image/webp">
+                                <img class="service-card__img" src="images/icone-xarope-transparent.png" alt="Ícone de frasco de xarope e solução oral" width="52" height="52" loading="lazy" decoding="async">
+                            </picture>
                             <h3>Xarope / Gotas</h3>
                         </div>
-                        <a class="service-card__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20xarope%20ou%20gotas." data-wa="forma-xarope">
+                        <a class="service-card__link" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20xarope%20ou%20gotas." data-wa="forma-xarope">
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
 
                     <article class="service-card reveal">
                         <div class="service-card__head">
-                            <img class="service-card__img" src="images/icone-sache-transparent.png" alt="" width="52" height="52" loading="lazy" decoding="async" aria-hidden="true">
+                            <picture>
+                                <source srcset="images/icone-sache-transparent.webp" type="image/webp">
+                                <img class="service-card__img" src="images/icone-sache-transparent.png" alt="Ícone de sachê para suplementos e pós" width="52" height="52" loading="lazy" decoding="async">
+                            </picture>
                             <h3>Sachê</h3>
                         </div>
-                        <a class="service-card__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20sach%C3%AAs." data-wa="forma-saches">
+                        <a class="service-card__link" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20sach%C3%AAs." data-wa="forma-saches">
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
@@ -327,17 +338,20 @@
                             <span class="service-card__icon" aria-hidden="true"><i class="fa-solid fa-bottle-droplet"></i></span>
                             <h3>Loção</h3>
                         </div>
-                        <a class="service-card__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20lo%C3%A7%C3%A3o." data-wa="forma-locao">
+                        <a class="service-card__link" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20em%20lo%C3%A7%C3%A3o." data-wa="forma-locao">
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
 
                     <article class="service-card reveal">
                         <div class="service-card__head">
-                            <img class="service-card__img" src="images/icone-homeopatia-transparent.png" alt="" width="52" height="52" loading="lazy" decoding="async" aria-hidden="true">
+                            <picture>
+                                <source srcset="images/icone-homeopatia-transparent.webp" type="image/webp">
+                                <img class="service-card__img" src="images/icone-homeopatia-transparent.png" alt="Ícone de frasco de homeopatia e florais" width="52" height="52" loading="lazy" decoding="async">
+                            </picture>
                             <h3>Homeopatia</h3>
                         </div>
-                        <a class="service-card__link" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20de%20uma%20homeopatia." data-wa="forma-homeopatia">
+                        <a class="service-card__link" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20solicitar%20um%20or%C3%A7amento%20de%20uma%20homeopatia." data-wa="forma-homeopatia">
                             Pedir orçamento <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
@@ -379,7 +393,7 @@
                 </ol>
 
                 <div class="steps__cta reveal">
-                    <a class="btn btn--secondary btn--lg" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="como-funciona" data-wa-msg="Olá! Quero enviar minha receita para orçamento.">
+                    <a class="btn btn--secondary btn--lg" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="como-funciona" data-wa-msg="Olá! Quero enviar minha receita para orçamento.">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar minha receita
                     </a>
                 </div>
@@ -387,15 +401,15 @@
         </section>
 
         <!-- ================= TESTIMONIALS ================= -->
-        <section class="section section--dark" id="depoimentos" aria-labelledby="depoimentos-title">
+        <!-- TODO: Seção oculta até que depoimentos e avaliações reais verificadas sejam fornecidos pelo proprietário [PREENCHER: depoimentos reais] -->
+        <section class="section section--dark" id="depoimentos" aria-labelledby="depoimentos-title" hidden>
             <div class="container">
                 <header class="section-header reveal">
                     <span class="eyebrow eyebrow--light">Depoimentos</span>
                     <h2 id="depoimentos-title">Quem experimenta, recomenda</h2>
-                    <p>Mais de 10 mil clientes confiam suas fórmulas à Botica Natural.</p>
+                    <p>O que nossos clientes dizem sobre o atendimento da Botica Natural.</p>
                     <div class="rating-summary">
-                        <span class="stars" aria-hidden="true"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></span>
-                        <span><strong>4,9/5</strong> · 1.240 avaliações no Google</span>
+                        <span><strong>[PREENCHER: nota real]</strong> · [PREENCHER: total real de avaliações]</span>
                     </div>
                 </header>
 
@@ -403,65 +417,15 @@
                     <div class="carousel__track" tabindex="0" role="region" aria-label="Depoimentos de clientes. Role para ver mais.">
                         <article class="testimonial carousel__slide">
                             <i class="fa-solid fa-quote-right testimonial__quote" aria-hidden="true"></i>
-                            <div class="stars" role="img" aria-label="5 de 5 estrelas"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
-                            <p class="testimonial__text">“Atendimento excelente pelo WhatsApp! O orçamento foi rápido, o preço super justo e a entrega aconteceu no mesmo dia.”</p>
+                            <p class="testimonial__text">“[PREENCHER: depoimento real autorizado pelo cliente]”</p>
                             <footer class="testimonial__author">
-                                <span class="avatar" aria-hidden="true">MS</span>
+                                <span class="avatar" aria-hidden="true">--</span>
                                 <div>
-                                    <p class="testimonial__name">Mariana Silva</p>
-                                    <p class="testimonial__meta">Cliente há 3 anos</p>
+                                    <p class="testimonial__name">[PREENCHER: Nome do Cliente]</p>
+                                    <p class="testimonial__meta">[PREENCHER: relação/tempo de cliente]</p>
                                 </div>
                             </footer>
                         </article>
-
-                        <article class="testimonial carousel__slide">
-                            <i class="fa-solid fa-quote-right testimonial__quote" aria-hidden="true"></i>
-                            <div class="stars" role="img" aria-label="5 de 5 estrelas"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
-                            <p class="testimonial__text">“Faço meus dermocosméticos aqui há anos. A textura dos cremes é maravilhosa e o resultado na pele é visível.”</p>
-                            <footer class="testimonial__author">
-                                <span class="avatar" aria-hidden="true">JC</span>
-                                <div>
-                                    <p class="testimonial__name">Juliana Costa</p>
-                                    <p class="testimonial__meta">Cliente há 2 anos</p>
-                                </div>
-                            </footer>
-                        </article>
-
-                        <article class="testimonial carousel__slide">
-                            <i class="fa-solid fa-quote-right testimonial__quote" aria-hidden="true"></i>
-                            <div class="stars" role="img" aria-label="5 de 5 estrelas"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
-                            <p class="testimonial__text">“Confio plenamente. O rigor com as fórmulas é enorme e meus suplementos sempre chegam bem embalados.”</p>
-                            <footer class="testimonial__author">
-                                <span class="avatar" aria-hidden="true">CE</span>
-                                <div>
-                                    <p class="testimonial__name">Carlos Eduardo</p>
-                                    <p class="testimonial__meta">Cliente há 5 anos</p>
-                                </div>
-                            </footer>
-                        </article>
-
-                        <article class="testimonial carousel__slide">
-                            <i class="fa-solid fa-quote-right testimonial__quote" aria-hidden="true"></i>
-                            <div class="stars" role="img" aria-label="5 de 5 estrelas"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
-                            <p class="testimonial__text">“Meu cachorro é exigente com remédio. Manipularam com sabor de carne e ele toma sem reclamar. Fantástico!”</p>
-                            <footer class="testimonial__author">
-                                <span class="avatar" aria-hidden="true">AP</span>
-                                <div>
-                                    <p class="testimonial__name">Ana Paula Ferreira</p>
-                                    <p class="testimonial__meta">Tutora do Thor</p>
-                                </div>
-                            </footer>
-                        </article>
-                    </div>
-
-                    <div class="carousel__controls">
-                        <button class="carousel__btn" type="button" data-carousel-prev aria-label="Depoimento anterior">
-                            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
-                        </button>
-                        <div class="carousel__dots"></div>
-                        <button class="carousel__btn" type="button" data-carousel-next aria-label="Próximo depoimento">
-                            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -471,11 +435,14 @@
         <section class="section" id="sobre" aria-labelledby="sobre-title">
             <div class="container about__inner">
                 <div class="about__media reveal">
-                    <img src="images/fachada_botica_natural.jpg" alt="Fachada da Botica Natural" loading="lazy" width="800" height="1000">
+                    <picture>
+                        <source srcset="images/fachada_botica_natural.webp" type="image/webp">
+                        <img src="images/fachada_botica_natural.jpg" alt="Fachada da farmácia de manipulação Botica Natural no centro de Triunfo/RS" loading="lazy" decoding="async" width="800" height="1000">
+                    </picture>
                     <div class="about__badge">
                         <span class="about__badge-icon" aria-hidden="true"><i class="fa-solid fa-award"></i></span>
                         <div>
-                            <strong>26 anos</strong>
+                            <strong>[PREENCHER: anos de atuação]</strong>
                             <span>de tradição</span>
                         </div>
                     </div>
@@ -484,25 +451,25 @@
                 <div class="about__content reveal">
                     <span class="eyebrow">Quem somos</span>
                     <h2 id="sobre-title">Ciência e natureza a serviço da sua saúde</h2>
-                    <p>Há 26 anos, a <strong>Botica Natural</strong> une o cuidado artesanal da manipulação à tecnologia de um laboratório moderno.</p>
-                    <p>Acreditamos que cada organismo é único. Por isso, seguimos rigorosamente as normas da ANVISA para garantir qualidade, pureza e eficácia em cada cápsula, creme ou solução que produzimos.</p>
+                    <p>A <strong>Botica Natural</strong> une o cuidado artesanal da manipulação magistral à tecnologia de um laboratório moderno em Triunfo/RS.</p>
+                    <p>Acreditamos que cada organismo é único. Por isso, seguimos rigorosamente as Boas Práticas de Manipulação para garantir qualidade, pureza e rastreabilidade em cada cápsula, creme ou solução que produzimos.</p>
 
                     <dl class="stats">
                         <div class="stat">
                             <dt class="stat__label">Anos de experiência</dt>
-                            <dd class="stat__number"><span data-counter="26">26</span></dd>
+                            <dd class="stat__number"><span data-counter="">[PREENCHER: anos de atuação]</span></dd>
                         </div>
                         <div class="stat">
                             <dt class="stat__label">Clientes atendidos</dt>
-                            <dd class="stat__number"><span data-counter="10000">10.000</span>+</dd>
+                            <dd class="stat__number"><span data-counter="">[PREENCHER: clientes atendidos]</span></dd>
                         </div>
                         <div class="stat">
                             <dt class="stat__label">Fórmulas manipuladas</dt>
-                            <dd class="stat__number"><span data-counter="50000">50.000</span>+</dd>
+                            <dd class="stat__number"><span data-counter="">[PREENCHER: fórmulas manipuladas]</span></dd>
                         </div>
                         <div class="stat">
-                            <dt class="stat__label">Farmacêutico</dt>
-                            <dd class="stat__number"><span data-counter="1">1</span></dd>
+                            <dt class="stat__label">Farmacêutico Responsável</dt>
+                            <dd class="stat__number"><span data-counter="">[PREENCHER: número de farmacêuticos]</span></dd>
                         </div>
                     </dl>
                 </div>
@@ -567,20 +534,21 @@
 
                 <p class="faq__more reveal">
                     Ainda tem dúvidas?
-                    <a href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20queria%20gostaria%20de%20tirar%20uma%20d%C3%BAvida." data-wa="faq">Fale com um farmacêutico <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                    <a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20queria%20gostaria%20de%20tirar%20uma%20d%C3%BAvida." data-wa="faq">Fale com um farmacêutico <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
                 </p>
             </div>
         </section>
 
         <!-- ================= FINAL CTA ================= -->
+        <!-- REVISAR COM RT: RDC 67/2007 e normas de publicidade da Anvisa (revisar menções promocionais para medicamentos manipulados) -->
         <section class="cta-final" id="orcamento" aria-labelledby="cta-title">
             <div class="container cta-final__inner reveal">
                 <h2 id="cta-title">Cuidar da sua saúde não pode esperar</h2>
-                <p>Nosso farmacêutico está online agora. Envie sua receita e garanta condições especiais no seu primeiro pedido.</p>
-                <a class="btn btn--light btn--lg cta-final__btn" href="https://wa.me/555197731564?text=Ol%C3%A1%21%20Vim%20pelo%20site%20e%20quero%20aproveitar%20a%20condi%C3%A7%C3%A3o%20especial%20do%20primeiro%20pedido." data-wa="cta-final" data-wa-msg="Olá! Vim pelo site e quero aproveitar a condição especial do primeiro pedido.">
+                <p>Envie sua receita ou fale com nossa equipe farmacêutica pelo WhatsApp para receber seu orçamento personalizado.</p>
+                <a class="btn btn--light btn--lg cta-final__btn" href="https://wa.me/555185543448?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Botica%20Natural%20e%20gostaria%20de%20solicitar%20um%20or%C3%A7amento." data-wa="cta-final" data-wa-msg="Olá! Vim pelo site da Botica Natural e gostaria de solicitar um orçamento.">
                     <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Solicitar orçamento agora
                 </a>
-                <p class="cta-final__note"><i class="fa-regular fa-clock" aria-hidden="true"></i> Resposta média em 5 minutos</p>
+                <p class="cta-final__note"><i class="fa-regular fa-clock" aria-hidden="true"></i> Atendimento de Seg à Sex (8:30–12:00 / 13:30–18:00) e Sáb (08:30–12:00)</p>
             </div>
         </section>
     </main>
@@ -590,14 +558,17 @@
         <div class="container footer__grid">
             <div class="footer__about">
                 <a href="#inicio" class="logo" aria-label="Botica Natural — voltar ao início">
-                    <img src="images/logo.jpg" alt="Botica Natural" class="logo__img" width="44" height="44" loading="lazy" decoding="async">
+                    <picture>
+                        <source srcset="images/logo.webp" type="image/webp">
+                        <img src="images/logo.jpg" alt="Logo da Botica Natural" class="logo__img" width="44" height="44" loading="lazy" decoding="async">
+                    </picture>
                     <span class="logo__text">Botica <strong>Natural</strong></span>
                 </a>
                 <p>Manipulando saúde, bem-estar e qualidade de vida com excelência e responsabilidade.</p>
                 <ul class="social">
                     <li><a href="https://www.instagram.com/boticanatural" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i></a></li>
                     <li><a href="https://www.facebook.com/boticanatural" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="fa-brands fa-facebook-f" aria-hidden="true"></i></a></li>
-                    <li><a href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer-social" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a></li>
+                    <li><a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer-social" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i></a></li>
                 </ul>
             </div>
 
@@ -608,9 +579,9 @@
                     <li><a href="#mais-vendidos">Mais Vendidos</a></li>
                     <li><a href="#especialidades">Formas Farmacêuticas</a></li>
                     <li><a href="#como-funciona">Como funciona</a></li>
-                    <li><a href="#depoimentos">Depoimentos</a></li>
                     <li><a href="#sobre">Quem somos</a></li>
                     <li><a href="#duvidas">Dúvidas</a></li>
+                    <li><a href="privacidade.html">Política de Privacidade (LGPD)</a></li>
                 </ul>
             </nav>
 
@@ -626,9 +597,9 @@
             <div class="footer__col">
                 <h3>Contato</h3>
                 <ul class="footer__contact">
-                    <li><a href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 9773-1564</a></li>
-                    <li><a href="tel:+555197731564"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 9773-1564</a></li>
-                    <li><a href="mailto:contato@boticanatural.com.br"><i class="fa-solid fa-envelope" aria-hidden="true"></i> contato@boticanatural.com.br</a></li>
+                    <li><a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 8554-3448</a></li>
+                    <li><a href="tel:+555185543448"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 8554-3448</a></li>
+                    <li><span><i class="fa-solid fa-envelope" aria-hidden="true"></i> [PREENCHER: e-mail oficial]</span></li>
                     <li><a href="https://www.google.com/maps/search/?api=1&amp;query=Rua+Assis+Brasil+31+Centro+Triunfo+RS" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Rua Assis Brasil, 31 – Centro, Triunfo/RS</a></li>
                 </ul>
             </div>
@@ -636,29 +607,29 @@
 
         <div class="container footer__bottom">
             <p>© <span data-year>2026</span> Botica Natural Farmácia de Manipulação. Todos os direitos reservados.</p>
-            <p>CNPJ 00.000.000/0001-00 · Farm. Resp.: Dr. João Silva – CRF-RS 12345</p>
+            <p>CNPJ [PREENCHER: CNPJ] · Farm. Resp.: [PREENCHER: Nome do Farmacêutico] – CRF-RS [PREENCHER: número CRF] · Licença Sanitária / AFE nº [PREENCHER: número da AFE/Licença]</p>
         </div>
     </footer>
 
     <!-- ================= FLOATING CTAs ================= -->
-    <a class="wa-float" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20um%20farmac%C3%AAutico." data-wa="float" aria-label="Fale conosco no WhatsApp">
+    <a class="wa-float" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20um%20farmac%C3%AAutico." data-wa="float" aria-label="Fale conosco no WhatsApp">
         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
         <span class="wa-float__tooltip" aria-hidden="true">Fale com um farmacêutico</span>
     </a>
 
     <div class="mobile-cta">
-        <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555197731564?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="sticky-mobile">
+        <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="sticky-mobile">
             <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar receita pelo WhatsApp
         </a>
     </div>
 
     <!-- ================= LGPD ================= -->
     <div class="cookie" role="region" aria-label="Aviso de cookies" hidden>
-        <p>Usamos cookies essenciais para melhorar sua experiência, em conformidade com a LGPD. Saiba mais em nossas <a href="#duvidas">Dúvidas e Privacidade</a>.</p>
+        <p>Usamos apenas armazenamento essencial para funcionamento do site, em conformidade com a LGPD. Saiba mais em nossa <a href="privacidade.html">Política de Privacidade</a>.</p>
         <button class="btn btn--primary btn--sm" type="button" data-cookie-accept>Entendi</button>
     </div>
 
     <!-- Motor Dinâmico da Vitrine (Supabase ES Module) -->
-    <script type="module" src="./js/app.js"></script>
+    <script type="module" src="./js/app.js?v=20261104"></script>
 </body>
 </html>
