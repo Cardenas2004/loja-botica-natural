@@ -25,6 +25,7 @@ import {
   saveProductRecord,
   validateImageFile,
   resolveAdminImageUrl,
+  fetchProductById,
 } from '../api.js';
 import { createRichTextEditor, insertPlainTextSnippet } from '../editor.js';
 import { createLiveProductPreview } from '../preview.js';
@@ -51,10 +52,22 @@ const DEFAULT_PAYMENT_INFO = 'Consulte formas de pagamento via WhatsApp / Cartã
  * }} context
  * @returns {() => void} Função de limpeza ao sair da rota
  */
-export function renderProductFormView(container, context) {
-  const editingProduct = context.productId
+export async function renderProductFormView(container, context) {
+  let editingProduct = context.productId
     ? state.products.find((p) => p.id === context.productId) || null
     : null;
+
+  // Garante o carregamento da ficha técnica completa (descrições ricas, modo de usar, etc.)
+  if (context.productId && (!editingProduct || editingProduct.description === undefined)) {
+    const freshProduct = await fetchProductById(context.productId);
+    if (freshProduct) {
+      editingProduct = freshProduct;
+      const idx = state.products.findIndex((p) => p.id === freshProduct.id);
+      if (idx >= 0) {
+        state.products[idx] = { ...state.products[idx], ...freshProduct };
+      }
+    }
+  }
 
   const isEditing = Boolean(editingProduct);
   let currentProductId = editingProduct?.id || '';
@@ -214,7 +227,7 @@ export function renderProductFormView(container, context) {
     setState({ isFormDirty: false });
     dirtyBadge.className = 'badge badge-success dirty-status-badge';
     dirtyBadge.replaceChildren(
-      createIcon('fa-solid fa-cloud-check'),
+      createIcon('fa-solid fa-circle-check'),
       el('span', { textContent: 'Salvo no banco' })
     );
   }

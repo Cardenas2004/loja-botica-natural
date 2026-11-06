@@ -176,7 +176,7 @@ async function renderCurrentRoute() {
   } else if (routeInfo.view === 'products') {
     renderProductsView(outlet, routerApi);
   } else if (routeInfo.view === 'product-form') {
-    activeViewCleanup = renderProductFormView(outlet, {
+    activeViewCleanup = await renderProductFormView(outlet, {
       productId: routeInfo.param,
       navigate: navigateToHash,
     });

@@ -99,13 +99,18 @@ const ICONS = [
   { name: 'arrow-right-from-bracket', type: 'solid' },
   { name: 'lock', type: 'solid' },
   { name: 'cloud-arrow-up', type: 'solid' },
-  { name: 'cloud-check', type: 'solid' },
   { name: 'toggle-on', type: 'solid' },
   { name: 'toggle-off', type: 'solid' },
   { name: 'grip-vertical', type: 'solid' },
   { name: 'chart-pie', type: 'solid' },
   { name: 'shuffle', type: 'solid' },
   { name: 'wand-magic-sparkles', type: 'solid' },
+  { name: 'moon', type: 'solid' },
+  { name: 'sun', type: 'solid' },
+  { name: 'arrow-up-right-from-square', type: 'solid' },
+  { name: 'angles-left', type: 'solid' },
+  { name: 'angles-right', type: 'solid' },
+  { name: 'circle-dot', type: 'solid' },
 ];
 
 let spriteSymbols = [];
@@ -191,3 +196,4 @@ console.log(`✓ images/icons.svg gerado com ${spriteSymbols.length} símbolos.`
 const cssDir = path.resolve(ROOT_DIR, 'css');
 fs.writeFileSync(path.resolve(cssDir, 'icons.css'), cssRules.join('\n\n') + '\n', 'utf8');
 console.log(`✓ css/icons.css gerado com ${spriteSymbols.length} regras.`);
+

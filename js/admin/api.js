@@ -329,7 +329,7 @@ export async function fetchCategories() {
 }
 
 export const PRODUCT_LIST_SELECT_COLUMNS =
-  'id, name, sku_ref, price, is_active, is_best_seller, category_id, categories(name), image_url, image_path, updated_at';
+  'id, name, sku_ref, price, is_active, is_best_seller, category_id, categories(name), image_url, image_path, updated_at, short_description, description, usage_instructions, composition, package_info, allergen_info, quality_note, payment_info, whatsapp_message, text_options, benefits';
 
 /**
  * Busca produtos otimizados para a listagem do painel.
