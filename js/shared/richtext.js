@@ -26,7 +26,7 @@ export const FIELD_CHAR_LIMITS = Object.freeze({
   composition: 2500,
   package_info: 1200,
   allergen_info: 500,
-  quality_note: 800,
+  quality_note: 5000,
   payment_info: 220,
   whatsapp_message: 1000,
 });
