@@ -31,24 +31,50 @@ import {
 export function renderBannersView(container) {
   let editingId = '';
   let oldImagePath = '';
+  let oldMobileImagePath = '';
   /** @type {File | null} */
   let selectedFile = null;
+  /** @type {File | null} */
+  let selectedMobileFile = null;
   /** @type {string | null} */
   let activeBlobUrl = null;
+  /** @type {string | null} */
+  let activeMobileBlobUrl = null;
+  let isMobileImageCleared = false;
   let draggedSlideId = '';
 
-  const revokePreviewBlob = () => {
+  const revokePreviewBlobs = () => {
     if (activeBlobUrl) {
       URL.revokeObjectURL(activeBlobUrl);
       activeBlobUrl = null;
+    }
+    if (activeMobileBlobUrl) {
+      URL.revokeObjectURL(activeMobileBlobUrl);
+      activeMobileBlobUrl = null;
     }
   };
 
   const formTitleEl = el('h2', {
     className: 'admin-panel__title',
-    textContent: 'Adicionar Novo Banner (1920 × 650)',
+    textContent: 'Adicionar Novo Banner (1920 × 600)',
   });
 
+  // Caixa de Diretrizes Oficiais de Tamanhos
+  const guideBox = el('div', { className: 'banner-guide-box' }, [
+    el('div', { className: 'banner-guide-box__header' }, [
+      createIcon('fa-solid fa-circle-info'),
+      el('strong', { textContent: 'Diretrizes de Dimensões e Enquadramento:' }),
+    ]),
+    el('p', {
+      className: 'banner-guide-box__desc',
+      textContent:
+        'Arte desktop: 1920x600 (16:5). Arte mobile: 1080x1350 (4:5), mantenha textos e rosto no centro, com margem de segurança de 8%.',
+    }),
+  ]);
+
+  // ==========================================
+  // 1. UPLOAD DA ARTE DESKTOP (1920x600 / 16:5)
+  // ==========================================
   const fileInput = /** @type {HTMLInputElement} */ (
     el('input', {
       type: 'file',
@@ -64,8 +90,15 @@ export function renderBannersView(container) {
       src: '',
       alt: 'Pré-visualização panorâmica do banner',
       width: '480',
-      height: '162',
+      height: '150',
     })
+  );
+
+  const desktopRatioMsg = el('span', { textContent: '' });
+  const desktopWarningBadge = el(
+    'span',
+    { className: 'badge badge-warning', hidden: true },
+    [createIcon('fa-solid fa-triangle-exclamation'), desktopRatioMsg]
   );
 
   const progressFill = el('div', { className: 'upload-progress__fill' });
@@ -81,6 +114,7 @@ export function renderBannersView(container) {
           createIcon('fa-solid fa-wand-magic-sparkles'),
           el('span', { textContent: 'Otimização WebP 1920px ativa' }),
         ]),
+        desktopWarningBadge,
         el(
           'button',
           {
@@ -89,7 +123,11 @@ export function renderBannersView(container) {
             onClick: () => {
               selectedFile = null;
               fileInput.value = '';
-              revokePreviewBlob();
+              if (activeBlobUrl) {
+                URL.revokeObjectURL(activeBlobUrl);
+                activeBlobUrl = null;
+              }
+              desktopWarningBadge.hidden = true;
               if (editingId) {
                 const current = state.carouselSlides.find((s) => s.id === editingId);
                 updatePreviewUI(current ? resolveAdminImageUrl(current, FALLBACK_SLIDE_THUMB) : null);
@@ -111,15 +149,14 @@ export function renderBannersView(container) {
         createIcon('fa-solid fa-panorama'),
       ]),
       el('div', { className: 'upload-zone__text' }, [
-        el('strong', { textContent: 'Clique ou arraste a arte panorâmica aqui' }),
+        el('strong', { textContent: 'Clique ou arraste a arte panorâmica desktop aqui' }),
         el('span', {
-          textContent: 'Proporção 1920 × 650 px · JPG, PNG ou WebP (conversão automática ≤ 2 MB)',
+          textContent: 'Proporção 1920 × 600 px (16:5) · JPG, PNG ou WebP (conversão automática ≤ 2 MB)',
         }),
       ]),
     ]),
   ]);
 
-  // Suporte visual a Drag & Drop na zona de upload
   uploadZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadZone.classList.add('is-dragover');
@@ -131,15 +168,15 @@ export function renderBannersView(container) {
     e.preventDefault();
     uploadZone.classList.remove('is-dragover');
     const droppedFile = e.dataTransfer?.files?.[0];
-    if (droppedFile) handleFileChosen(droppedFile);
+    if (droppedFile) handleDesktopFileChosen(droppedFile);
   });
 
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0] || null;
-    if (file) handleFileChosen(file);
+    if (file) handleDesktopFileChosen(file);
   });
 
-  function handleFileChosen(/** @type {File} */ file) {
+  function handleDesktopFileChosen(/** @type {File} */ file) {
     const validation = validateImageFile(file);
     if (!validation.valid) {
       showToast(validation.error || 'Arquivo inválido.', 'error');
@@ -147,9 +184,28 @@ export function renderBannersView(container) {
       return;
     }
     selectedFile = file;
-    revokePreviewBlob();
+    if (activeBlobUrl) {
+      URL.revokeObjectURL(activeBlobUrl);
+    }
     activeBlobUrl = URL.createObjectURL(file);
     updatePreviewUI(activeBlobUrl);
+    checkDesktopRatio(file);
+  }
+
+  function checkDesktopRatio(/** @type {File} */ file) {
+    const img = new Image();
+    const tempUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(tempUrl);
+      const ratio = img.naturalWidth / img.naturalHeight;
+      if (ratio < 2.5 || ratio > 3.8) {
+        desktopWarningBadge.hidden = false;
+        desktopRatioMsg.textContent = `Proporção ${ratio.toFixed(2)}:1 (${img.naturalWidth}x${img.naturalHeight}). Recomendado: 16:5 (1920×600).`;
+      } else {
+        desktopWarningBadge.hidden = true;
+      }
+    };
+    img.src = tempUrl;
   }
 
   function updatePreviewUI(/** @type {string | null} */ src) {
@@ -159,6 +215,146 @@ export function renderBannersView(container) {
     } else {
       previewImg.src = '';
       previewCard.hidden = true;
+    }
+  }
+
+  // ==========================================
+  // 2. UPLOAD DA ARTE MOBILE (1080x1350 / 4:5)
+  // ==========================================
+  const mobileFileInput = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'file',
+      id: 'slide-mobile-image',
+      className: 'upload-zone__input',
+      accept: 'image/jpeg,image/png,image/webp',
+    })
+  );
+
+  const previewImgMobile = /** @type {HTMLImageElement} */ (
+    el('img', {
+      id: 'slide-preview-mobile',
+      src: '',
+      alt: 'Pré-visualização da arte vertical para celular',
+      width: '220',
+      height: '275',
+    })
+  );
+
+  const mobileRatioMsg = el('span', { textContent: '' });
+  const mobileWarningBadge = el(
+    'span',
+    { className: 'badge badge-warning', hidden: true },
+    [createIcon('fa-solid fa-triangle-exclamation'), mobileRatioMsg]
+  );
+
+  const previewCardMobile = el(
+    'div',
+    { id: 'slide-mobile-preview-container', className: 'slide-preview-card', hidden: true },
+    [
+      el('div', { className: 'slide-preview-card__frame slide-preview-card__frame--mobile' }, [previewImgMobile]),
+      el('div', { className: 'slide-preview-card__info' }, [
+        el('span', { className: 'badge badge-info' }, [
+          createIcon('fa-solid fa-mobile-screen'),
+          el('span', { textContent: 'Arte vertical 4:5 pronta' }),
+        ]),
+        mobileWarningBadge,
+        el(
+          'button',
+          {
+            type: 'button',
+            className: 'btn btn-secondary btn-sm',
+            onClick: () => {
+              selectedMobileFile = null;
+              mobileFileInput.value = '';
+              isMobileImageCleared = true;
+              if (activeMobileBlobUrl) {
+                URL.revokeObjectURL(activeMobileBlobUrl);
+                activeMobileBlobUrl = null;
+              }
+              mobileWarningBadge.hidden = true;
+              updateMobilePreviewUI(null);
+            },
+          },
+          [createIcon('fa-solid fa-trash-can'), el('span', { textContent: 'Remover arte mobile' })]
+        ),
+      ]),
+    ]
+  );
+
+  const uploadZoneMobile = el('div', { className: 'upload-zone' }, [
+    mobileFileInput,
+    el('div', { className: 'upload-zone__prompt' }, [
+      el('div', { className: 'upload-zone__icon', 'aria-hidden': 'true' }, [
+        createIcon('fa-solid fa-mobile-screen'),
+      ]),
+      el('div', { className: 'upload-zone__text' }, [
+        el('strong', { textContent: 'Arte Mobile Dedicada (Opcional — 1080 × 1350 / 4:5)' }),
+        el('span', {
+          textContent: 'Otimizada para celulares verticais. Se não enviada, o site exibirá o banner 16:5 inteiro sem cortes.',
+        }),
+      ]),
+    ]),
+  ]);
+
+  uploadZoneMobile.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZoneMobile.classList.add('is-dragover');
+  });
+  uploadZoneMobile.addEventListener('dragleave', () => {
+    uploadZoneMobile.classList.remove('is-dragover');
+  });
+  uploadZoneMobile.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZoneMobile.classList.remove('is-dragover');
+    const droppedFile = e.dataTransfer?.files?.[0];
+    if (droppedFile) handleMobileFileChosen(droppedFile);
+  });
+
+  mobileFileInput.addEventListener('change', () => {
+    const file = mobileFileInput.files?.[0] || null;
+    if (file) handleMobileFileChosen(file);
+  });
+
+  function handleMobileFileChosen(/** @type {File} */ file) {
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      showToast(validation.error || 'Arquivo mobile inválido.', 'error');
+      mobileFileInput.value = '';
+      return;
+    }
+    selectedMobileFile = file;
+    isMobileImageCleared = false;
+    if (activeMobileBlobUrl) {
+      URL.revokeObjectURL(activeMobileBlobUrl);
+    }
+    activeMobileBlobUrl = URL.createObjectURL(file);
+    updateMobilePreviewUI(activeMobileBlobUrl);
+    checkMobileRatio(file);
+  }
+
+  function checkMobileRatio(/** @type {File} */ file) {
+    const img = new Image();
+    const tempUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(tempUrl);
+      const ratio = img.naturalWidth / img.naturalHeight;
+      if (ratio < 0.65 || ratio > 0.95) {
+        mobileWarningBadge.hidden = false;
+        mobileRatioMsg.textContent = `Proporção ${ratio.toFixed(2)}:1 (${img.naturalWidth}x${img.naturalHeight}). Recomendado: 4:5 (1080×1350).`;
+      } else {
+        mobileWarningBadge.hidden = true;
+      }
+    };
+    img.src = tempUrl;
+  }
+
+  function updateMobilePreviewUI(/** @type {string | null} */ src) {
+    if (src) {
+      previewImgMobile.src = src;
+      previewCardMobile.hidden = false;
+    } else {
+      previewImgMobile.src = '';
+      previewCardMobile.hidden = true;
     }
   }
 
@@ -227,17 +423,24 @@ export function renderBannersView(container) {
   function resetForm() {
     editingId = '';
     oldImagePath = '';
+    oldMobileImagePath = '';
     selectedFile = null;
     fileInput.value = '';
+    selectedMobileFile = null;
+    mobileFileInput.value = '';
+    isMobileImageCleared = false;
     revokePreviewBlob();
     updatePreviewUI(null);
+    updateMobilePreviewUI(null);
+    desktopWarningBadge.hidden = true;
+    mobileWarningBadge.hidden = true;
     titleInput.value = '';
     linkInput.value = '';
     orderInput.value = String(state.carouselSlides.length + 1);
     activeCheckbox.checked = true;
     cancelBtn.hidden = true;
     progressWrap.hidden = true;
-    formTitleEl.textContent = 'Adicionar Novo Banner (1920 × 650)';
+    formTitleEl.textContent = 'Adicionar Novo Banner (1920 × 600)';
     setButtonLoading(
       saveBtn,
       false,
@@ -251,9 +454,15 @@ export function renderBannersView(container) {
   function startEdit(/** @type {any} */ slide) {
     editingId = slide.id;
     oldImagePath = slide.image_path || '';
+    oldMobileImagePath = slide.mobile_image_path || '';
     selectedFile = null;
     fileInput.value = '';
+    selectedMobileFile = null;
+    mobileFileInput.value = '';
+    isMobileImageCleared = false;
     revokePreviewBlob();
+    desktopWarningBadge.hidden = true;
+    mobileWarningBadge.hidden = true;
 
     titleInput.value = slide.title || '';
     linkInput.value = slide.button_link || '';
@@ -263,6 +472,17 @@ export function renderBannersView(container) {
 
     const currentImg = resolveAdminImageUrl(slide, FALLBACK_SLIDE_THUMB);
     updatePreviewUI(currentImg);
+
+    if (slide.mobile_image_url || slide.mobile_image_path) {
+      updateMobilePreviewUI(
+        resolveAdminImageUrl(
+          { image_url: slide.mobile_image_url, image_path: slide.mobile_image_path },
+          ''
+        )
+      );
+    } else {
+      updateMobilePreviewUI(null);
+    }
 
     formTitleEl.textContent = `Editando Banner #${slide.display_order ?? 1}`;
     setButtonLoading(
@@ -325,6 +545,9 @@ export function renderBannersView(container) {
               editingId,
               oldImagePath,
               file: selectedFile,
+              mobileFile: selectedMobileFile,
+              oldMobileImagePath,
+              clearMobileImage: isMobileImageCleared,
               onProgress: (pct) => {
                 progressFill.style.width = `${pct}%`;
               },
@@ -354,14 +577,22 @@ export function renderBannersView(container) {
       },
     },
     [
+      guideBox,
       el('div', { className: 'form-group' }, [
         el('label', { for: 'slide-image', className: 'form-label' }, [
-          'Arte Panorâmica do Banner ',
+          'Arte Panorâmica Desktop (1920 × 600 / 16:5) ',
           el('span', { className: 'required-mark', textContent: '*' }),
         ]),
         uploadZone,
         progressWrap,
         previewCard,
+      ]),
+      el('div', { className: 'form-group' }, [
+        el('label', { for: 'slide-mobile-file', className: 'form-label' }, [
+          'Arte Mobile Vertical Opcional (1080 × 1350 / 4:5)',
+        ]),
+        uploadZoneMobile,
+        previewCardMobile,
       ]),
       el('div', { className: 'form-row form-row--2col' }, [
         el('div', { className: 'form-group' }, [
@@ -488,6 +719,12 @@ export function renderBannersView(container) {
                 className: slide.is_active ? 'badge badge-success' : 'badge badge-muted',
                 textContent: slide.is_active ? 'Visível' : 'Oculto',
               }),
+              slide.mobile_image_url || slide.mobile_image_path
+                ? el('span', { className: 'badge badge-info', title: 'Possui arte dedicada para celular 4:5' }, [
+                    createIcon('fa-solid fa-mobile-screen'),
+                    el('span', { textContent: 'Mobile 4:5' }),
+                  ])
+                : null,
             ]),
           ]),
           el('div', { className: 'carousel-slide-card__body' }, [

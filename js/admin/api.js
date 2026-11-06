@@ -490,6 +490,9 @@ export async function saveCarouselSlide(payload, options = {}) {
   const editingId = options.editingId || '';
   const oldImagePath = options.oldImagePath || '';
   const file = options.file || null;
+  const mobileFile = options.mobileFile || null;
+  const oldMobileImagePath = options.oldMobileImagePath || '';
+  const clearMobileImage = Boolean(options.clearMobileImage);
 
   if (!isValidBannerLink(payload.button_link)) {
     throw new Error('Link do banner inválido. Use https://, http:// ou um caminho relativo.');
@@ -497,6 +500,8 @@ export async function saveCarouselSlide(payload, options = {}) {
 
   /** @type {{ imagePath: string, imageUrl: string } | null} */
   let uploaded = null;
+  /** @type {{ imagePath: string, imageUrl: string } | null} */
+  let uploadedMobile = null;
 
   try {
     if (file) {
@@ -505,6 +510,14 @@ export async function saveCarouselSlide(payload, options = {}) {
         maxDimension: 1920,
         quality: 0.85,
         onProgress: options.onProgress,
+      });
+    }
+
+    if (mobileFile) {
+      uploadedMobile = await uploadStorageWebpImage(mobileFile, {
+        folder: 'carousel/mobile',
+        maxDimension: 1080,
+        quality: 0.85,
       });
     }
 
@@ -522,6 +535,14 @@ export async function saveCarouselSlide(payload, options = {}) {
       record.image_url = uploaded.imageUrl;
     }
 
+    if (uploadedMobile) {
+      record.mobile_image_path = uploadedMobile.imagePath;
+      record.mobile_image_url = uploadedMobile.imageUrl;
+    } else if (clearMobileImage) {
+      record.mobile_image_path = '';
+      record.mobile_image_url = '';
+    }
+
     const query = editingId
       ? supabase.from(DB_TABLES.CAROUSEL).update(record).eq('id', editingId)
       : supabase.from(DB_TABLES.CAROUSEL).insert([record]);
@@ -533,11 +554,20 @@ export async function saveCarouselSlide(payload, options = {}) {
       await removeStorageImageIfPresent(oldImagePath);
     }
 
+    if (editingId && uploadedMobile && oldMobileImagePath && oldMobileImagePath !== uploadedMobile.imagePath) {
+      await removeStorageImageIfPresent(oldMobileImagePath);
+    } else if (editingId && clearMobileImage && oldMobileImagePath) {
+      await removeStorageImageIfPresent(oldMobileImagePath);
+    }
+
     invalidateCache();
     await fetchCarouselSlides();
   } catch (err) {
     if (uploaded?.imagePath) {
       await removeStorageImageIfPresent(uploaded.imagePath);
+    }
+    if (uploadedMobile?.imagePath) {
+      await removeStorageImageIfPresent(uploadedMobile.imagePath);
     }
     throw err;
   }
@@ -553,6 +583,9 @@ export async function deleteCarouselSlide(slide) {
 
   if (slide.image_path) {
     await removeStorageImageIfPresent(slide.image_path);
+  }
+  if (slide.mobile_image_path) {
+    await removeStorageImageIfPresent(slide.mobile_image_path);
   }
 
   invalidateCache();

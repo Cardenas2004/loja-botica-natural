@@ -161,15 +161,17 @@ CREATE POLICY "products_delete_admin" ON public.products
 
 -- 7. TABELA DE BANNERS DO CARROSSEL
 CREATE TABLE IF NOT EXISTS public.carousel_slides (
-  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  title         TEXT        NOT NULL DEFAULT '',
-  image_url     TEXT        NOT NULL,
-  image_path    TEXT        NOT NULL DEFAULT '',
-  button_link   TEXT        NOT NULL DEFAULT '',
-  display_order INTEGER     NOT NULL DEFAULT 0,
-  is_active     BOOLEAN     NOT NULL DEFAULT true,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  title             TEXT        NOT NULL DEFAULT '',
+  image_url         TEXT        NOT NULL,
+  image_path        TEXT        NOT NULL DEFAULT '',
+  mobile_image_url  TEXT        NOT NULL DEFAULT '',
+  mobile_image_path TEXT        NOT NULL DEFAULT '',
+  button_link       TEXT        NOT NULL DEFAULT '',
+  display_order     INTEGER     NOT NULL DEFAULT 0,
+  is_active         BOOLEAN     NOT NULL DEFAULT true,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT chk_carousel_slides_display_order_positive CHECK (display_order >= 0),
   CONSTRAINT chk_carousel_slides_button_link_scheme CHECK (
     button_link = '' OR button_link ~* '^(https?://|/[^/])'

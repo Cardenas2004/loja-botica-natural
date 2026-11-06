@@ -480,6 +480,8 @@ function syncHeroSwiperInstance(carouselEl, slideCount) {
     resizeObserver: true,
     slidesPerView: 1,
     spaceBetween: 0,
+    touchAction: 'pan-y',
+    touchReleaseOnEdges: true,
     autoplay:
       hasMultipleSlides && !prefersReducedMotion
         ? {
@@ -512,6 +514,16 @@ function syncHeroSwiperInstance(carouselEl, slideCount) {
   if (swiperInstance && typeof swiperInstance.update === 'function') {
     swiperInstance.update();
   }
+
+  // Pausa autoplay com foco via teclado ou leitor de tela (WCAG 2.1 AA / 2.2.2)
+  if (swiperInstance && swiperInstance.autoplay && hasMultipleSlides && !prefersReducedMotion) {
+    carouselEl.addEventListener('focusin', () => {
+      try { swiperInstance.autoplay.stop(); } catch {}
+    });
+    carouselEl.addEventListener('focusout', () => {
+      try { swiperInstance.autoplay.start(); } catch {}
+    });
+  }
 }
 
 /**
@@ -533,6 +545,12 @@ function renderHeroCarousel() {
   const activeSlides = Array.isArray(catalogState.carouselSlides)
     ? catalogState.carouselSlides
     : [];
+
+  const hasAnyMobileArt = activeSlides.some((slide) => {
+    const mobileImg = resolveCarouselSlideMobileImageUrl(slide);
+    return Boolean(mobileImg);
+  });
+  carouselEl.classList.toggle('promo__carousel--has-mobile-art', hasAnyMobileArt);
 
   const fragment = document.createDocumentFragment();
   let validSlideCount = 0;

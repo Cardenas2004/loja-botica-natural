@@ -583,10 +583,33 @@ button:disabled, .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .category-item__actions { display: inline-flex; align-items: center; gap: 6px; }
 
 .carousel-manager-layout, .whatsapp-editor-layout { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.3fr); gap: var(--space-6); align-items: start; }
+.banner-guide-box {
+  padding: var(--space-3) var(--space-4);
+  background: var(--primary-soft);
+  border: 1px solid rgba(156, 106, 222, 0.25);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+.banner-guide-box__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--primary);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-1);
+}
+.banner-guide-box__desc {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  line-height: 1.45;
+  margin: 0;
+}
 .slide-preview-card { margin-top: var(--space-2); padding: var(--space-3); background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); display: grid; gap: var(--space-2); }
-.slide-preview-card__frame { width: 100%; aspect-ratio: 1920 / 650; border-radius: var(--radius-sm); overflow: hidden; background: var(--primary-darker); }
-#slide-preview { width: 100%; height: 100%; object-fit: cover; }
-.slide-preview-card__info { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.slide-preview-card__frame { width: 100%; aspect-ratio: 16 / 5; border-radius: var(--radius-sm); overflow: hidden; background: var(--primary-darker); }
+.slide-preview-card__frame--mobile { aspect-ratio: 4 / 5; max-width: 220px; margin: 0 auto; }
+#slide-preview, #slide-preview-mobile { width: 100%; height: 100%; object-fit: contain; }
+.slide-preview-card__info { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.badge-warning { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
 .carousel-admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
 .carousel-slide-card { display: flex; flex-direction: column; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); cursor: grab; transition: transform var(--transition-fast), border-color var(--transition-fast); }
 .carousel-slide-card.is-editing { border-color: var(--primary); box-shadow: var(--focus-ring); }

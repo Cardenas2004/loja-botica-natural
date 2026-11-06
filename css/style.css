@@ -694,8 +694,10 @@ strong { font-weight: 600; }
 }
 
 /* ==========================================================================
-   5b. PROMO — Hero Banner Full-Bleed (1920x600 / 16:5) com Direção de Arte & CLS Zero
-   Proporção nativa 1920x600 (16 / 5) sem corte lateral em mobile, tablet e desktop.
+   5b. PROMO — Hero Banner Full-Bleed (1920x600 / 16:5 & 4:5 Mobile) com CLS Zero
+   Design mobile-first: fluido, sem faixas pretas e com paginação elegante.
+   Suporte a proporção oficial panorâmica (1920x600 / 16:5) e
+   suporte a arte mobile vertical 4:5 dedicada (1080x1350).
    ========================================================================== */
 .promo {
   position: relative;
@@ -703,8 +705,11 @@ strong { font-weight: 600; }
   max-width: 100%;
   margin-top: calc(var(--header-h) + env(safe-area-inset-top));
   padding: 0;
-  background: var(--primary-darker);
+  background: var(--primary-soft);
   overflow: hidden;
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 .promo__carousel {
@@ -716,21 +721,29 @@ strong { font-weight: 600; }
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  aspect-ratio: 16 / 9;
-  min-height: 180px;
+  aspect-ratio: 16 / 5;
   max-height: 600px;
   overflow: hidden;
-  background: var(--primary-darker);
+  background: transparent;
+  touch-action: pan-y;
+  color-scheme: light;
 
   /* Custom Properties do Swiper alinhadas aos Design Tokens (:root) */
   --swiper-theme-color: var(--accent);
   --swiper-pagination-color: var(--accent);
-  --swiper-pagination-bullet-inactive-color: var(--primary-soft);
-  --swiper-pagination-bullet-inactive-opacity: 0.75;
-  --swiper-pagination-bullet-size: 10px;
-  --swiper-pagination-bullet-horizontal-gap: 6px;
-  --swiper-pagination-bottom: 0.5rem;
+  --swiper-pagination-bullet-inactive-color: rgba(255, 255, 255, 0.65);
+  --swiper-pagination-bullet-inactive-opacity: 0.7;
+  --swiper-pagination-bullet-size: 6px;
+  --swiper-pagination-bullet-horizontal-gap: 4px;
+  --swiper-pagination-bottom: 8px;
   --swiper-navigation-size: 18px;
+}
+
+/* Quando há slides com arte mobile dedicada (proporção 4:5 no mobile < 768px) */
+.promo__carousel.promo__carousel--has-mobile-art {
+  aspect-ratio: 4 / 5;
+  max-height: min(74vh, 540px);
+  max-height: min(74svh, 540px);
 }
 
 .promo__carousel .swiper-wrapper {
@@ -738,6 +751,7 @@ strong { font-weight: 600; }
   height: 100%;
   will-change: transform;
   transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -746,17 +760,21 @@ strong { font-weight: 600; }
   position: relative;
   width: 100%;
   height: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 5;
   overflow: hidden;
-  background: var(--primary-dark);
+  background: transparent;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transform: translateZ(0);
+  touch-action: pan-y;
 }
 
-/* Suporte a arte vertical/quadrada dedicada quando cadastrada para mobile */
+/* Suporte a arte vertical dedicada quando cadastrada para mobile (4:5) */
+.promo__carousel--has-mobile-art .promo__slide,
 .promo__slide--has-mobile-art {
-  aspect-ratio: 1 / 1;
-  max-height: 480px;
+  aspect-ratio: 4 / 5;
+  max-height: min(74vh, 540px);
+  max-height: min(74svh, 540px);
 }
 
 .promo__link {
@@ -773,6 +791,7 @@ strong { font-weight: 600; }
   height: 100%;
 }
 
+/* Fallback seguro SEM arte mobile: 100% da largura do banner 16:5 de ponta a ponta sem cortes */
 .promo__img,
 .promo__slide img {
   width: 100%;
@@ -780,47 +799,78 @@ strong { font-weight: 600; }
   display: block;
   object-fit: cover;
   object-position: center center;
+  background: transparent;
   user-select: none;
   -webkit-user-drag: none;
 }
 
-/* Container da Paginação (cápsula translúcida em lilás/roxo sobre o banner) */
+/* Slides com arte mobile dedicada: preenche proporcionalmente */
+.promo__slide--has-mobile-art img {
+  object-fit: cover;
+  object-position: center center;
+}
+
+/* Container da Paginação: pílula compacta de vidro fosco (estilo iOS), sem invadir o centro da arte */
 .promo__carousel .swiper-pagination {
+  position: absolute;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   width: auto !important;
   left: 50% !important;
   transform: translateX(-50%);
-  padding: 0.35rem 0.75rem;
+  bottom: 8px;
+  height: 20px;
+  padding: 0 8px;
   border-radius: var(--radius-pill);
-  background: rgba(26, 13, 46, 0.58);
+  background: rgba(26, 13, 46, 0.42);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(176, 117, 230, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 10;
+  pointer-events: auto;
 }
 
-/* Bullets de Paginação com área de toque expandida */
+/* Bullets de Paginação: visual minimalista de 6px com alvo de toque acessível de 44x44px via ::before */
 .promo__carousel .swiper-pagination-bullet {
   position: relative;
-  background: var(--primary-soft);
-  opacity: 0.65;
-  transition: width var(--t), opacity var(--t-fast), background-color var(--t-fast);
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
+  min-height: 6px;
+  padding: 0;
+  margin: 0 2px !important;
+  background-color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+  border-radius: 50%;
+  border: none;
+  touch-action: manipulation;
+  cursor: pointer;
+  transition: width 0.25s ease, background-color 0.2s ease, border-radius 0.2s ease, box-shadow 0.2s ease;
 }
 
-.promo__carousel .swiper-pagination-bullet::after {
+/* Expansão invisível do alvo de toque para 44x44px (WCAG 2.1 AA / WCAG 2.5.5) */
+.promo__carousel .swiper-pagination-bullet::before {
   content: '';
   position: absolute;
-  inset: -12px -6px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  pointer-events: auto;
 }
 
 .promo__carousel .swiper-pagination-bullet-active {
-  width: 28px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 100%);
-  opacity: 1;
-  box-shadow: 0 0 10px rgba(176, 117, 230, 0.65);
+  width: 18px;
+  border-radius: 3px;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
 }
 
 /* Setas de Navegação: ocultas no mobile (< 768px, navegação via swipe) e >= 44x44px em telas maiores */
@@ -873,11 +923,25 @@ strong { font-weight: 600; }
 
 /* Tablet e Desktop (>= 768px): Proporção Panorâmica Oficial 1920x600 (16:5) */
 @media (min-width: 768px) {
+  .promo {
+    background: var(--primary-darker);
+  }
+
   .promo__carousel,
+  .promo__carousel.promo__carousel--has-mobile-art,
   .promo__slide,
-  .promo__slide--has-mobile-art {
+  .promo__slide--has-mobile-art,
+  .promo__carousel--has-mobile-art .promo__slide {
     aspect-ratio: 16 / 5;
     max-height: 600px;
+    padding-bottom: 0;
+  }
+
+  .promo__img,
+  .promo__slide img,
+  .promo__slide--has-mobile-art img {
+    object-fit: cover;
+    object-position: center center;
   }
 
   .promo__carousel {
@@ -885,6 +949,7 @@ strong { font-weight: 600; }
   }
 
   .promo__carousel .swiper-pagination {
+    bottom: 1rem;
     padding: 0.4rem 0.85rem;
   }
 
