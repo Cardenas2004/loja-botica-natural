@@ -674,6 +674,19 @@ function renderBestSellers() {
    6. RENDERIZAÇÃO DE CATÁLOGO E CATEGORIAS (100% SUPABASE)
    ========================================================================== */
 
+function scrollTabIntoView(tabElement) {
+  if (!tabElement || typeof tabElement.scrollIntoView !== 'function') return;
+  const prefersReducedMotion =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  tabElement.scrollIntoView({
+    inline: 'center',
+    block: 'nearest',
+    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+  });
+}
+
 function createCategoryFilterButton({ id, slug, name, count, isActive }) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -690,6 +703,7 @@ function createCategoryFilterButton({ id, slug, name, count, isActive }) {
   }
 
   const labelSpan = document.createElement('span');
+  labelSpan.className = 'catalog-tab__label';
   labelSpan.textContent = name;
   button.appendChild(labelSpan);
 
@@ -741,6 +755,14 @@ function renderCategoryFilters() {
   });
 
   filtersContainer.replaceChildren(fragment);
+
+  // Garante que a aba ativa fique visível após inicialização (ex: navegação via hash)
+  const activeTab =
+    filtersContainer.querySelector('.catalog-tab.is-active') ||
+    filtersContainer.querySelector('.catalog-tab.active');
+  if (activeTab && catalogState.activeCategory !== 'all') {
+    requestAnimationFrame(() => scrollTabIntoView(activeTab));
+  }
 }
 
 function handleCategorySelection(selectedCategoryId) {
@@ -760,6 +782,9 @@ function handleCategorySelection(selectedCategoryId) {
       btn.classList.toggle('active', isSelected);
       btn.classList.toggle('is-active', isSelected);
       btn.setAttribute('aria-pressed', String(isSelected));
+      if (isSelected) {
+        scrollTabIntoView(btn);
+      }
     });
   }
 

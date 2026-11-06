@@ -26,7 +26,7 @@ export async function setupPageMocks(page) {
   });
 
   // 2. Intercepta requisições de Storage simulado
-  await page.route(/.*fake-storage\.local.*/, async (route) => {
+  await page.route(/.*(fake-storage\.local|product-images).*/, async (route) => {
     // Retorna SVG transparente mínimo ou WebP mock de 1x1 pixel
     const transparentSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#E2D9F3"/></svg>';
     await route.fulfill({

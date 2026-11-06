@@ -216,7 +216,8 @@ export const initialData = {
     {
       id: 'banner-1',
       title: 'Fórmulas Personalizadas para sua Saúde',
-      image_url: 'https://fake-storage.local/carousel/banner1.webp',
+      image_url:
+        'https://njdkuhgoophzjxmmempu.supabase.co/storage/v1/object/public/product-images/carousel/banner1.webp',
       image_path: 'carousel/banner1.webp',
       button_link: 'https://wa.me/555185543448',
       display_order: 1,
