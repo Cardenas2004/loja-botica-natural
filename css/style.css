@@ -2274,14 +2274,16 @@ body {
 
 /* Abas de Categorias */
 .catalog-tabs-nav {
-  margin: 1.5rem 0 2.25rem;
+  margin: 1.25rem 0 2rem;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 0.625rem;
   overflow-x: auto;
-  padding: 0.25rem max(var(--gutter), 1rem) 0.75rem;
-  margin-inline: calc(max(var(--gutter), 1rem) * -1);
+  scroll-snap-type: x proximity;
+  padding: 0.25rem 0 0.75rem;
+  margin-inline: 0;
+  max-width: 100%;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -2305,7 +2307,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 1.25rem;
+  min-height: 44px;
+  padding: 0.625rem 1.25rem;
+  scroll-snap-align: start;
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
@@ -2367,29 +2371,52 @@ body {
   color: var(--text-medium);
 }
 
-/* Grid de Produtos (Mobile-First: 1 coluna em <400px, 2 colunas em 400-768px, 3 em tablet, 4 em desktop) */
+/* ==========================================================================
+   Grid de Produtos Determinístico (Mobile-First)
+   Decisão arquitetural: grid-template-columns com repeat(N, minmax(0, 1fr))
+   por faixa de breakpoint em vez de auto-fill, garantindo colunas previsíveis
+   e alinhamento perfeito de cards lado a lado sem colunas órfãs flutuantes:
+     - até 339px: 1 coluna
+     - 340px a 767px: 2 colunas (celulares lado a lado, gap 12px a 16px)
+     - 768px a 1023px: 3 colunas (tablets)
+     - 1024px a 1439px: 4 colunas (notebooks)
+     - 1440px+: 4 colunas com container limitado a 1320px
+   ========================================================================== */
 .products-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: stretch;
 }
 
-@media (min-width: 400px) {
+@media (min-width: 340px) {
   .products-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: 12px;
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 480px) {
+  .products-grid {
+    gap: 16px;
+  }
+}
+
+@media (min-width: 768px) {
   .products-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.5rem;
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.75rem;
+  }
+}
+
+@media (min-width: 1440px) {
   .products-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 2rem;
@@ -2428,6 +2455,7 @@ body {
   border-radius: 8px;
   background: #FAF7FD;
   display: block;
+  cursor: pointer;
   transition: transform 0.6s var(--ease);
 }
 
@@ -2701,8 +2729,8 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-/* Escalabilidade Tablet Landscape & Desktop (>= 769px) */
-@media (min-width: 769px) {
+/* Escalabilidade Tablet & Desktop (>= 768px) */
+@media (min-width: 768px) {
   .product-card__media {
     padding: 8px 8px 0;
   }

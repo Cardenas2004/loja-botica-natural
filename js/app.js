@@ -170,7 +170,6 @@ export function createProductCardElement(product) {
   img.decoding = 'async';
   img.width = 600;
   img.height = 600;
-  img.style.cursor = 'pointer';
 
   img.addEventListener(
     'error',
