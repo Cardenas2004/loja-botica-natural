@@ -1184,7 +1184,7 @@ strong { font-weight: 600; }
   .benefit p { font-size: 0.875rem; }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1024px) {
   .benefits__grid {
     grid-template-columns: repeat(4, 1fr);
     padding: 1rem;

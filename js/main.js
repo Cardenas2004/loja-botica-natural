@@ -59,7 +59,7 @@ import {
     prefersReducedMotion = e.matches;
   });
 
-  const desktopMQ = window.matchMedia('(min-width: 992px)');
+  const desktopMQ = window.matchMedia('(min-width: 1024px)');
 
   const sanitizeSlug = (rawValue) => {
     if (typeof rawValue !== 'string') return '';
