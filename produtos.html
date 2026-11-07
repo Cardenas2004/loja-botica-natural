@@ -36,8 +36,8 @@
     <link rel="stylesheet" href="css/icons.css?v=20261104">
 
     <!-- App Styles & Scripts -->
-    <link rel="stylesheet" href="css/style.css?v=20261104">
-    <script type="module" src="js/main.js?v=20261104"></script>
+    <link rel="stylesheet" href="css/style.css?v=20261106c">
+    <script type="module" src="js/main.js?v=20261106c"></script>
 </head>
 <body>
     <a class="skip-link" href="#catalogo">Pular para os produtos</a>
@@ -123,11 +123,41 @@
         <!-- REVISAR COM RT: RDC 67/2007 e normas de publicidade da Anvisa (exibição de preços de manipulados no catálogo) -->
         <section class="section" id="catalogo" aria-label="Lista de produtos por categoria">
             <div class="container">
-                <!-- Barra de Filtros Dinâmicos de Categoria -->
-                <div class="catalog-tabs-nav" id="category-filters" data-catalog-tabs role="toolbar" aria-label="Filtrar produtos por categoria">
-                    <button type="button" class="catalog-tab active is-active" data-category="all" aria-pressed="true">
-                        <i class="fa-solid fa-shapes" aria-hidden="true"></i> <span class="catalog-tab__label">Todos</span> <span class="catalog-tab__count" data-count-badge>0</span>
-                    </button>
+                <!-- Barra de Categorias: Seletor Inteligente Mobile + Abas de Acesso Rápido -->
+                <div class="catalog-category-bar" id="catalog-category-bar">
+                    <!-- Seletor / Dropdown Mobile Inteligente (exibido em telas < 1024px para evitar scroll exaustivo) -->
+                    <div class="catalog-category-mobile" id="catalog-category-mobile">
+                        <button type="button" 
+                                class="catalog-category-mobile__trigger" 
+                                id="btn-open-category-modal" 
+                                aria-haspopup="dialog" 
+                                aria-expanded="false" 
+                                aria-controls="category-bottom-sheet"
+                                aria-label="Abrir todas as categorias em lista e buscar">
+                            <span class="catalog-category-mobile__icon" aria-hidden="true">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </span>
+                            <div class="catalog-category-mobile__info">
+                                <span class="catalog-category-mobile__tag">Filtrar Categoria</span>
+                                <strong class="catalog-category-mobile__name" id="category-mobile-selected-label">Todos os Produtos</strong>
+                            </div>
+                            <span class="catalog-category-mobile__action">
+                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                                <span class="catalog-category-mobile__action-label">Buscar</span>
+                                <span class="catalog-category-mobile__badge" id="category-mobile-count-badge">0</span>
+                                <i class="fa-solid fa-chevron-down catalog-category-mobile__arrow" aria-hidden="true"></i>
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- Abas de Rolagem com 100% da largura (Sem esmagamento lateral) -->
+                    <div class="catalog-tabs-wrapper" id="catalog-tabs-wrapper">
+                        <div class="catalog-tabs-nav" id="category-filters" data-catalog-tabs role="toolbar" aria-label="Filtrar produtos por categoria">
+                            <button type="button" class="catalog-tab active is-active" data-category="all" aria-pressed="true">
+                                <i class="fa-solid fa-shapes" aria-hidden="true"></i> <span class="catalog-tab__label">Todos</span> <span class="catalog-tab__count" data-count-badge>0</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Barra de Status com Contagem -->
@@ -257,6 +287,51 @@
         </div>
     </footer>
 
+    <!-- ================= MODAL / BOTTOM SHEET DE CATEGORIAS (MOBILE UX SÊNIOR) ================= -->
+    <div class="category-sheet-backdrop" id="category-sheet-backdrop" aria-hidden="true" hidden></div>
+    <div class="category-sheet" 
+         id="category-bottom-sheet" 
+         role="dialog" 
+         aria-modal="true" 
+         aria-labelledby="category-sheet-title" 
+         aria-hidden="true" 
+         hidden>
+        <div class="category-sheet__handle" aria-hidden="true"></div>
+        <header class="category-sheet__header">
+            <div class="category-sheet__header-text">
+                <h3 class="category-sheet__title" id="category-sheet-title">Categorias de Fórmulas</h3>
+                <p class="category-sheet__subtitle" id="category-sheet-subtitle">Selecione uma categoria para filtrar a vitrine</p>
+            </div>
+            <button type="button" class="category-sheet__close" id="btn-close-category-sheet" aria-label="Fechar lista de categorias">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </header>
+
+        <!-- Campo de Busca Rápida dentro das categorias -->
+        <div class="category-sheet__search-box">
+            <i class="fa-solid fa-magnifying-glass category-sheet__search-icon" aria-hidden="true"></i>
+            <input type="search" 
+                   id="category-sheet-search" 
+                   class="category-sheet__search-input" 
+                   placeholder="Buscar categoria por nome..." 
+                   aria-label="Filtrar categorias por nome" 
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   inputmode="search"
+                   enterkeyhint="search">
+            <button type="button" class="category-sheet__search-clear" id="btn-clear-category-search" aria-label="Limpar busca de categorias" hidden>
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <!-- Lista de Categorias com Toque Confortável (Mínimo 48px por item) -->
+        <div class="category-sheet__body" id="category-sheet-list" role="listbox" aria-label="Lista de categorias disponíveis">
+            <!-- Renderizado dinamicamente por js/app.js -->
+        </div>
+    </div>
+
     <!-- ================= FLOATING CTAs ================= -->
     <a class="wa-float" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20um%20farmac%C3%AAutico." data-wa="float" aria-label="Fale conosco no WhatsApp">
         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
@@ -307,7 +382,7 @@
     </dialog>
 
     <!-- Motor Dinâmico da Vitrine (Supabase ES Module) -->
-    <script type="module" src="./js/app.js?v=20261104"></script>
+    <script type="module" src="./js/app.js?v=20261106c"></script>
 </body>
 </html>
 
