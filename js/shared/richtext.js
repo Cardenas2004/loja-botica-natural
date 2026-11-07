@@ -20,7 +20,7 @@ export const DEFAULT_FIELD_MODES = Object.freeze({
 
 /** Limites de caracteres visíveis recomendados por campo */
 export const FIELD_CHAR_LIMITS = Object.freeze({
-  short_description: 280,
+  short_description: 3000,
   description: 4000,
   usage_instructions: 2500,
   composition: 2500,

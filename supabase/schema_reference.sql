@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   CONSTRAINT chk_products_sku_ref_length CHECK (sku_ref IS NULL OR char_length(sku_ref) <= 100),
   CONSTRAINT chk_products_benefits_length CHECK (benefits IS NULL OR char_length(benefits) <= 5000),
   CONSTRAINT chk_products_text_lengths CHECK (
-    (short_description IS NULL OR char_length(short_description) <= 2000) AND
+    (short_description IS NULL OR char_length(short_description) <= 5000) AND
     (description IS NULL OR char_length(description) <= 25000) AND
     (usage_instructions IS NULL OR char_length(usage_instructions) <= 15000) AND
     (composition IS NULL OR char_length(composition) <= 15000) AND

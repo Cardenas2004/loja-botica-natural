@@ -71,6 +71,7 @@ const REQUIRED_SEO_FILES = [
   'supabase/migrations/20261104210000_product_richtext_options.sql',
   'supabase/migrations/20261105200000_data_safety_defaults.sql',
   'supabase/migrations/20261106020000_carousel_mobile_art.sql',
+  'supabase/migrations/20261106214500_increase_short_description_limit.sql',
   'supabase/schema_reference.sql',
   'supabase/legacy/README.md',
   'supabase/audit/README.md',
