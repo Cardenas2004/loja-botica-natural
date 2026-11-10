@@ -429,7 +429,7 @@ export function renderBannersView(container) {
     selectedMobileFile = null;
     mobileFileInput.value = '';
     isMobileImageCleared = false;
-    revokePreviewBlob();
+    revokePreviewBlobs();
     updatePreviewUI(null);
     updateMobilePreviewUI(null);
     desktopWarningBadge.hidden = true;
@@ -460,7 +460,7 @@ export function renderBannersView(container) {
     selectedMobileFile = null;
     mobileFileInput.value = '';
     isMobileImageCleared = false;
-    revokePreviewBlob();
+    revokePreviewBlobs();
     desktopWarningBadge.hidden = true;
     mobileWarningBadge.hidden = true;
 
@@ -484,7 +484,8 @@ export function renderBannersView(container) {
       updateMobilePreviewUI(null);
     }
 
-    formTitleEl.textContent = `Editando Banner #${slide.display_order ?? 1}`;
+    const slideLabel = slide.title ? `"${slide.title}"` : `#${slide.display_order ?? 1}`;
+    formTitleEl.textContent = `Editando Banner ${slideLabel}`;
     setButtonLoading(
       saveBtn,
       false,
@@ -493,7 +494,13 @@ export function renderBannersView(container) {
       'fa-solid fa-floppy-disk'
     );
     renderGallery();
-    titleInput.focus();
+
+    const formPanel = formEl.closest('.admin-panel');
+    if (formPanel && typeof formPanel.scrollIntoView === 'function') {
+      formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    titleInput.focus({ preventScroll: true });
+    showToast(`Modo de edição ativado para ${slideLabel}.`, 'info');
   }
 
   const formEl = el(
@@ -588,7 +595,7 @@ export function renderBannersView(container) {
         previewCard,
       ]),
       el('div', { className: 'form-group' }, [
-        el('label', { for: 'slide-mobile-file', className: 'form-label' }, [
+        el('label', { for: 'slide-mobile-image', className: 'form-label' }, [
           'Arte Mobile Vertical Opcional (1080 × 1350 / 4:5)',
         ]),
         uploadZoneMobile,
@@ -767,10 +774,14 @@ export function renderBannersView(container) {
               'button',
               {
                 type: 'button',
-                className: 'btn btn-secondary btn-sm',
+                className: isEditingThis ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm',
+                'aria-pressed': String(isEditingThis),
                 onClick: () => startEdit(slide),
               },
-              [createIcon('fa-regular fa-pen-to-square'), el('span', { textContent: 'Editar' })]
+              [
+                createIcon('fa-regular fa-pen-to-square'),
+                el('span', { textContent: isEditingThis ? 'Editando' : 'Editar' }),
+              ]
             ),
             el(
               'button',
