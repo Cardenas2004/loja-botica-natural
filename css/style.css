@@ -715,14 +715,13 @@ strong { font-weight: 600; }
 .promo__carousel {
   position: relative;
   width: 100%;
-  max-width: 1920px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 0;
   border: 0;
   border-radius: 0;
   box-shadow: none;
   aspect-ratio: 16 / 5;
-  max-height: 600px;
   overflow: hidden;
   background: transparent;
   touch-action: pan-y;
@@ -924,7 +923,7 @@ strong { font-weight: 600; }
 /* Tablet e Desktop (>= 768px): Proporção Panorâmica Oficial 1920x600 (16:5) */
 @media (min-width: 768px) {
   .promo {
-    background: var(--primary-darker);
+    background: var(--primary-soft);
   }
 
   .promo__carousel,
@@ -933,7 +932,8 @@ strong { font-weight: 600; }
   .promo__slide--has-mobile-art,
   .promo__carousel--has-mobile-art .promo__slide {
     aspect-ratio: 16 / 5;
-    max-height: 600px;
+    max-width: 100%;
+    max-height: none;
     padding-bottom: 0;
   }
 
