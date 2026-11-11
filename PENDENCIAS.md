@@ -48,8 +48,8 @@ Substitua os placeholders abaixo pelos dados reais verificados antes ou logo ap�
 | **Farmacêutico(a) Responsável Técnico(a)** | ✅ Preenchido: `Tainã Cornélius Vargas` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
 | **Inscrição no CRF-RS** | ✅ Preenchido: `CRF/RS 17296` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
 | **Licença Sanitária / AFE (Anvisa)** | ✅ Preenchido: `AFE n.º 0.04906.7` | `index.html`, `produtos.html`, `produto.html` |
-| **E-mail Oficial de Atendimento / DPO (LGPD)** | `[PREENCHER: e-mail oficial]` / `[PREENCHER: e-mail do encarregado LGPD]` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
-| **Indicadores da Seção "Sobre"** | `[PREENCHER: anos de atuação]`, `[PREENCHER: clientes atendidos]`, `[PREENCHER: fórmulas manipuladas]` | `index.html` (seção `#sobre` e card lateral do Hero) |
+| **E-mail Oficial de Atendimento / DPO (LGPD)** | ✅ Preenchido: `boticanatural@terra.com.br` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
+| **Indicadores da Seção "Sobre"** | ✅ Preenchidos: `26 anos`, `129.644` clientes atendidos, `245.735` fórmulas manipuladas, `1` Farmacêutico Responsável | `index.html` (seção `#sobre` e card lateral do Hero) |
 | **Depoimentos Reais de Clientes** | Seção `#depoimentos` oculta (`hidden`) com `<!-- TODO -->` | `index.html` (só remover atributo `hidden` quando houver depoimentos reais autorizados) |
 
 ---
