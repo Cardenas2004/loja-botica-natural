@@ -1298,20 +1298,20 @@ strong { font-weight: 600; }
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(145deg, #F7F2FD 0%, #EDE2FC 100%);
-  border: 1px solid rgba(156, 106, 222, 0.26);
-  box-shadow: 0 4px 12px rgba(61, 30, 109, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  color: var(--primary);
-  font-size: 1.5rem;
-  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #381B63 0%, #240F3F 100%);
+  border: 1px solid rgba(212, 171, 255, 0.22);
+  box-shadow: 0 8px 20px -4px rgba(43, 21, 77, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  color: #D4ABFF;
+  font-size: 1.75rem;
+  transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
 }
 
 .service-card__svg {
-  width: 30px;
-  height: 30px;
+  width: 48px;
+  height: 48px;
   display: block;
 }
 
@@ -1369,8 +1369,8 @@ strong { font-weight: 600; }
   }
   .service-card { padding: 1.75rem 2rem; }
   .service-card__head { flex-direction: column; align-items: flex-start; gap: 1rem; }
-  .service-card__icon, .service-card__img { width: 64px; height: 64px; border-radius: 18px; font-size: 1.625rem; }
-  .service-card__svg { width: 34px; height: 34px; }
+  .service-card__icon, .service-card__img { width: 72px; height: 72px; border-radius: 20px; font-size: 1.875rem; }
+  .service-card__svg { width: 56px; height: 56px; }
 }
 
 /* ==========================================================================
@@ -2264,10 +2264,9 @@ body {
 
   .service-card:hover { translate: 0 -6px; box-shadow: var(--shadow-lg); border-color: rgba(156, 106, 222, 0.35); }
   .service-card:hover .service-card__icon {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    color: var(--white);
-    border-color: transparent;
-    box-shadow: 0 8px 20px rgba(61, 30, 109, 0.22);
+    background: linear-gradient(145deg, #47237D 0%, #2D1450 100%);
+    border-color: rgba(212, 171, 255, 0.45);
+    box-shadow: 0 12px 26px -4px rgba(61, 30, 109, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     transform: scale(1.06) translateY(-2px);
   }
   .service-card:hover .service-card__link i,
