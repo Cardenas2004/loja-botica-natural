@@ -29,6 +29,7 @@ import {
 } from './config.js';
 
 import { extractPlainText } from './shared/richtext.js';
+import { createCategoryIconElement } from './shared/categoryIcons.js';
 
 /* ==========================================================================
    1. CONFIGURAÇÕES GLOBAIS E FORMATAÇÃO (SINGLE SOURCE OF TRUTH)
@@ -713,12 +714,8 @@ function createCategoryFilterButton({ id, slug, name, count, isActive }) {
   if (slug) button.dataset.slug = String(slug);
   button.setAttribute('aria-pressed', String(Boolean(isActive)));
 
-  if (id === 'all') {
-    const icon = document.createElement('i');
-    icon.className = 'fa-solid fa-shapes';
-    icon.setAttribute('aria-hidden', 'true');
-    button.appendChild(icon);
-  }
+  const iconSvg = createCategoryIconElement(name, String(id), 'catalog-tab__icon');
+  button.appendChild(iconSvg);
 
   const labelSpan = document.createElement('span');
   labelSpan.className = 'catalog-tab__label';
@@ -845,6 +842,16 @@ function updateMobileCategoryUI() {
   if (labelEl) {
     labelEl.textContent = activeName;
   }
+  const mobileIconWrap = document.querySelector('.catalog-category-mobile__icon');
+  if (mobileIconWrap) {
+    mobileIconWrap.replaceChildren(
+      createCategoryIconElement(
+        activeName,
+        isAll ? 'all' : String(catalogState.activeCategory),
+        'category-svg-icon'
+      )
+    );
+  }
   if (badgeEl) {
     badgeEl.textContent = String(catalogState.categories.length);
   }
@@ -879,9 +886,9 @@ function createCategorySheetItem({ id, name, count, isActive }) {
   const iconWrapper = document.createElement('span');
   iconWrapper.className = 'category-sheet__item-icon';
   iconWrapper.setAttribute('aria-hidden', 'true');
-  const icon = document.createElement('i');
-  icon.className = id === 'all' ? 'fa-solid fa-shapes' : 'fa-solid fa-layer-group';
-  iconWrapper.appendChild(icon);
+  iconWrapper.appendChild(
+    createCategoryIconElement(name, String(id), 'category-svg-icon')
+  );
   item.appendChild(iconWrapper);
 
   const textWrap = document.createElement('div');

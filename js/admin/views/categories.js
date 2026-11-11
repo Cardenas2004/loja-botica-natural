@@ -5,6 +5,7 @@
  */
 
 import { normalizeSupabaseError } from '../../supabaseClient.js';
+import { createCategoryIconElement } from '../../shared/categoryIcons.js';
 import { state } from '../state.js';
 import { saveCategory, deleteCategoryById } from '../api.js';
 import {
@@ -237,6 +238,11 @@ export function renderCategoriesView(container) {
             title: 'Ordem de exibição',
             textContent: String(cat.display_order ?? 0),
           }),
+          el(
+            'span',
+            { className: 'category-item__icon', 'aria-hidden': 'true' },
+            [createCategoryIconElement(cat.name, cat.id)]
+          ),
           el('div', { className: 'category-item__text' }, [
             el('strong', { className: 'category-item__name', textContent: cat.name }),
             el('span', {

@@ -38,6 +38,7 @@ const JS_FILES = [
   'js/admin.js',
   'js/shared/richtext.js',
   'js/shared/productRenderer.js',
+  'js/shared/categoryIcons.js',
   'js/admin/main.js',
   'js/admin/state.js',
   'js/admin/ui.js',
