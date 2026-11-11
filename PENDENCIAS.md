@@ -44,10 +44,10 @@ Substitua os placeholders abaixo pelos dados reais verificados antes ou logo ap�
 |---|---|---|
 | **Nome Oficial da Marca** | Confirmar se é oficialmente `"Botica Natural"` (`BRAND_NAME` em `js/config.js`) | `js/config.js`, todas as páginas HTML (`<title>`, rodapé, JSON-LD, políticas) |
 | **Domínio Oficial de Produção** | `https://boticanatural.com.br` (`[PREENCHER: confirmar domínio oficial]`) | `js/config.js`, `index.html`, `produtos.html`, `produto.html`, `privacidade.html`, `robots.txt`, `sitemap.xml` |
-| **CNPJ da Farmácia** | `[PREENCHER: CNPJ]` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
-| **Farmacêutico(a) Responsável Técnico(a)** | `[PREENCHER: Nome do Farmacêutico]` | `index.html`, `produtos.html`, `produto.html` |
-| **Inscrição no CRF-RS** | `CRF-RS [PREENCHER: número CRF]` | `index.html`, `produtos.html`, `produto.html` |
-| **Licença Sanitária / AFE (Anvisa)** | `Licença Sanitária / AFE nº [PREENCHER: número da AFE/Licença]` | `index.html`, `produtos.html`, `produto.html` |
+| **CNPJ da Farmácia** | ✅ Preenchido: `04.063.559/0001-11` (Botica Natural Farmácia de Manipulação LTDA) | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
+| **Farmacêutico(a) Responsável Técnico(a)** | ✅ Preenchido: `Tainã Cornélius Vargas` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
+| **Inscrição no CRF-RS** | ✅ Preenchido: `CRF/RS 17296` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
+| **Licença Sanitária / AFE (Anvisa)** | ✅ Preenchido: `AFE n.º 0.04906.7` | `index.html`, `produtos.html`, `produto.html` |
 | **E-mail Oficial de Atendimento / DPO (LGPD)** | `[PREENCHER: e-mail oficial]` / `[PREENCHER: e-mail do encarregado LGPD]` | `index.html`, `produtos.html`, `produto.html`, `privacidade.html` |
 | **Indicadores da Seção "Sobre"** | `[PREENCHER: anos de atuação]`, `[PREENCHER: clientes atendidos]`, `[PREENCHER: fórmulas manipuladas]` | `index.html` (seção `#sobre` e card lateral do Hero) |
 | **Depoimentos Reais de Clientes** | Seção `#depoimentos` oculta (`hidden`) com `<!-- TODO -->` | `index.html` (só remover atributo `hidden` quando houver depoimentos reais autorizados) |
