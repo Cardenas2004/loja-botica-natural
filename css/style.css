@@ -1023,16 +1023,24 @@ strong { font-weight: 600; }
 .hero__content { max-width: 640px; }
 
 .hero__title {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--fs-h1);
-  line-height: var(--lh-display);
-  letter-spacing: var(--ls-display);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: clamp(2.25rem, 1.55rem + 3.2vw, 3.625rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
   color: var(--white);
   margin: 1.25rem 0 1.25rem;
+  text-wrap: balance;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.hero__title em { font-style: italic; font-weight: 600; color: var(--accent-light); }
+.hero__title em {
+  font-style: normal;
+  font-weight: 700;
+  color: #E9D5FF;
+  text-shadow: 0 2px 18px rgba(176, 117, 230, 0.28);
+}
 
 .hero__lead {
   font-family: var(--font-body);
