@@ -40,6 +40,7 @@ export function renderBannersView(container) {
   let activeBlobUrl = null;
   /** @type {string | null} */
   let activeMobileBlobUrl = null;
+  let isDesktopImageCleared = false;
   let isMobileImageCleared = false;
   let draggedSlideId = '';
 
@@ -123,17 +124,13 @@ export function renderBannersView(container) {
             onClick: () => {
               selectedFile = null;
               fileInput.value = '';
+              isDesktopImageCleared = true;
               if (activeBlobUrl) {
                 URL.revokeObjectURL(activeBlobUrl);
                 activeBlobUrl = null;
               }
               desktopWarningBadge.hidden = true;
-              if (editingId) {
-                const current = state.carouselSlides.find((s) => s.id === editingId);
-                updatePreviewUI(current ? resolveAdminImageUrl(current, FALLBACK_SLIDE_THUMB) : null);
-              } else {
-                updatePreviewUI(null);
-              }
+              updatePreviewUI(null);
             },
           },
           [createIcon('fa-solid fa-rotate-left'), el('span', { textContent: 'Limpar seleção' })]
@@ -184,6 +181,7 @@ export function renderBannersView(container) {
       return;
     }
     selectedFile = file;
+    isDesktopImageCleared = false;
     if (activeBlobUrl) {
       URL.revokeObjectURL(activeBlobUrl);
     }
@@ -428,6 +426,7 @@ export function renderBannersView(container) {
     fileInput.value = '';
     selectedMobileFile = null;
     mobileFileInput.value = '';
+    isDesktopImageCleared = false;
     isMobileImageCleared = false;
     revokePreviewBlobs();
     updatePreviewUI(null);
@@ -459,6 +458,7 @@ export function renderBannersView(container) {
     fileInput.value = '';
     selectedMobileFile = null;
     mobileFileInput.value = '';
+    isDesktopImageCleared = false;
     isMobileImageCleared = false;
     revokePreviewBlobs();
     desktopWarningBadge.hidden = true;
@@ -512,7 +512,7 @@ export function renderBannersView(container) {
       onSubmit: async (/** @type {SubmitEvent} */ e) => {
         e.preventDefault();
 
-        if (!editingId && !selectedFile) {
+        if ((!editingId || isDesktopImageCleared) && !selectedFile) {
           showToast('Selecione uma imagem panorâmica para adicionar ao carrossel.', 'warning');
           fileInput.focus();
           return;

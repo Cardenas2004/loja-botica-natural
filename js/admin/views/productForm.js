@@ -78,6 +78,7 @@ export async function renderProductFormView(container, context) {
   let selectedFile = null;
   /** @type {string | null} */
   let activeBlobUrl = null;
+  let isImageCleared = false;
   let isInitializing = true;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let draftDebounceTimer = null;
@@ -367,6 +368,56 @@ export async function renderProductFormView(container, context) {
   const progressFill = el('div', { className: 'upload-progress__fill' });
   const progressWrap = el('div', { className: 'upload-progress', hidden: true }, [progressFill]);
 
+  const previewBadgeText = el('span', { textContent: 'Conversão WebP 1280px pronta' });
+  const previewNoteText = el('p', {
+    className: 'image-preview-card__note',
+    textContent: 'A imagem já está refletida na pré-visualização ao vivo.',
+  });
+  const removeBtnLabel = el('span', { textContent: 'Remover nova seleção' });
+
+  const restoreOriginalBtn = el(
+    'button',
+    {
+      type: 'button',
+      className: 'btn btn-secondary btn-sm',
+      hidden: true,
+      onClick: () => {
+        selectedFile = null;
+        fileInput.value = '';
+        isImageCleared = false;
+        revokePreviewBlob();
+        updateImagePreviewUI(resolveAdminImageUrl({ image_url: existingImageUrl, image_path: oldImagePath }));
+        markDirty();
+        showToast('Nova seleção descartada. Foto original mantida.', 'info');
+      },
+    },
+    [createIcon('fa-solid fa-rotate-left'), el('span', { textContent: 'Manter foto anterior' })]
+  );
+
+  const removeImageBtn = el(
+    'button',
+    {
+      type: 'button',
+      className: 'btn btn-secondary btn-sm',
+      onClick: () => {
+        const hadSavedImage = Boolean(editingProduct && (oldImagePath || existingImageUrl));
+        selectedFile = null;
+        fileInput.value = '';
+        isImageCleared = true;
+        revokePreviewBlob();
+        updateImagePreviewUI(null);
+        markDirty();
+        showToast(
+          hadSavedImage
+            ? 'Foto removida da seleção. Clique em "Salvar Produto" para confirmar.'
+            : 'Seleção de imagem removida.',
+          'info'
+        );
+      },
+    },
+    [createIcon('fa-regular fa-trash-can'), removeBtnLabel]
+  );
+
   const imagePreviewCard = el(
     'div',
     { id: 'image-preview-container', className: 'image-preview-card', hidden: true },
@@ -375,31 +426,10 @@ export async function renderProductFormView(container, context) {
       el('div', { className: 'image-preview-card__info' }, [
         el('span', { className: 'badge badge-success' }, [
           createIcon('fa-solid fa-wand-magic-sparkles'),
-          el('span', { textContent: 'Conversão WebP 1280px pronta' }),
+          previewBadgeText,
         ]),
-        el('p', {
-          className: 'image-preview-card__note',
-          textContent: 'A imagem já está refletida na pré-visualização ao vivo.',
-        }),
-        el(
-          'button',
-          {
-            type: 'button',
-            className: 'btn btn-secondary btn-sm',
-            onClick: () => {
-              selectedFile = null;
-              fileInput.value = '';
-              revokePreviewBlob();
-              if (editingProduct && (oldImagePath || existingImageUrl)) {
-                updateImagePreviewUI(resolveAdminImageUrl(editingProduct));
-              } else {
-                updateImagePreviewUI(null);
-              }
-              markDirty();
-            },
-          },
-          [createIcon('fa-solid fa-rotate-left'), el('span', { textContent: 'Remover nova seleção' })]
-        ),
+        previewNoteText,
+        el('div', { className: 'table-actions' }, [restoreOriginalBtn, removeImageBtn]),
       ]),
     ]
   );
@@ -408,9 +438,22 @@ export async function renderProductFormView(container, context) {
     if (src) {
       previewThumbImg.src = src;
       imagePreviewCard.hidden = false;
+      const hasSaved = Boolean(editingProduct && (oldImagePath || existingImageUrl));
+      if (selectedFile) {
+        previewBadgeText.textContent = 'Conversão WebP 1280px pronta';
+        previewNoteText.textContent = 'Nova imagem refletida na pré-visualização ao vivo.';
+        removeBtnLabel.textContent = 'Remover seleção';
+        restoreOriginalBtn.hidden = !hasSaved;
+      } else {
+        previewBadgeText.textContent = 'Foto atual do produto';
+        previewNoteText.textContent = 'Clique ou arraste outra imagem acima para substituir, ou remova a foto abaixo.';
+        removeBtnLabel.textContent = 'Remover foto';
+        restoreOriginalBtn.hidden = true;
+      }
     } else {
       previewThumbImg.src = '';
       imagePreviewCard.hidden = true;
+      restoreOriginalBtn.hidden = true;
     }
   }
 
@@ -441,6 +484,7 @@ export async function renderProductFormView(container, context) {
       return;
     }
     selectedFile = file;
+    isImageCleared = false;
     revokePreviewBlob();
     activeBlobUrl = URL.createObjectURL(file);
     updateImagePreviewUI(activeBlobUrl);
@@ -734,8 +778,8 @@ export async function renderProductFormView(container, context) {
       quality_note: qualityEditor.getValue(),
       whatsapp_message: waTextarea.value.trim(),
       text_options,
-      image_url: existingImageUrl,
-      image_path: oldImagePath,
+      image_url: isImageCleared && !selectedFile ? '' : existingImageUrl,
+      image_path: isImageCleared && !selectedFile ? '' : oldImagePath,
       preview_blob_url: activeBlobUrl || '',
       is_active: Boolean(activeCheckbox.checked),
       is_best_seller: Boolean(bestsellerCheckbox.checked),
@@ -1078,6 +1122,7 @@ export async function renderProductFormView(container, context) {
         originalUpdatedAt,
         forceOverwrite: Boolean(forceOverwrite),
         file: selectedFile,
+        clearImage: isImageCleared && !selectedFile,
         onProgress: (pct) => {
           progressFill.style.width = `${pct}%`;
         },
@@ -1086,15 +1131,18 @@ export async function renderProductFormView(container, context) {
       if (saved) {
         currentProductId = saved.id;
         originalUpdatedAt = saved.updated_at || originalUpdatedAt;
-        oldImagePath = saved.image_path || oldImagePath;
-        existingImageUrl = saved.image_url || existingImageUrl;
+        oldImagePath = saved.image_path ?? '';
+        existingImageUrl = saved.image_url ?? '';
       }
 
+      isImageCleared = false;
       selectedFile = null;
       fileInput.value = '';
       revokePreviewBlob();
-      if (saved) {
+      if (saved && (saved.image_url || saved.image_path)) {
         updateImagePreviewUI(resolveAdminImageUrl(saved));
+      } else {
+        updateImagePreviewUI(null);
       }
 
       clearDraftStorage();

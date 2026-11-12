@@ -625,6 +625,7 @@ export async function reorderCarouselSlides(orderedIds) {
  *   originalUpdatedAt?: string | null,
  *   forceOverwrite?: boolean,
  *   file?: File | null,
+ *   clearImage?: boolean,
  *   onProgress?: (pct: number) => void
  * }} [options]
  * @returns {Promise<any>} Registro salvo
@@ -635,6 +636,7 @@ export async function saveProductRecord(payload, options = {}) {
   const originalUpdatedAt = options.originalUpdatedAt || null;
   const forceOverwrite = Boolean(options.forceOverwrite);
   const file = options.file || null;
+  const clearImage = Boolean(options.clearImage);
 
   /** @type {{ imagePath: string, imageUrl: string } | null} */
   let uploaded = null;
@@ -679,6 +681,9 @@ export async function saveProductRecord(payload, options = {}) {
     if (uploaded) {
       record.image_path = uploaded.imagePath;
       record.image_url = uploaded.imageUrl;
+    } else if (clearImage) {
+      record.image_path = '';
+      record.image_url = '';
     }
 
     const executeQuery = async (/** @type {Record<string, any>} */ dataToSave) => {
@@ -704,6 +709,8 @@ export async function saveProductRecord(payload, options = {}) {
     }
 
     if (editingId && uploaded && oldImagePath && oldImagePath !== uploaded.imagePath) {
+      await removeStorageImageIfPresent(oldImagePath);
+    } else if (editingId && clearImage && !uploaded && oldImagePath) {
       await removeStorageImageIfPresent(oldImagePath);
     }
 
