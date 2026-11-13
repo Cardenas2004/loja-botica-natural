@@ -4246,6 +4246,276 @@ body.category-sheet-lock {
   margin-inline: auto;
 }
 
+/* Vitrine Especial de Compostos Manipulados (Cards Verticais Verde & Roxo) */
+.compounds-showcase {
+  margin-top: 2.75rem;
+  position: relative;
+}
+
+.compounds-showcase__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(248px, 78%);
+  gap: 1.15rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem 0.25rem 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 27, 124, 0.28) transparent;
+}
+
+.compounds-showcase__track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.compounds-showcase__track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.compounds-showcase__track::-webkit-scrollbar-thumb {
+  background: rgba(82, 27, 124, 0.24);
+  border-radius: 999px;
+}
+
+@media (min-width: 640px) {
+  .compounds-showcase__track {
+    grid-auto-columns: calc((100% - 1.25rem) / 2.25);
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .compounds-showcase__track {
+    grid-auto-columns: calc((100% - 3 * 1.25rem) / 4.18);
+    gap: 1.25rem;
+  }
+}
+
+.compound-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 430px;
+  padding: 1.75rem 1.1rem 1.5rem;
+  border-radius: 18px;
+  scroll-snap-align: start;
+  overflow: hidden;
+  box-shadow: 0 12px 26px rgba(24, 10, 42, 0.14);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.compound-card--green {
+  background: linear-gradient(180deg, #2FA83B 0%, #259030 100%);
+}
+
+.compound-card--purple {
+  background: linear-gradient(180deg, #521B7C 0%, #421266 100%);
+}
+
+.compound-card__title {
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: 0.01em;
+  color: #FFFFFF;
+  text-align: center;
+  text-transform: uppercase;
+  margin: 0 0 0.65rem;
+  z-index: 2;
+}
+
+.compound-card__stage {
+  position: relative;
+  width: 100%;
+  max-width: 244px;
+  height: 256px;
+  margin: 0.25rem auto 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compound-card__bottle-wrap {
+  position: relative;
+  width: 138px;
+  z-index: 2;
+  transform: translateX(-10px);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.compound-card__bottle {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 14px 16px rgba(0, 0, 0, 0.34));
+}
+
+.compound-card__label {
+  position: absolute;
+  top: 49%;
+  left: 11%;
+  right: 11%;
+  bottom: 13%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.compound-card__label-sub {
+  font-family: var(--font-body);
+  font-size: 0.42rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #49385A;
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.compound-card__label-main {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #210F35;
+  text-transform: uppercase;
+  line-height: 1.05;
+  margin-bottom: 5px;
+}
+
+.compound-card__label-dose {
+  display: inline-block;
+  background: linear-gradient(90deg, #1E9338 0%, #2BB348 100%);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 0.43rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  line-height: 1.1;
+}
+
+/* Cápsulas 3D Flutuantes */
+.compound-card__pill {
+  position: absolute;
+  width: 15px;
+  height: 35px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #CFD5DF 0%, #FFFFFF 36%, #F3F6FA 68%, #ACB5C4 100%);
+  box-shadow: -4px 7px 10px rgba(0, 0, 0, 0.26), inset 0 1px 2px #FFFFFF;
+  z-index: 2;
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.compound-card__pill::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(130, 140, 155, 0.55), rgba(190, 200, 212, 0.35), rgba(120, 130, 145, 0.6));
+}
+
+.compound-card__pill--tl {
+  top: 48px;
+  left: 16px;
+  transform: rotate(26deg);
+}
+
+.compound-card__pill--bl {
+  bottom: 56px;
+  left: 2px;
+  transform: rotate(72deg);
+}
+
+.compound-card__pill--tr {
+  top: 6px;
+  right: 22px;
+  transform: rotate(-32deg);
+}
+
+.compound-card__pill--br {
+  top: 88px;
+  right: 12px;
+  transform: rotate(48deg);
+}
+
+/* Ilustração Botânica na Base Direita */
+.compound-card__botanical {
+  position: absolute;
+  right: -4px;
+  bottom: 10px;
+  width: 102px;
+  height: 78px;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.28));
+}
+
+/* Botão COMPRAR */
+.compound-card__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 146px;
+  min-height: 40px;
+  padding: 0.5rem 1.65rem;
+  border-radius: 999px;
+  background: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  z-index: 2;
+}
+
+.compound-card--green .compound-card__btn {
+  color: #269231;
+}
+
+.compound-card--purple .compound-card__btn {
+  color: #4D1976;
+}
+
+.compound-card__btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 18px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .compound-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 18px 34px rgba(24, 10, 42, 0.22);
+  }
+
+  .compound-card:hover .compound-card__bottle-wrap {
+    transform: translateX(-10px) translateY(-3px) scale(1.02);
+  }
+
+  .compound-card:hover .compound-card__btn {
+    transform: scale(1.04);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+  }
+}
+
 /* Estados de Carregamento (Skeleton UI) e Transição de Catálogo Dinâmico */
 .product-card--skeleton {
   pointer-events: none;

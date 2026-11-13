@@ -687,6 +687,45 @@ function renderBestSellers() {
   if (swiperRoot && swiperRoot.swiper && typeof swiperRoot.swiper.update === 'function') {
     swiperRoot.swiper.update();
   }
+
+  syncCompoundsShowcase();
+}
+
+function syncCompoundsShowcase() {
+  const showcase = document.getElementById('compounds-showcase');
+  if (!showcase || !Array.isArray(catalogState.products) || catalogState.products.length === 0) {
+    return;
+  }
+
+  const normalizeText = (str) =>
+    String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .trim();
+
+  const cards = showcase.querySelectorAll('.compound-card');
+  cards.forEach((card) => {
+    const linkEl = card.querySelector('[data-compound-link]');
+    if (!linkEl) return;
+
+    const targetId = String(card.getAttribute('data-compound-id') || '').trim();
+    const matchKey = normalizeText(card.getAttribute('data-compound-match'));
+
+    let matched = null;
+    if (targetId) {
+      matched = catalogState.products.find((p) => String(p.id) === targetId);
+    }
+    if (!matched && matchKey) {
+      matched = catalogState.products.find((p) =>
+        normalizeText(p.name).includes(matchKey)
+      );
+    }
+
+    if (matched && matched.id) {
+      linkEl.setAttribute('href', `produto.html?id=${encodeURIComponent(String(matched.id))}`);
+    }
+  });
 }
 
 /* ==========================================================================
