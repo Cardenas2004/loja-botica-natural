@@ -48,32 +48,24 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
       expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
     });
 
-    test(`[${vp.name}] Abas de categoria em produtos.html não viram círculos e mantêm padding legível`, async ({
+    test(`[${vp.name}] Em < 1024px exibe apenas #catalog-category-mobile e oculta #catalog-tabs-wrapper`, async ({
       page,
     }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await setupPageMocks(page);
 
       await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
-      const tabs = page.locator('.catalog-tab');
-      const count = await tabs.count();
-      expect(count).toBeGreaterThan(0);
+      const mobileSelector = page.locator('#catalog-category-mobile');
+      const desktopTabsWrapper = page.locator('#catalog-tabs-wrapper');
 
-      for (let i = 0; i < count; i++) {
-        const tab = tabs.nth(i);
-        const box = await tab.boundingBox();
-        expect(box).not.toBeNull();
-        if (box) {
-          // Altura mínima de acessibilidade de toque
-          expect(box.height).toBeGreaterThanOrEqual(40);
-          // Largura deve acomodar o texto sem esmagar em círculo (largura > altura * 1.2)
-          expect(box.width).toBeGreaterThan(box.height * 1.15);
-        }
+      await expect(mobileSelector).toBeVisible();
+      await expect(desktopTabsWrapper).toBeHidden();
 
-        // Verifica que o texto não estourou do botão
-        const isOverflowing = await tab.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
-        expect(isOverflowing).toBe(false);
-      }
+      // Rótulo de categoria ativa tem >= 16px
+      const labelFontSize = await page
+        .locator('#category-mobile-selected-label')
+        .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+      expect(labelFontSize).toBeGreaterThanOrEqual(16);
     });
 
     test(`[${vp.name}] Grid de produtos exibe 2 colunas lado a lado (>= 340px) com cards alinhados`, async ({
@@ -97,4 +89,89 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
       }
     });
   }
+
+  test('Em >= 1024px exibe apenas #catalog-tabs-wrapper sem máscara de opacidade e sincroniza seleção do bottom sheet mobile', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupPageMocks(page);
+
+    await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#catalog-category-mobile')).toBeVisible();
+    await expect(page.locator('#catalog-tabs-wrapper')).toBeHidden();
+
+    // Abre bottom sheet no mobile e seleciona uma categoria específica
+    await page.locator('#btn-open-category-modal').click();
+    const sheet = page.locator('#category-bottom-sheet');
+    await expect(sheet).toBeVisible();
+
+    const categoryButtons = sheet.locator('.category-sheet__item');
+    expect(await categoryButtons.count()).toBeGreaterThan(1);
+
+    const secondCatBtn = categoryButtons.nth(1);
+    const selectedCategoryId = await secondCatBtn.getAttribute('data-category');
+    await secondCatBtn.click();
+
+    // Verifica que o filtro foi aplicado no mobile
+    await expect(page.locator('#category-mobile-selected-label')).not.toHaveText('Todos os Produtos');
+
+    // Redimensiona para desktop (>= 1024px) e verifica que a seleção foi mantida e apenas #catalog-tabs-wrapper está visível
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.locator('#catalog-tabs-wrapper')).toBeVisible();
+    await expect(page.locator('#catalog-category-mobile')).toBeHidden();
+
+    const activeDesktopTab = page.locator(
+      `#category-filters .catalog-tab[data-category="${selectedCategoryId}"]`
+    );
+    await expect(activeDesktopTab).toHaveClass(/is-active/);
+    await expect(activeDesktopTab).toHaveAttribute('aria-pressed', 'true');
+
+    // Verifica que nenhuma aba ou nav tem mask-image ou opacidade reduzida
+    const navStyles = await page.locator('#category-filters').evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        maskImage: cs.maskImage || cs.webkitMaskImage || 'none',
+        opacity: parseFloat(cs.opacity),
+      };
+    });
+    expect(navStyles.maskImage).toBe('none');
+    expect(navStyles.opacity).toBe(1);
+
+    const tabs = page.locator('.catalog-tab');
+    const tabCount = await tabs.count();
+    for (let i = 0; i < tabCount; i++) {
+      const tab = tabs.nth(i);
+      const box = await tab.boundingBox();
+      expect(box).not.toBeNull();
+      if (box) {
+        expect(box.height).toBeGreaterThanOrEqual(40);
+        expect(box.width).toBeGreaterThan(box.height * 1.15);
+      }
+      const opacity = await tab.evaluate((el) => parseFloat(getComputedStyle(el).opacity));
+      expect(opacity).toBe(1);
+    }
+  });
+
+  test('Todos os <input>, <select> e <textarea> em index.html, produtos.html e admin.html possuem font-size >= 16px (ALTO-04)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await setupPageMocks(page);
+
+    for (const url of ['/index.html', '/produtos.html', '/admin.html']) {
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      const badInputs = await page.evaluate(() => {
+        const elements = Array.from(document.querySelectorAll('input, select, textarea'));
+        return elements
+          .map((el) => ({
+            tag: el.tagName.toLowerCase(),
+            id: el.id || '',
+            className: el.className || '',
+            fontSize: parseFloat(getComputedStyle(el).fontSize),
+          }))
+          .filter((item) => item.fontSize < 16);
+      });
+      expect(badInputs, `Inputs com font-size < 16px em ${url}`).toEqual([]);
+    }
+  });
 });

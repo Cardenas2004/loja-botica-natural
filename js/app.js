@@ -1110,7 +1110,7 @@ function updateMobileCategoryUI() {
     );
   }
   if (badgeEl) {
-    badgeEl.textContent = String(catalogState.categories.length);
+    badgeEl.textContent = String(count);
   }
   if (moreCountEl) {
     moreCountEl.textContent = String(catalogState.categories.length);
