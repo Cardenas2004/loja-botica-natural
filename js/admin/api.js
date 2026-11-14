@@ -503,16 +503,19 @@ export async function deleteCategoryById(categoryId) {
    ========================================================================== */
 
 /**
- * Cria ou atualiza um slide do carrossel com upload WebP opcional e limpeza de órfãos.
+ * Cria ou atualiza um slide do carrossel com upload WebP opcional, ponto de foco 16:9 e limpeza de órfãos.
  * @param {{
  *   title: string,
  *   button_link: string,
  *   display_order: number,
- *   is_active: boolean
+ *   is_active: boolean,
+ *   focus_x?: number,
+ *   focus_y?: number
  * }} payload
  * @param {{
  *   editingId?: string,
  *   oldImagePath?: string,
+ *   originalUpdatedAt?: string | null,
  *   file?: File | null,
  *   onProgress?: (pct: number) => void
  * }} [options]
@@ -521,18 +524,19 @@ export async function saveCarouselSlide(payload, options = {}) {
   const editingId = options.editingId || '';
   const oldImagePath = options.oldImagePath || '';
   const file = options.file || null;
-  const mobileFile = options.mobileFile || null;
-  const oldMobileImagePath = options.oldMobileImagePath || '';
-  const clearMobileImage = Boolean(options.clearMobileImage);
 
   if (!isValidBannerLink(payload.button_link)) {
     throw new Error('Link do banner inválido. Use https://, http:// ou um caminho relativo.');
   }
 
+  const clampFocus = (val) => {
+    const num = Number(val);
+    if (!Number.isFinite(num)) return 50;
+    return Math.min(100, Math.max(0, Math.round(num * 100) / 100));
+  };
+
   /** @type {{ imagePath: string, imageUrl: string } | null} */
   let uploaded = null;
-  /** @type {{ imagePath: string, imageUrl: string } | null} */
-  let uploadedMobile = null;
 
   try {
     if (file) {
@@ -544,20 +548,14 @@ export async function saveCarouselSlide(payload, options = {}) {
       });
     }
 
-    if (mobileFile) {
-      uploadedMobile = await uploadStorageWebpImage(mobileFile, {
-        folder: 'carousel/mobile',
-        maxDimension: 1080,
-        quality: 0.85,
-      });
-    }
-
     /** @type {Record<string, any>} */
     const record = {
       title: payload.title.trim(),
       button_link: payload.button_link.trim(),
       display_order: Math.max(0, Number(payload.display_order) || 0),
       is_active: Boolean(payload.is_active),
+      focus_x: clampFocus(payload.focus_x ?? 50),
+      focus_y: clampFocus(payload.focus_y ?? 50),
       updated_at: new Date().toISOString(),
     };
 
@@ -566,29 +564,28 @@ export async function saveCarouselSlide(payload, options = {}) {
       record.image_url = uploaded.imageUrl;
     }
 
-    if (uploadedMobile) {
-      record.mobile_image_path = uploadedMobile.imagePath;
-      record.mobile_image_url = uploadedMobile.imageUrl;
-    } else if (clearMobileImage) {
-      record.mobile_image_path = '';
-      record.mobile_image_url = '';
+    const executeSave = async (/** @type {Record<string, any>} */ dataToSave) => {
+      if (editingId) {
+        return supabase.from(DB_TABLES.CAROUSEL).update(dataToSave).eq('id', editingId);
+      }
+      return supabase.from(DB_TABLES.CAROUSEL).insert([dataToSave]);
+    };
+
+    let { error } = await executeSave(record);
+
+    // Fallback gracioso caso a migração 20261114100000_carousel_focus_point.sql ainda não tenha sido aplicada
+    if (error && (String(error.code) === '42703' || String(error.code) === 'PGRST204')) {
+      const fallbackRecord = { ...record };
+      delete fallbackRecord.focus_x;
+      delete fallbackRecord.focus_y;
+      const retry = await executeSave(fallbackRecord);
+      error = retry.error;
     }
 
-    const query = editingId
-      ? supabase.from(DB_TABLES.CAROUSEL).update(record).eq('id', editingId)
-      : supabase.from(DB_TABLES.CAROUSEL).insert([record]);
-
-    const { error } = await query;
     if (error) throw error;
 
     if (editingId && uploaded && oldImagePath && oldImagePath !== uploaded.imagePath) {
       await removeStorageImageIfPresent(oldImagePath);
-    }
-
-    if (editingId && uploadedMobile && oldMobileImagePath && oldMobileImagePath !== uploadedMobile.imagePath) {
-      await removeStorageImageIfPresent(oldMobileImagePath);
-    } else if (editingId && clearMobileImage && oldMobileImagePath) {
-      await removeStorageImageIfPresent(oldMobileImagePath);
     }
 
     invalidateCache();
@@ -596,9 +593,6 @@ export async function saveCarouselSlide(payload, options = {}) {
   } catch (err) {
     if (uploaded?.imagePath) {
       await removeStorageImageIfPresent(uploaded.imagePath);
-    }
-    if (uploadedMobile?.imagePath) {
-      await removeStorageImageIfPresent(uploadedMobile.imagePath);
     }
     throw err;
   }

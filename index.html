@@ -27,6 +27,9 @@
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
 
+    <!-- Preconnect ao Supabase Storage / REST para acelerar LCP -->
+    <link rel="preconnect" href="https://njdkuhgoophzjxmmempu.supabase.co" crossorigin>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,12 +38,8 @@
     <!-- Ícones SVG Locais Integrados (Zero Dependência Externa) -->
     <link rel="stylesheet" href="css/icons.css?v=20261104">
 
-    <!-- Carrossel (Swiper 11.2.4 Local Vendor) -->
-    <link rel="stylesheet" href="css/vendor/swiper-11.2.4.bundle.min.css">
-
     <!-- App Styles & Scripts -->
     <link rel="stylesheet" href="css/style.css?v=20261104">
-    <script src="js/vendor/swiper-11.2.4.bundle.min.js" defer></script>
     <script type="module" src="js/main.js?v=20261104"></script>
 
     <!-- Structured Data (Apenas dados verificáveis) -->
@@ -129,21 +128,31 @@
 
     <main id="conteudo">
         <!-- ================= DESTAQUES FULL-BLEED (100% GERENCIADO PELO SUPABASE ADMIN) ================= -->
-        <section class="promo" id="inicio" aria-label="Destaques e novidades da Botica Natural">
-            <div class="swiper promo__carousel" id="hero-carousel" data-hero-carousel aria-busy="true">
-                <div class="swiper-wrapper" id="hero-carousel-wrapper" data-hero-carousel-wrapper>
+        <section class="promo" id="inicio" role="region" aria-roledescription="carrossel" aria-label="Destaques e novidades da Botica Natural">
+            <div class="promo__carousel" id="hero-carousel" data-hero-carousel aria-busy="true" tabindex="0">
+                <div class="promo__track" id="hero-carousel-wrapper" data-hero-carousel-wrapper>
                     <!-- Skeleton inicial enquanto busca os banners ativos cadastrados no Painel Admin -->
-                    <div class="swiper-slide promo__slide promo__slide--skeleton" aria-hidden="true">
+                    <div class="promo__slide promo__slide--skeleton" aria-hidden="true">
                         <div class="skeleton-shimmer skeleton-shimmer--fill"></div>
                     </div>
                 </div>
 
+                <!-- Botão visível de pausa/retomada do autoplay (WCAG 2.2.2) -->
+                <button type="button" class="promo__pause" id="hero-carousel-pause" data-hero-carousel-pause aria-label="Pausar rotação automática dos banners" aria-pressed="false" hidden>
+                    <i class="fa-solid fa-pause" aria-hidden="true"></i>
+                    <span class="promo__pause-label">Pausar banners</span>
+                </button>
+
                 <!-- Paginação clicável (bullets) -->
-                <div class="swiper-pagination promo__pagination"></div>
+                <div class="promo__pagination" id="hero-carousel-pagination" role="group" aria-label="Selecionar banner"></div>
 
                 <!-- Setas de navegação (ocultas no mobile via CSS) -->
-                <button type="button" class="swiper-button-prev promo__nav promo__nav--prev" aria-label="Banner anterior"></button>
-                <button type="button" class="swiper-button-next promo__nav promo__nav--next" aria-label="Próximo banner"></button>
+                <button type="button" class="promo__nav promo__nav--prev" data-hero-carousel-prev aria-label="Banner anterior" hidden>
+                    <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="promo__nav promo__nav--next" data-hero-carousel-next aria-label="Próximo banner" hidden>
+                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                </button>
             </div>
         </section>
 

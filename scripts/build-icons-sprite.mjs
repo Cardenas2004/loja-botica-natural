@@ -114,6 +114,9 @@ const ICONS = [
   { name: 'angles-left', type: 'solid' },
   { name: 'angles-right', type: 'solid' },
   { name: 'circle-dot', type: 'solid' },
+  { name: 'circle', type: 'solid' },
+  { name: 'pause', type: 'solid' },
+  { name: 'play', type: 'solid' },
 ];
 
 let spriteSymbols = [];

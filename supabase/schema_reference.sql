@@ -165,14 +165,18 @@ CREATE TABLE IF NOT EXISTS public.carousel_slides (
   title             TEXT        NOT NULL DEFAULT '',
   image_url         TEXT        NOT NULL,
   image_path        TEXT        NOT NULL DEFAULT '',
-  mobile_image_url  TEXT        NOT NULL DEFAULT '',
-  mobile_image_path TEXT        NOT NULL DEFAULT '',
+  mobile_image_url  TEXT        NOT NULL DEFAULT '', -- [OBSOLETO] Mantido apenas por histórico
+  mobile_image_path TEXT        NOT NULL DEFAULT '', -- [OBSOLETO] Mantido apenas por histórico
+  focus_x           NUMERIC     NOT NULL DEFAULT 50,
+  focus_y           NUMERIC     NOT NULL DEFAULT 50,
   button_link       TEXT        NOT NULL DEFAULT '',
   display_order     INTEGER     NOT NULL DEFAULT 0,
   is_active         BOOLEAN     NOT NULL DEFAULT true,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT chk_carousel_slides_display_order_positive CHECK (display_order >= 0),
+  CONSTRAINT chk_carousel_slides_focus_x_range CHECK (focus_x BETWEEN 0 AND 100),
+  CONSTRAINT chk_carousel_slides_focus_y_range CHECK (focus_y BETWEEN 0 AND 100),
   CONSTRAINT chk_carousel_slides_button_link_scheme CHECK (
     button_link = '' OR button_link ~* '^(https?://|/[^/])'
   )

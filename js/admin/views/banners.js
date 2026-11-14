@@ -1,7 +1,8 @@
 // @ts-check
 /**
  * View: Gerenciador de Banners do Carrossel (`#/banners`)
- * Upload WebP HD (1920x650), validação de links e reordenação por Drag-and-Drop + Teclado (Subir/Descer).
+ * Upload WebP HD (1920x600 / 16:5), ajuste de ponto de foco (focus_x, focus_y) para recorte 16:9 mobile,
+ * seletor 3x3 acessível por teclado, validação de links e reordenação por Drag-and-Drop + Teclado.
  */
 
 import { normalizeSupabaseError } from '../../supabaseClient.js';
@@ -24,6 +25,18 @@ import {
   createEmptyState,
 } from '../ui.js';
 
+const FOCUS_PRESETS_3X3 = [
+  { label: 'Topo Esquerda', x: 15, y: 20 },
+  { label: 'Topo Centro', x: 50, y: 20 },
+  { label: 'Topo Direita', x: 85, y: 20 },
+  { label: 'Centro Esquerda', x: 15, y: 50 },
+  { label: 'Centro', x: 50, y: 50 },
+  { label: 'Centro Direita', x: 85, y: 50 },
+  { label: 'Base Esquerda', x: 15, y: 80 },
+  { label: 'Base Centro', x: 50, y: 80 },
+  { label: 'Base Direita', x: 85, y: 80 },
+];
+
 /**
  * Renderiza a view de gerenciamento de banners do carrossel.
  * @param {HTMLElement} container
@@ -31,27 +44,19 @@ import {
 export function renderBannersView(container) {
   let editingId = '';
   let oldImagePath = '';
-  let oldMobileImagePath = '';
   /** @type {File | null} */
   let selectedFile = null;
-  /** @type {File | null} */
-  let selectedMobileFile = null;
   /** @type {string | null} */
   let activeBlobUrl = null;
-  /** @type {string | null} */
-  let activeMobileBlobUrl = null;
   let isDesktopImageCleared = false;
-  let isMobileImageCleared = false;
   let draggedSlideId = '';
+  let currentFocusX = 50;
+  let currentFocusY = 50;
 
   const revokePreviewBlobs = () => {
     if (activeBlobUrl) {
       URL.revokeObjectURL(activeBlobUrl);
       activeBlobUrl = null;
-    }
-    if (activeMobileBlobUrl) {
-      URL.revokeObjectURL(activeMobileBlobUrl);
-      activeMobileBlobUrl = null;
     }
   };
 
@@ -60,21 +65,21 @@ export function renderBannersView(container) {
     textContent: 'Adicionar Novo Banner (1920 × 600)',
   });
 
-  // Caixa de Diretrizes Oficiais de Tamanhos
-  const guideBox = el('div', { className: 'banner-guide-box' }, [
+  // Aviso informativo (não bloqueante) sobre recorte automático 16:9 no celular
+  const guideBox = el('div', { className: 'banner-guide-box', role: 'note' }, [
     el('div', { className: 'banner-guide-box__header' }, [
       createIcon('fa-solid fa-circle-info'),
-      el('strong', { textContent: 'Diretrizes de Dimensões e Enquadramento:' }),
+      el('strong', { textContent: 'Enquadramento e Recorte Automático Mobile (16:9):' }),
     ]),
     el('p', {
       className: 'banner-guide-box__desc',
       textContent:
-        'Arte desktop: 1920x600 (16:5). Arte mobile: 1080x1350 (4:5), mantenha textos e rosto no centro, com margem de segurança de 8%.',
+        'No celular, a arte 16:5 é recortada automaticamente em 16:9. Mantenha textos e logo dentro da moldura central (~55% da largura).',
     }),
   ]);
 
   // ==========================================
-  // 1. UPLOAD DA ARTE DESKTOP (1920x600 / 16:5)
+  // 1. UPLOAD DA ARTE DESKTOP (1920x600 / 16:5) + MOLDURA 16:9 SOBREPOSTA
   // ==========================================
   const fileInput = /** @type {HTMLInputElement} */ (
     el('input', {
@@ -89,11 +94,51 @@ export function renderBannersView(container) {
     el('img', {
       id: 'slide-preview',
       src: '',
-      alt: 'Pré-visualização panorâmica do banner',
+      alt: 'Pré-visualização panorâmica do banner com moldura de recorte mobile 16:9',
       width: '480',
       height: '150',
     })
   );
+
+  const cropWindowEl = el(
+    'div',
+    {
+      id: 'slide-crop-window',
+      className: 'slide-preview-card__crop-window',
+      title: 'Área visível no celular (recorte 16:9)',
+      'aria-hidden': 'true',
+    },
+    [
+      el('span', {
+        className: 'slide-preview-card__crop-badge',
+        textContent: 'Área visível Mobile 16:9',
+      }),
+    ]
+  );
+
+  const focusPointDotEl = el('span', {
+    id: 'slide-focus-dot',
+    className: 'slide-preview-card__focus-dot',
+    'aria-hidden': 'true',
+  });
+
+  const previewFrameEl = el(
+    'div',
+    {
+      id: 'slide-preview-frame',
+      className: 'slide-preview-card__frame slide-preview-card__frame--interactive',
+      title: 'Clique em qualquer ponto da imagem para ajustar o ponto de foco mobile',
+    },
+    [previewImg, cropWindowEl, focusPointDotEl]
+  );
+
+  previewFrameEl.addEventListener('click', (e) => {
+    const rect = previewFrameEl.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const xPct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    const yPct = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+    setFocusCoordinates(xPct, yPct);
+  });
 
   const desktopRatioMsg = el('span', { textContent: '' });
   const desktopWarningBadge = el(
@@ -105,11 +150,170 @@ export function renderBannersView(container) {
   const progressFill = el('div', { className: 'upload-progress__fill' });
   const progressWrap = el('div', { className: 'upload-progress', hidden: true }, [progressFill]);
 
+  // Controles de ponto de foco: sliders/numéricos + seletor 3x3 acessível por teclado
+  const focusXInput = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'number',
+      id: 'slide-focus-x',
+      className: 'form-control',
+      min: '0',
+      max: '100',
+      step: '1',
+      value: '50',
+      'aria-label': 'Ponto de foco horizontal (%)',
+    })
+  );
+
+  const focusXRange = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'range',
+      id: 'slide-focus-x-range',
+      className: 'focus-slider',
+      min: '0',
+      max: '100',
+      step: '1',
+      value: '50',
+      'aria-label': 'Controle deslizante de foco horizontal (%)',
+    })
+  );
+
+  const focusYInput = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'number',
+      id: 'slide-focus-y',
+      className: 'form-control',
+      min: '0',
+      max: '100',
+      step: '1',
+      value: '50',
+      'aria-label': 'Ponto de foco vertical (%)',
+    })
+  );
+
+  const focusYRange = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'range',
+      id: 'slide-focus-y-range',
+      className: 'focus-slider',
+      min: '0',
+      max: '100',
+      step: '1',
+      value: '50',
+      'aria-label': 'Controle deslizante de foco vertical (%)',
+    })
+  );
+
+  /** @type {HTMLButtonElement[]} */
+  const presetButtons = FOCUS_PRESETS_3X3.map((preset) => {
+    const btn = /** @type {HTMLButtonElement} */ (
+      el(
+        'button',
+        {
+          type: 'button',
+          className: 'focus-grid-3x3__btn',
+          'aria-label': `Foco: ${preset.label} (${preset.x}%, ${preset.y}%)`,
+          'aria-pressed': preset.x === 50 && preset.y === 50 ? 'true' : 'false',
+          dataset: { focusX: String(preset.x), focusY: String(preset.y) },
+          onClick: () => setFocusCoordinates(preset.x, preset.y),
+        },
+        [el('span', { className: 'focus-grid-3x3__dot', 'aria-hidden': 'true' })]
+      )
+    );
+    return btn;
+  });
+
+  const focusGrid3x3El = el(
+    'div',
+    {
+      className: 'focus-grid-3x3',
+      role: 'group',
+      'aria-label': 'Grade rápida de 9 posições do ponto de foco',
+    },
+    presetButtons
+  );
+
+  function setFocusCoordinates(/** @type {number} */ rawX, /** @type {number} */ rawY) {
+    const clamp = (v) => Math.min(100, Math.max(0, Math.round(Number(v) || 0)));
+    currentFocusX = clamp(rawX);
+    currentFocusY = clamp(rawY);
+
+    focusXInput.value = String(currentFocusX);
+    focusXRange.value = String(currentFocusX);
+    focusYInput.value = String(currentFocusY);
+    focusYRange.value = String(currentFocusY);
+
+    // Moldura 16:9 dentro de 16:5 tem largura de (5/9) = 55.5556%
+    const cropWidthPct = 55.5556;
+    const maxLeftPct = 100 - cropWidthPct;
+    const leftPct = (currentFocusX / 100) * maxLeftPct;
+
+    cropWindowEl.style.left = `${leftPct.toFixed(2)}%`;
+    cropWindowEl.style.width = `${cropWidthPct.toFixed(2)}%`;
+    focusPointDotEl.style.left = `${currentFocusX}%`;
+    focusPointDotEl.style.top = `${currentFocusY}%`;
+
+    presetButtons.forEach((btn) => {
+      const bx = Number(btn.dataset.focusX);
+      const by = Number(btn.dataset.focusY);
+      const isMatch = Math.abs(bx - currentFocusX) <= 4 && Math.abs(by - currentFocusY) <= 4;
+      btn.classList.toggle('is-active', isMatch);
+      btn.setAttribute('aria-pressed', String(isMatch));
+    });
+  }
+
+  focusXInput.addEventListener('input', () =>
+    setFocusCoordinates(Number(focusXInput.value), currentFocusY)
+  );
+  focusXRange.addEventListener('input', () =>
+    setFocusCoordinates(Number(focusXRange.value), currentFocusY)
+  );
+  focusYInput.addEventListener('input', () =>
+    setFocusCoordinates(currentFocusX, Number(focusYInput.value))
+  );
+  focusYRange.addEventListener('input', () =>
+    setFocusCoordinates(currentFocusX, Number(focusYRange.value))
+  );
+
+  const focusControlsPanel = el('div', { className: 'focus-controls-panel' }, [
+    el('div', { className: 'focus-controls-panel__header' }, [
+      el('strong', {
+        className: 'form-label',
+        textContent: 'Ponto de Foco do Recorte Mobile (16:9)',
+      }),
+      el('span', {
+        className: 'form-hint',
+        textContent:
+          'Clique na imagem acima, use a grade 3×3 ou ajuste as coordenadas X/Y para posicionar a moldura 16:9.',
+      }),
+    ]),
+    el('div', { className: 'focus-controls-panel__body' }, [
+      focusGrid3x3El,
+      el('div', { className: 'focus-controls-panel__sliders' }, [
+        el('div', { className: 'form-group' }, [
+          el('label', {
+            for: 'slide-focus-x',
+            className: 'form-label',
+            textContent: 'Foco Horizontal X (%)',
+          }),
+          el('div', { className: 'focus-input-pair' }, [focusXRange, focusXInput]),
+        ]),
+        el('div', { className: 'form-group' }, [
+          el('label', {
+            for: 'slide-focus-y',
+            className: 'form-label',
+            textContent: 'Foco Vertical Y (%)',
+          }),
+          el('div', { className: 'focus-input-pair' }, [focusYRange, focusYInput]),
+        ]),
+      ]),
+    ]),
+  ]);
+
   const previewCard = el(
     'div',
     { id: 'slide-preview-container', className: 'slide-preview-card', hidden: true },
     [
-      el('div', { className: 'slide-preview-card__frame' }, [previewImg]),
+      previewFrameEl,
       el('div', { className: 'slide-preview-card__info' }, [
         el('span', { className: 'badge badge-success' }, [
           createIcon('fa-solid fa-wand-magic-sparkles'),
@@ -146,9 +350,10 @@ export function renderBannersView(container) {
         createIcon('fa-solid fa-panorama'),
       ]),
       el('div', { className: 'upload-zone__text' }, [
-        el('strong', { textContent: 'Clique ou arraste a arte panorâmica desktop aqui' }),
+        el('strong', { textContent: 'Clique ou arraste a arte panorâmica (16:5) aqui' }),
         el('span', {
-          textContent: 'Proporção 1920 × 600 px (16:5) · JPG, PNG ou WebP (conversão automática ≤ 2 MB)',
+          textContent:
+            'Proporção 1920 × 600 px (16:5) · JPG, PNG ou WebP (recorte automático 16:9 no celular)',
         }),
       ]),
     ]),
@@ -210,149 +415,10 @@ export function renderBannersView(container) {
     if (src) {
       previewImg.src = src;
       previewCard.hidden = false;
+      setFocusCoordinates(currentFocusX, currentFocusY);
     } else {
       previewImg.src = '';
       previewCard.hidden = true;
-    }
-  }
-
-  // ==========================================
-  // 2. UPLOAD DA ARTE MOBILE (1080x1350 / 4:5)
-  // ==========================================
-  const mobileFileInput = /** @type {HTMLInputElement} */ (
-    el('input', {
-      type: 'file',
-      id: 'slide-mobile-image',
-      className: 'upload-zone__input',
-      accept: 'image/jpeg,image/png,image/webp',
-    })
-  );
-
-  const previewImgMobile = /** @type {HTMLImageElement} */ (
-    el('img', {
-      id: 'slide-preview-mobile',
-      src: '',
-      alt: 'Pré-visualização da arte vertical para celular',
-      width: '220',
-      height: '275',
-    })
-  );
-
-  const mobileRatioMsg = el('span', { textContent: '' });
-  const mobileWarningBadge = el(
-    'span',
-    { className: 'badge badge-warning', hidden: true },
-    [createIcon('fa-solid fa-triangle-exclamation'), mobileRatioMsg]
-  );
-
-  const previewCardMobile = el(
-    'div',
-    { id: 'slide-mobile-preview-container', className: 'slide-preview-card', hidden: true },
-    [
-      el('div', { className: 'slide-preview-card__frame slide-preview-card__frame--mobile' }, [previewImgMobile]),
-      el('div', { className: 'slide-preview-card__info' }, [
-        el('span', { className: 'badge badge-info' }, [
-          createIcon('fa-solid fa-mobile-screen'),
-          el('span', { textContent: 'Arte vertical 4:5 pronta' }),
-        ]),
-        mobileWarningBadge,
-        el(
-          'button',
-          {
-            type: 'button',
-            className: 'btn btn-secondary btn-sm',
-            onClick: () => {
-              selectedMobileFile = null;
-              mobileFileInput.value = '';
-              isMobileImageCleared = true;
-              if (activeMobileBlobUrl) {
-                URL.revokeObjectURL(activeMobileBlobUrl);
-                activeMobileBlobUrl = null;
-              }
-              mobileWarningBadge.hidden = true;
-              updateMobilePreviewUI(null);
-            },
-          },
-          [createIcon('fa-solid fa-trash-can'), el('span', { textContent: 'Remover arte mobile' })]
-        ),
-      ]),
-    ]
-  );
-
-  const uploadZoneMobile = el('div', { className: 'upload-zone' }, [
-    mobileFileInput,
-    el('div', { className: 'upload-zone__prompt' }, [
-      el('div', { className: 'upload-zone__icon', 'aria-hidden': 'true' }, [
-        createIcon('fa-solid fa-mobile-screen'),
-      ]),
-      el('div', { className: 'upload-zone__text' }, [
-        el('strong', { textContent: 'Arte Mobile Dedicada (Opcional — 1080 × 1350 / 4:5)' }),
-        el('span', {
-          textContent: 'Otimizada para celulares verticais. Se não enviada, o site exibirá o banner 16:5 inteiro sem cortes.',
-        }),
-      ]),
-    ]),
-  ]);
-
-  uploadZoneMobile.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadZoneMobile.classList.add('is-dragover');
-  });
-  uploadZoneMobile.addEventListener('dragleave', () => {
-    uploadZoneMobile.classList.remove('is-dragover');
-  });
-  uploadZoneMobile.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadZoneMobile.classList.remove('is-dragover');
-    const droppedFile = e.dataTransfer?.files?.[0];
-    if (droppedFile) handleMobileFileChosen(droppedFile);
-  });
-
-  mobileFileInput.addEventListener('change', () => {
-    const file = mobileFileInput.files?.[0] || null;
-    if (file) handleMobileFileChosen(file);
-  });
-
-  function handleMobileFileChosen(/** @type {File} */ file) {
-    const validation = validateImageFile(file);
-    if (!validation.valid) {
-      showToast(validation.error || 'Arquivo mobile inválido.', 'error');
-      mobileFileInput.value = '';
-      return;
-    }
-    selectedMobileFile = file;
-    isMobileImageCleared = false;
-    if (activeMobileBlobUrl) {
-      URL.revokeObjectURL(activeMobileBlobUrl);
-    }
-    activeMobileBlobUrl = URL.createObjectURL(file);
-    updateMobilePreviewUI(activeMobileBlobUrl);
-    checkMobileRatio(file);
-  }
-
-  function checkMobileRatio(/** @type {File} */ file) {
-    const img = new Image();
-    const tempUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(tempUrl);
-      const ratio = img.naturalWidth / img.naturalHeight;
-      if (ratio < 0.65 || ratio > 0.95) {
-        mobileWarningBadge.hidden = false;
-        mobileRatioMsg.textContent = `Proporção ${ratio.toFixed(2)}:1 (${img.naturalWidth}x${img.naturalHeight}). Recomendado: 4:5 (1080×1350).`;
-      } else {
-        mobileWarningBadge.hidden = true;
-      }
-    };
-    img.src = tempUrl;
-  }
-
-  function updateMobilePreviewUI(/** @type {string | null} */ src) {
-    if (src) {
-      previewImgMobile.src = src;
-      previewCardMobile.hidden = false;
-    } else {
-      previewImgMobile.src = '';
-      previewCardMobile.hidden = true;
     }
   }
 
@@ -382,7 +448,7 @@ export function renderBannersView(container) {
       type: 'text',
       id: 'slide-title',
       className: 'form-control',
-      placeholder: 'Ex: Campanha de Inverno — Fórmulas Manipuladas',
+      placeholder: 'Ex: Manipulação magistral sob medida em Triunfo/RS',
       maxlength: '140',
     })
   );
@@ -421,18 +487,13 @@ export function renderBannersView(container) {
   function resetForm() {
     editingId = '';
     oldImagePath = '';
-    oldMobileImagePath = '';
     selectedFile = null;
     fileInput.value = '';
-    selectedMobileFile = null;
-    mobileFileInput.value = '';
     isDesktopImageCleared = false;
-    isMobileImageCleared = false;
     revokePreviewBlobs();
+    setFocusCoordinates(50, 50);
     updatePreviewUI(null);
-    updateMobilePreviewUI(null);
     desktopWarningBadge.hidden = true;
-    mobileWarningBadge.hidden = true;
     titleInput.value = '';
     linkInput.value = '';
     orderInput.value = String(state.carouselSlides.length + 1);
@@ -453,36 +514,21 @@ export function renderBannersView(container) {
   function startEdit(/** @type {any} */ slide) {
     editingId = slide.id;
     oldImagePath = slide.image_path || '';
-    oldMobileImagePath = slide.mobile_image_path || '';
     selectedFile = null;
     fileInput.value = '';
-    selectedMobileFile = null;
-    mobileFileInput.value = '';
     isDesktopImageCleared = false;
-    isMobileImageCleared = false;
     revokePreviewBlobs();
     desktopWarningBadge.hidden = true;
-    mobileWarningBadge.hidden = true;
 
     titleInput.value = slide.title || '';
     linkInput.value = slide.button_link || '';
     orderInput.value = String(slide.display_order ?? 1);
     activeCheckbox.checked = Boolean(slide.is_active);
+    setFocusCoordinates(Number(slide.focus_x ?? 50), Number(slide.focus_y ?? 50));
     cancelBtn.hidden = false;
 
     const currentImg = resolveAdminImageUrl(slide, FALLBACK_SLIDE_THUMB);
     updatePreviewUI(currentImg);
-
-    if (slide.mobile_image_url || slide.mobile_image_path) {
-      updateMobilePreviewUI(
-        resolveAdminImageUrl(
-          { image_url: slide.mobile_image_url, image_path: slide.mobile_image_path },
-          ''
-        )
-      );
-    } else {
-      updateMobilePreviewUI(null);
-    }
 
     const slideLabel = slide.title ? `"${slide.title}"` : `#${slide.display_order ?? 1}`;
     formTitleEl.textContent = `Editando Banner ${slideLabel}`;
@@ -547,14 +593,13 @@ export function renderBannersView(container) {
               button_link: buttonLink,
               display_order: Math.max(0, Number.parseInt(orderInput.value || '1', 10) || 1),
               is_active: Boolean(activeCheckbox.checked),
+              focus_x: currentFocusX,
+              focus_y: currentFocusY,
             },
             {
               editingId,
               oldImagePath,
               file: selectedFile,
-              mobileFile: selectedMobileFile,
-              oldMobileImagePath,
-              clearMobileImage: isMobileImageCleared,
               onProgress: (pct) => {
                 progressFill.style.width = `${pct}%`;
               },
@@ -587,20 +632,14 @@ export function renderBannersView(container) {
       guideBox,
       el('div', { className: 'form-group' }, [
         el('label', { for: 'slide-image', className: 'form-label' }, [
-          'Arte Panorâmica Desktop (1920 × 600 / 16:5) ',
+          'Arte Panorâmica (1920 × 600 / 16:5) ',
           el('span', { className: 'required-mark', textContent: '*' }),
         ]),
         uploadZone,
         progressWrap,
         previewCard,
       ]),
-      el('div', { className: 'form-group' }, [
-        el('label', { for: 'slide-mobile-image', className: 'form-label' }, [
-          'Arte Mobile Vertical Opcional (1080 × 1350 / 4:5)',
-        ]),
-        uploadZoneMobile,
-        previewCardMobile,
-      ]),
+      focusControlsPanel,
       el('div', { className: 'form-row form-row--2col' }, [
         el('div', { className: 'form-group' }, [
           el('label', {
@@ -701,6 +740,8 @@ export function renderBannersView(container) {
       const isEditingThis = editingId === slide.id;
       const thumbSrc = resolveAdminImageUrl(slide, FALLBACK_SLIDE_THUMB);
       const titleText = slide.title || `Banner #${index + 1}`;
+      const fx = Math.round(Number(slide.focus_x ?? 50));
+      const fy = Math.round(Number(slide.focus_y ?? 50));
 
       const card = el(
         'article',
@@ -726,12 +767,11 @@ export function renderBannersView(container) {
                 className: slide.is_active ? 'badge badge-success' : 'badge badge-muted',
                 textContent: slide.is_active ? 'Visível' : 'Oculto',
               }),
-              slide.mobile_image_url || slide.mobile_image_path
-                ? el('span', { className: 'badge badge-info', title: 'Possui arte dedicada para celular 4:5' }, [
-                    createIcon('fa-solid fa-mobile-screen'),
-                    el('span', { textContent: 'Mobile 4:5' }),
-                  ])
-                : null,
+              el('span', {
+                className: 'badge badge-muted',
+                title: 'Ponto de foco do recorte mobile 16:9',
+                textContent: `Foco ${fx}%/${fy}%`,
+              }),
             ]),
           ]),
           el('div', { className: 'carousel-slide-card__body' }, [
@@ -774,7 +814,7 @@ export function renderBannersView(container) {
               'button',
               {
                 type: 'button',
-                className: isEditingThis ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm',
+                className: 'btn btn-secondary btn-sm',
                 'aria-pressed': String(isEditingThis),
                 onClick: () => startEdit(slide),
               },
@@ -859,6 +899,7 @@ export function renderBannersView(container) {
     galleryContainer.replaceChildren(...cards);
   }
 
+  setFocusCoordinates(50, 50);
   renderGallery();
 
   const layout = el('div', { className: 'carousel-manager-layout' }, [
@@ -891,4 +932,3 @@ export function renderBannersView(container) {
 
   container.replaceChildren(layout);
 }
-

@@ -22,17 +22,18 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
       const carousel = page.locator('.promo__carousel');
       await expect(carousel).toBeVisible();
 
-      // Verifica dimensões e proporção
+      // Verifica dimensões e proporção 16:9 no mobile (< 768px)
       const box = await carousel.boundingBox();
       expect(box).not.toBeNull();
       if (box) {
         expect(box.width).toBeGreaterThanOrEqual(vp.width - 2);
-        // Altura proporcional sem o encolhimento anterior (mínimo de 90px para 320px)
-        expect(box.height).toBeGreaterThanOrEqual(95);
+        // Proporção 16:9: para 320px a altura é ~180px
+        const expectedHeight = vp.width * (9 / 16);
+        expect(Math.abs(box.height - expectedHeight)).toBeLessThanOrEqual(4);
       }
 
       // Verifica que a pílula de paginação é compacta (altura <= 24px)
-      const pagination = page.locator('.promo__carousel .swiper-pagination');
+      const pagination = page.locator('.promo__carousel .promo__pagination');
       if (await pagination.isVisible()) {
         const pagBox = await pagination.boundingBox();
         expect(pagBox).not.toBeNull();

@@ -36,20 +36,4 @@ await esbuild.build({
 fs.unlinkSync(supabaseTempEntry);
 console.log('✓ js/vendor/supabase-js-2.49.1.esm.js criado com sucesso.');
 
-// 2. Swiper 11.2.4 JS e CSS
-const swiperJsSrc = path.resolve(ROOT_DIR, 'node_modules', 'swiper', 'swiper-bundle.min.js');
-const swiperCssSrc = path.resolve(ROOT_DIR, 'node_modules', 'swiper', 'swiper-bundle.min.css');
-
-if (fs.existsSync(swiperJsSrc)) {
-  fs.copyFileSync(swiperJsSrc, path.resolve(VENDOR_DIR, 'swiper-11.2.4.bundle.min.js'));
-  console.log('✓ js/vendor/swiper-11.2.4.bundle.min.js copiado.');
-}
-
-if (fs.existsSync(swiperCssSrc)) {
-  const cssVendorDir = path.resolve(ROOT_DIR, 'css', 'vendor');
-  if (!fs.existsSync(cssVendorDir)) fs.mkdirSync(cssVendorDir, { recursive: true });
-  fs.copyFileSync(swiperCssSrc, path.resolve(cssVendorDir, 'swiper-11.2.4.bundle.min.css'));
-  console.log('✓ css/vendor/swiper-11.2.4.bundle.min.css copiado.');
-}
-
 console.log('Vendor bundles gerados com sucesso.');

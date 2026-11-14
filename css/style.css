@@ -731,59 +731,46 @@ strong { font-weight: 600; }
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  aspect-ratio: 16 / 5;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: transparent;
   touch-action: pan-y;
   color-scheme: light;
-
-  /* Custom Properties do Swiper alinhadas aos Design Tokens (:root) */
-  --swiper-theme-color: var(--accent);
-  --swiper-pagination-color: var(--accent);
-  --swiper-pagination-bullet-inactive-color: rgba(255, 255, 255, 0.65);
-  --swiper-pagination-bullet-inactive-opacity: 0.7;
-  --swiper-pagination-bullet-size: 6px;
-  --swiper-pagination-bullet-horizontal-gap: 4px;
-  --swiper-pagination-bottom: 8px;
-  --swiper-navigation-size: 18px;
 }
 
-/* Quando há slides com arte mobile dedicada (proporção 4:5 no mobile < 768px) */
-.promo__carousel.promo__carousel--has-mobile-art {
-  aspect-ratio: 4 / 5;
-  max-height: min(74vh, 540px);
-  max-height: min(74svh, 540px);
+.promo__carousel:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: -2px;
 }
 
-.promo__carousel .swiper-wrapper {
+.promo__track {
+  display: flex;
   width: 100%;
   height: 100%;
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-y;
+}
+
+.promo__track::-webkit-scrollbar {
+  display: none;
 }
 
 .promo__slide {
   position: relative;
+  flex: 0 0 100%;
   width: 100%;
   height: 100%;
-  aspect-ratio: 16 / 5;
+  aspect-ratio: 16 / 9;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
   overflow: hidden;
   background: transparent;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transform: translateZ(0);
   touch-action: pan-y;
-}
-
-/* Suporte a arte vertical dedicada quando cadastrada para mobile (4:5) */
-.promo__carousel--has-mobile-art .promo__slide,
-.promo__slide--has-mobile-art {
-  aspect-ratio: 4 / 5;
-  max-height: min(74vh, 540px);
-  max-height: min(74svh, 540px);
 }
 
 .promo__link {
@@ -800,34 +787,28 @@ strong { font-weight: 600; }
   height: 100%;
 }
 
-/* Fallback seguro SEM arte mobile: 100% da largura do banner 16:5 de ponta a ponta sem cortes */
+/* Recorte responsivo controlado pelo ponto de foco (--focus-x / --focus-y) */
 .promo__img,
 .promo__slide img {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
-  object-position: center center;
+  object-position: var(--focus-x, 50%) var(--focus-y, 50%);
   background: transparent;
   user-select: none;
   -webkit-user-drag: none;
 }
 
-/* Slides com arte mobile dedicada: preenche proporcionalmente */
-.promo__slide--has-mobile-art img {
-  object-fit: cover;
-  object-position: center center;
-}
-
-/* Container da Paginação: pílula compacta de vidro fosco (estilo iOS), sem invadir o centro da arte */
-.promo__carousel .swiper-pagination {
+/* Container da Paginação: pílula compacta de vidro fosco, sem invadir o centro da arte */
+.promo__pagination {
   position: absolute;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: auto !important;
-  left: 50% !important;
+  width: auto;
+  left: 50%;
   transform: translateX(-50%);
   bottom: 8px;
   height: 20px;
@@ -842,8 +823,12 @@ strong { font-weight: 600; }
   pointer-events: auto;
 }
 
-/* Bullets de Paginação: visual minimalista de 6px com alvo de toque acessível de 44x44px via ::before */
-.promo__carousel .swiper-pagination-bullet {
+.promo__pagination[hidden] {
+  display: none !important;
+}
+
+/* Bullets de Paginação (<button>): visual de 6px com alvo de toque acessível de 44x44px via ::before */
+.promo__bullet {
   position: relative;
   display: inline-block;
   width: 6px;
@@ -851,7 +836,7 @@ strong { font-weight: 600; }
   min-width: 6px;
   min-height: 6px;
   padding: 0;
-  margin: 0 2px !important;
+  margin: 0 2px;
   background-color: rgba(255, 255, 255, 0.65);
   opacity: 1;
   border-radius: 50%;
@@ -861,8 +846,8 @@ strong { font-weight: 600; }
   transition: width 0.25s ease, background-color 0.2s ease, border-radius 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Expansão invisível do alvo de toque para 44x44px (WCAG 2.1 AA / WCAG 2.5.5) */
-.promo__carousel .swiper-pagination-bullet::before {
+/* Expansão invisível do alvo de toque para 44x44px (WCAG 2.2 AA / WCAG 2.5.8) */
+.promo__bullet::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -875,20 +860,80 @@ strong { font-weight: 600; }
   pointer-events: auto;
 }
 
-.promo__carousel .swiper-pagination-bullet-active {
+.promo__bullet.is-active,
+.promo__bullet[aria-current="true"] {
   width: 18px;
   border-radius: 3px;
   background-color: #FFFFFF;
   box-shadow: 0 0 6px rgba(255, 255, 255, 0.85);
 }
 
-/* Setas de Navegação: ocultas no mobile (< 768px, navegação via swipe) e >= 44x44px em telas maiores */
-.promo__carousel .swiper-button-prev,
-.promo__carousel .swiper-button-next {
+.promo__bullet:focus-visible {
+  outline: 2px solid #FFFFFF;
+  outline-offset: 3px;
+}
+
+/* Botão visível de pausa/retomada do autoplay (WCAG 2.2.2) — contraste >= 4.5:1 e alvo >= 44x44px */
+.promo__pause {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(26, 13, 46, 0.82);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color var(--t-fast), border-color var(--t-fast);
+}
+
+.promo__pause[hidden] {
+  display: none !important;
+}
+
+.promo__pause:hover {
+  background: rgba(26, 13, 46, 0.94);
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.promo__pause:focus-visible {
+  outline: 2px solid #FFFFFF;
+  outline-offset: 2px;
+}
+
+.promo__pause-label {
   display: none;
+}
+
+@media (min-width: 480px) {
+  .promo__pause-label {
+    display: inline;
+  }
+}
+
+/* Setas de Navegação: ocultas no mobile (< 768px, navegação via swipe) e >= 44x44px em telas maiores */
+.promo__nav {
+  display: none;
+  position: absolute;
+  top: 50%;
+  z-index: 11;
   width: 44px;
   height: 44px;
-  margin-top: -22px;
+  min-width: 44px;
+  min-height: 44px;
+  transform: translateY(-50%);
   border-radius: 50%;
   border: 1px solid rgba(156, 106, 222, 0.35);
   background: rgba(255, 255, 255, 0.92);
@@ -896,31 +941,30 @@ strong { font-weight: 600; }
   box-shadow: var(--shadow-md);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+  align-items: center;
+  justify-content: center;
   transition: background-color var(--t-fast), color var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
   cursor: pointer;
 }
 
-.promo__carousel .swiper-button-prev { left: clamp(0.75rem, 2.5vw, 2.25rem); }
-.promo__carousel .swiper-button-next { right: clamp(0.75rem, 2.5vw, 2.25rem); }
-
-.promo__carousel .swiper-button-prev::after,
-.promo__carousel .swiper-button-next::after {
-  font-weight: 700;
+.promo__nav[hidden] {
+  display: none !important;
 }
 
-.promo__carousel .swiper-button-prev:focus-visible,
-.promo__carousel .swiper-button-next:focus-visible {
+.promo__nav--prev { left: clamp(0.75rem, 2.5vw, 2.25rem); }
+.promo__nav--next { right: clamp(0.75rem, 2.5vw, 2.25rem); }
+
+.promo__nav:focus-visible {
   outline: 2px solid var(--accent-light);
   outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .promo__carousel .swiper-button-prev:hover,
-  .promo__carousel .swiper-button-next:hover {
+  .promo__nav:hover {
     background: var(--primary);
     color: var(--white);
     border-color: var(--accent-light);
-    transform: scale(1.07);
+    transform: translateY(-50%) scale(1.07);
   }
 }
 
@@ -937,10 +981,7 @@ strong { font-weight: 600; }
   }
 
   .promo__carousel,
-  .promo__carousel.promo__carousel--has-mobile-art,
-  .promo__slide,
-  .promo__slide--has-mobile-art,
-  .promo__carousel--has-mobile-art .promo__slide {
+  .promo__slide {
     aspect-ratio: 16 / 5;
     max-width: 100%;
     max-height: none;
@@ -948,24 +989,23 @@ strong { font-weight: 600; }
   }
 
   .promo__img,
-  .promo__slide img,
-  .promo__slide--has-mobile-art img {
+  .promo__slide img {
     object-fit: cover;
-    object-position: center center;
+    object-position: var(--focus-x, 50%) var(--focus-y, 50%);
   }
 
-  .promo__carousel {
-    --swiper-pagination-bottom: 1rem;
-  }
-
-  .promo__carousel .swiper-pagination {
+  .promo__pagination {
     bottom: 1rem;
     padding: 0.4rem 0.85rem;
   }
 
-  .promo__carousel .swiper-button-prev,
-  .promo__carousel .swiper-button-next {
-    display: flex;
+  .promo__pause {
+    bottom: 1rem;
+    right: clamp(0.75rem, 2.5vw, 2.25rem);
+  }
+
+  .promo__nav:not([hidden]) {
+    display: inline-flex;
   }
 
   .promo + .hero,
@@ -975,19 +1015,13 @@ strong { font-weight: 600; }
 }
 
 @media (min-width: 1024px) {
-  .promo__carousel {
-    --swiper-pagination-bottom: 1.25rem;
-  }
-
-  .promo__carousel .swiper-button-prev,
-  .promo__carousel .swiper-button-next {
+  .promo__nav {
     width: 48px;
     height: 48px;
-    margin-top: -24px;
+    min-width: 48px;
+    min-height: 48px;
   }
-}
 
-@media (min-width: 1024px) {
   .promo + .hero,
   .promo ~ .hero {
     min-height: 0;

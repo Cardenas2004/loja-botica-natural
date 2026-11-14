@@ -380,25 +380,25 @@ function resolveCarouselSlideImageUrl(slide) {
   return resolveSafeStorageImageUrl(slide?.image_url, slide?.image_path, '');
 }
 
-function resolveCarouselSlideMobileImageUrl(slide) {
-  return resolveSafeStorageImageUrl(
-    slide?.mobile_image_url,
-    slide?.mobile_image_path,
-    ''
-  );
+function clampSlideFocus(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 50;
+  return Math.min(100, Math.max(0, Math.round(num * 100) / 100));
 }
 
 function createHeroCarouselSlideElement(slide, index) {
   const imageUrl = resolveCarouselSlideImageUrl(slide);
   if (!imageUrl) return null;
 
-  const mobileImageUrl = resolveCarouselSlideMobileImageUrl(slide);
+  const focusX = clampSlideFocus(slide.focus_x ?? 50);
+  const focusY = clampSlideFocus(slide.focus_y ?? 50);
 
   const slideEl = document.createElement('div');
-  slideEl.className = mobileImageUrl
-    ? 'swiper-slide promo__slide promo__slide--has-mobile-art'
-    : 'swiper-slide promo__slide';
+  slideEl.className = 'promo__slide';
   slideEl.dataset.slideId = String(slide.id || '');
+  slideEl.dataset.slideIndex = String(index);
+  slideEl.style.setProperty('--focus-x', `${focusX}%`);
+  slideEl.style.setProperty('--focus-y', `${focusY}%`);
 
   const altText =
     String(slide.title || '').trim() ||
@@ -426,13 +426,6 @@ function createHeroCarouselSlideElement(slide, index) {
   const picture = document.createElement('picture');
   picture.className = 'promo__picture';
 
-  if (mobileImageUrl) {
-    const sourceMobile = document.createElement('source');
-    sourceMobile.media = '(max-width: 767px)';
-    sourceMobile.srcset = mobileImageUrl;
-    picture.appendChild(sourceMobile);
-  }
-
   const img = document.createElement('img');
   img.className = 'promo__img';
   img.src = imageUrl;
@@ -456,83 +449,279 @@ function createHeroCarouselSlideElement(slide, index) {
   return slideEl;
 }
 
-function syncHeroSwiperInstance(carouselEl, slideCount) {
-  if (!carouselEl || typeof window === 'undefined') return;
+/** @type {(() => void) | null} */
+let destroyHeroCarouselController = null;
 
-  const SwiperConstructor = /** @type {any} */ (window).Swiper;
+function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
+  if (destroyHeroCarouselController) {
+    destroyHeroCarouselController();
+    destroyHeroCarouselController = null;
+  }
+
+  if (!carouselEl || !wrapperEl || typeof window === 'undefined') return;
+
+  const paginationEl =
+    carouselEl.querySelector('#hero-carousel-pagination') ||
+    carouselEl.querySelector('.promo__pagination');
+  const prevBtn = /** @type {HTMLButtonElement | null} */ (
+    carouselEl.querySelector('[data-hero-carousel-prev]') ||
+      carouselEl.querySelector('.promo__nav--prev')
+  );
+  const nextBtn = /** @type {HTMLButtonElement | null} */ (
+    carouselEl.querySelector('[data-hero-carousel-next]') ||
+      carouselEl.querySelector('.promo__nav--next')
+  );
+  const pauseBtn = /** @type {HTMLButtonElement | null} */ (
+    carouselEl.querySelector('[data-hero-carousel-pause]') ||
+      carouselEl.querySelector('.promo__pause')
+  );
+
   const hasMultipleSlides = slideCount > 1;
-  const prefersReducedMotion =
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotionMQ =
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+  let prefersReducedMotion = Boolean(reducedMotionMQ?.matches);
 
-  if (typeof SwiperConstructor !== 'function') {
-    window.addEventListener(
-      'load',
-      () => syncHeroSwiperInstance(carouselEl, slideCount),
-      { once: true }
+  let currentIndex = 0;
+  let isManuallyPaused = prefersReducedMotion;
+  let isHoverPaused = false;
+  let isFocusPaused = false;
+  /** @type {number | null} */
+  let autoplayTimerId = null;
+  /** @type {number | null} */
+  let scrollRafId = null;
+
+  const slides = Array.from(wrapperEl.querySelectorAll('.promo__slide'));
+  /** @type {HTMLButtonElement[]} */
+  const bullets = [];
+
+  if (paginationEl) {
+    const bulletFrag = document.createDocumentFragment();
+    if (hasMultipleSlides) {
+      for (let i = 0; i < slideCount; i++) {
+        const bullet = document.createElement('button');
+        bullet.type = 'button';
+        bullet.className = `promo__bullet${i === 0 ? ' is-active' : ''}`;
+        bullet.setAttribute('aria-label', `Ir para o banner ${i + 1}`);
+        if (i === 0) {
+          bullet.setAttribute('aria-current', 'true');
+        }
+        bullet.addEventListener('click', () => {
+          goToSlide(i);
+          restartAutoplayIfAllowed();
+        });
+        bullets.push(bullet);
+        bulletFrag.appendChild(bullet);
+      }
+    }
+    paginationEl.replaceChildren(bulletFrag);
+    /** @type {HTMLElement} */ (paginationEl).hidden = !hasMultipleSlides;
+  }
+
+  if (prevBtn) prevBtn.hidden = !hasMultipleSlides;
+  if (nextBtn) nextBtn.hidden = !hasMultipleSlides;
+  if (pauseBtn) pauseBtn.hidden = !hasMultipleSlides;
+
+  function syncPauseButtonUI() {
+    if (!pauseBtn) return;
+    pauseBtn.setAttribute('aria-pressed', String(isManuallyPaused));
+    pauseBtn.setAttribute(
+      'aria-label',
+      isManuallyPaused
+        ? 'Retomar rotação automática dos banners'
+        : 'Pausar rotação automática dos banners'
     );
-    return;
+    const iconEl = pauseBtn.querySelector('i');
+    if (iconEl) {
+      iconEl.className = isManuallyPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
+    }
+    const labelEl = pauseBtn.querySelector('.promo__pause-label');
+    if (labelEl) {
+      labelEl.textContent = isManuallyPaused ? 'Retomar banners' : 'Pausar banners';
+    }
   }
 
-  const existingSwiper = /** @type {any} */ (carouselEl).swiper;
-  if (existingSwiper && typeof existingSwiper.destroy === 'function') {
-    existingSwiper.destroy(true, true);
-  }
-
-  const swiperInstance = new SwiperConstructor(carouselEl, {
-    loop: hasMultipleSlides,
-    speed: prefersReducedMotion ? 0 : 650,
-    grabCursor: hasMultipleSlides,
-    watchOverflow: true,
-    observer: true,
-    observeParents: true,
-    resizeObserver: true,
-    slidesPerView: 1,
-    spaceBetween: 0,
-    touchAction: 'pan-y',
-    touchReleaseOnEdges: true,
-    autoplay:
-      hasMultipleSlides && !prefersReducedMotion
-        ? {
-            delay: 4500,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: true,
-          }
-        : false,
-    pagination: {
-      el: '.promo__pagination',
-      clickable: true,
-    },
-    navigation: {
-      nextEl: '.promo__nav--next',
-      prevEl: '.promo__nav--prev',
-    },
-    keyboard: {
-      enabled: true,
-      onlyInViewport: true,
-    },
-    a11y: {
-      prevSlideMessage: 'Banner anterior',
-      nextSlideMessage: 'Próximo banner',
-      firstSlideMessage: 'Este é o primeiro banner',
-      lastSlideMessage: 'Este é o último banner',
-      paginationBulletMessage: 'Ir para o banner {{index}}',
-    },
-  });
-
-  if (swiperInstance && typeof swiperInstance.update === 'function') {
-    swiperInstance.update();
-  }
-
-  // Pausa autoplay com foco via teclado ou leitor de tela (WCAG 2.1 AA / 2.2.2)
-  if (swiperInstance && swiperInstance.autoplay && hasMultipleSlides && !prefersReducedMotion) {
-    carouselEl.addEventListener('focusin', () => {
-      try { swiperInstance.autoplay.stop(); } catch {}
+  function syncActiveIndicators() {
+    bullets.forEach((b, idx) => {
+      const active = idx === currentIndex;
+      b.classList.toggle('is-active', active);
+      if (active) {
+        b.setAttribute('aria-current', 'true');
+      } else {
+        b.removeAttribute('aria-current');
+      }
     });
-    carouselEl.addEventListener('focusout', () => {
-      try { swiperInstance.autoplay.start(); } catch {}
+    slides.forEach((s, idx) => {
+      const active = idx === currentIndex;
+      s.classList.toggle('is-active', active);
+      s.dataset.active = String(active);
     });
+    carouselEl.dataset.activeSlide = String(currentIndex);
   }
+
+  function goToSlide(/** @type {number} */ targetIdx, options = {}) {
+    if (slideCount <= 0) return;
+    currentIndex = ((targetIdx % slideCount) + slideCount) % slideCount;
+    syncActiveIndicators();
+
+    const slideWidth = wrapperEl.clientWidth || carouselEl.clientWidth || 0;
+    const targetLeft = currentIndex * slideWidth;
+    try {
+      wrapperEl.scrollTo({
+        left: targetLeft,
+        behavior: options.instant || prefersReducedMotion ? 'auto' : 'smooth',
+      });
+    } catch {
+      wrapperEl.scrollLeft = targetLeft;
+    }
+  }
+
+  function stopAutoplayTimer() {
+    if (autoplayTimerId !== null) {
+      window.clearInterval(autoplayTimerId);
+      autoplayTimerId = null;
+    }
+  }
+
+  function canAutoplayRun() {
+    return (
+      hasMultipleSlides &&
+      !isManuallyPaused &&
+      !isHoverPaused &&
+      !isFocusPaused &&
+      !document.hidden
+    );
+  }
+
+  function startAutoplayTimer() {
+    stopAutoplayTimer();
+    if (!canAutoplayRun()) return;
+    autoplayTimerId = window.setInterval(() => {
+      goToSlide(currentIndex + 1);
+    }, 4500);
+  }
+
+  function restartAutoplayIfAllowed() {
+    stopAutoplayTimer();
+    startAutoplayTimer();
+  }
+
+  const onPrevClick = () => {
+    goToSlide(currentIndex - 1);
+    restartAutoplayIfAllowed();
+  };
+
+  const onNextClick = () => {
+    goToSlide(currentIndex + 1);
+    restartAutoplayIfAllowed();
+  };
+
+  const onPauseClick = () => {
+    isManuallyPaused = !isManuallyPaused;
+    syncPauseButtonUI();
+    if (isManuallyPaused) {
+      stopAutoplayTimer();
+    } else {
+      isFocusPaused = false;
+      isHoverPaused = false;
+      startAutoplayTimer();
+    }
+  };
+
+  const onKeyDown = (/** @type {KeyboardEvent} */ e) => {
+    if (!hasMultipleSlides) return;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      goToSlide(currentIndex + 1);
+      restartAutoplayIfAllowed();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      goToSlide(currentIndex - 1);
+      restartAutoplayIfAllowed();
+    }
+  };
+
+  const onMouseEnter = () => {
+    isHoverPaused = true;
+    stopAutoplayTimer();
+  };
+
+  const onMouseLeave = () => {
+    isHoverPaused = false;
+    startAutoplayTimer();
+  };
+
+  const onFocusIn = () => {
+    isFocusPaused = true;
+    stopAutoplayTimer();
+  };
+
+  const onFocusOut = (/** @type {FocusEvent} */ e) => {
+    const nextTarget = /** @type {Node | null} */ (e.relatedTarget);
+    if (!nextTarget || !carouselEl.contains(nextTarget)) {
+      isFocusPaused = false;
+      startAutoplayTimer();
+    }
+  };
+
+  const onScroll = () => {
+    if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+    scrollRafId = requestAnimationFrame(() => {
+      const w = wrapperEl.clientWidth || 1;
+      const idx = Math.round(wrapperEl.scrollLeft / w);
+      if (idx >= 0 && idx < slideCount && idx !== currentIndex) {
+        currentIndex = idx;
+        syncActiveIndicators();
+      }
+    });
+  };
+
+  const onVisibilityChange = () => {
+    if (document.hidden) stopAutoplayTimer();
+    else startAutoplayTimer();
+  };
+
+  const onReducedMotionChange = (/** @type {MediaQueryListEvent} */ e) => {
+    prefersReducedMotion = e.matches;
+    if (prefersReducedMotion) {
+      isManuallyPaused = true;
+      syncPauseButtonUI();
+      stopAutoplayTimer();
+    }
+  };
+
+  prevBtn?.addEventListener('click', onPrevClick);
+  nextBtn?.addEventListener('click', onNextClick);
+  pauseBtn?.addEventListener('click', onPauseClick);
+  carouselEl.addEventListener('keydown', onKeyDown);
+  carouselEl.addEventListener('mouseenter', onMouseEnter);
+  carouselEl.addEventListener('mouseleave', onMouseLeave);
+  carouselEl.addEventListener('focusin', onFocusIn);
+  carouselEl.addEventListener('focusout', onFocusOut);
+  wrapperEl.addEventListener('scroll', onScroll, { passive: true });
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  reducedMotionMQ?.addEventListener('change', onReducedMotionChange);
+
+  syncPauseButtonUI();
+  syncActiveIndicators();
+  startAutoplayTimer();
+
+  destroyHeroCarouselController = () => {
+    stopAutoplayTimer();
+    if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+    prevBtn?.removeEventListener('click', onPrevClick);
+    nextBtn?.removeEventListener('click', onNextClick);
+    pauseBtn?.removeEventListener('click', onPauseClick);
+    carouselEl.removeEventListener('keydown', onKeyDown);
+    carouselEl.removeEventListener('mouseenter', onMouseEnter);
+    carouselEl.removeEventListener('mouseleave', onMouseLeave);
+    carouselEl.removeEventListener('focusin', onFocusIn);
+    carouselEl.removeEventListener('focusout', onFocusOut);
+    wrapperEl.removeEventListener('scroll', onScroll);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    reducedMotionMQ?.removeEventListener('change', onReducedMotionChange);
+  };
 }
 
 /**
@@ -548,18 +737,12 @@ function renderHeroCarousel() {
 
   const wrapperEl =
     document.getElementById('hero-carousel-wrapper') ||
-    carouselEl.querySelector('.swiper-wrapper');
+    carouselEl.querySelector('.promo__track');
   if (!wrapperEl) return;
 
   const activeSlides = Array.isArray(catalogState.carouselSlides)
     ? catalogState.carouselSlides
     : [];
-
-  const hasAnyMobileArt = activeSlides.some((slide) => {
-    const mobileImg = resolveCarouselSlideMobileImageUrl(slide);
-    return Boolean(mobileImg);
-  });
-  carouselEl.classList.toggle('promo__carousel--has-mobile-art', hasAnyMobileArt);
 
   const fragment = document.createDocumentFragment();
   let validSlideCount = 0;
@@ -572,9 +755,9 @@ function renderHeroCarousel() {
     }
   });
 
-  const currentSwiper = /** @type {any} */ (carouselEl).swiper;
-  if (currentSwiper && typeof currentSwiper.destroy === 'function') {
-    currentSwiper.destroy(true, true);
+  if (destroyHeroCarouselController) {
+    destroyHeroCarouselController();
+    destroyHeroCarouselController = null;
   }
 
   // Se não houver banners ativos no banco, oculta a seção do carrossel
@@ -588,7 +771,11 @@ function renderHeroCarousel() {
   if (promoSection) promoSection.hidden = false;
   wrapperEl.replaceChildren(fragment);
   carouselEl.setAttribute('aria-busy', 'false');
-  syncHeroSwiperInstance(/** @type {HTMLElement} */ (carouselEl), validSlideCount);
+  initNativeHeroCarousel(
+    /** @type {HTMLElement} */ (carouselEl),
+    /** @type {HTMLElement} */ (wrapperEl),
+    validSlideCount
+  );
 }
 
 /* ==========================================================================
@@ -670,32 +857,15 @@ function renderBestSellers() {
 
   bestSellersSection.hidden = false;
 
-  const isSwiperWrapper =
-    container.classList.contains('swiper-wrapper') ||
-    Boolean(container.closest('.swiper'));
-
   const fragment = document.createDocumentFragment();
 
   featuredProducts.forEach((product) => {
     const cardEl = createProductCardElement(product);
-
-    if (isSwiperWrapper) {
-      const slideWrapper = document.createElement('div');
-      slideWrapper.className = 'swiper-slide';
-      slideWrapper.appendChild(cardEl);
-      fragment.appendChild(slideWrapper);
-    } else {
-      fragment.appendChild(cardEl);
-    }
+    fragment.appendChild(cardEl);
   });
 
   container.replaceChildren(fragment);
   container.setAttribute('aria-busy', 'false');
-
-  const swiperRoot = container.closest('.swiper');
-  if (swiperRoot && swiperRoot.swiper && typeof swiperRoot.swiper.update === 'function') {
-    swiperRoot.swiper.update();
-  }
 
   renderCompoundsShowcase();
 }
