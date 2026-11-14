@@ -39,6 +39,7 @@ const JS_FILES = [
   'js/shared/richtext.js',
   'js/shared/productRenderer.js',
   'js/shared/categoryIcons.js',
+  'js/shared/compoundShowcaseRenderer.js',
   'js/admin/main.js',
   'js/admin/state.js',
   'js/admin/ui.js',
@@ -51,6 +52,7 @@ const JS_FILES = [
   'js/admin/views/productForm.js',
   'js/admin/views/categories.js',
   'js/admin/views/banners.js',
+  'js/admin/views/compounds.js',
   'js/admin/views/whatsapp.js',
 ];
 
@@ -73,6 +75,7 @@ const REQUIRED_SEO_FILES = [
   'supabase/migrations/20261105200000_data_safety_defaults.sql',
   'supabase/migrations/20261106020000_carousel_mobile_art.sql',
   'supabase/migrations/20261106214500_increase_short_description_limit.sql',
+  'supabase/migrations/20261113230000_compound_showcase_cards.sql',
   'supabase/schema_reference.sql',
   'supabase/legacy/README.md',
   'supabase/audit/README.md',

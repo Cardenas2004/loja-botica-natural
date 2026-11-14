@@ -27,6 +27,7 @@ import { renderProductsView } from './views/products.js';
 import { renderProductFormView } from './views/productForm.js';
 import { renderCategoriesView } from './views/categories.js';
 import { renderBannersView } from './views/banners.js';
+import { renderCompoundsView } from './views/compounds.js';
 import { renderWhatsAppView } from './views/whatsapp.js';
 
 /** @type {(() => void) | null} */
@@ -65,6 +66,9 @@ function parseHashRoute(rawHash) {
   }
   if (clean === '/banners') {
     return { view: 'banners', param: null, title: 'Banners do Carrossel', parentLabel: null };
+  }
+  if (clean === '/compostos') {
+    return { view: 'compounds', param: null, title: 'Vitrine de Compostos', parentLabel: null };
   }
   if (clean === '/categorias') {
     return { view: 'categories', param: null, title: 'Categorias', parentLabel: null };
@@ -184,6 +188,8 @@ async function renderCurrentRoute() {
     renderCategoriesView(outlet);
   } else if (routeInfo.view === 'banners') {
     renderBannersView(outlet);
+  } else if (routeInfo.view === 'compounds') {
+    activeViewCleanup = renderCompoundsView(outlet);
   } else if (routeInfo.view === 'whatsapp') {
     renderWhatsAppView(outlet);
   }

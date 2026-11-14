@@ -145,6 +145,21 @@ export function renderDashboardView(container, router) {
         {
           type: 'button',
           className: 'quick-action-card',
+          onClick: () => router.navigate('#/compostos'),
+        },
+        [
+          el('div', { className: 'quick-action-card__icon' }, [createIcon('fa-solid fa-vial')]),
+          el('div', { className: 'quick-action-card__body' }, [
+            el('strong', { textContent: 'Vitrine de Compostos' }),
+            el('span', { textContent: 'Personalizar cards especiais abaixo dos Mais Vendidos' }),
+          ]),
+        ]
+      ),
+      el(
+        'button',
+        {
+          type: 'button',
+          className: 'quick-action-card',
           onClick: () => router.navigate('#/whatsapp'),
         },
         [

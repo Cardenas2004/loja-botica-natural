@@ -22,6 +22,10 @@ import {
 
 import { state, setState } from './state.js';
 import { showToast, generateSlug } from './ui.js';
+import {
+  DEFAULT_COMPOUND_CARDS,
+  isValidCompoundLink,
+} from '../shared/compoundShowcaseRenderer.js';
 
 export const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export const MAX_RAW_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB entrada bruta
@@ -299,6 +303,7 @@ export async function fetchAllAdminData(options = {}) {
       fetchCategories(),
       fetchProducts(),
       fetchCarouselSlides(),
+      fetchCompoundCards(),
       fetchWhatsAppSettings(),
     ]);
     setState({ lastFetchedAt: Date.now() });
@@ -411,6 +416,32 @@ export async function fetchCarouselSlides() {
 
   const list = Array.isArray(data) ? data : [];
   setState({ carouselSlides: list });
+  return list;
+}
+
+/**
+ * Busca todos os cards da Vitrine de Compostos Manipulados ordenados por `display_order` ASC.
+ */
+export async function fetchCompoundCards() {
+  const { data, error } = await supabase
+    .from(DB_TABLES.COMPOUNDS)
+    .select('*')
+    .order('display_order', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    const code = String(error.code || '');
+    if (code === '42P01' || code === 'PGRST205') {
+      setState({ compoundCards: [] });
+      return [];
+    }
+    const normalized = normalizeSupabaseError(error, 'Erro ao carregar vitrine de compostos');
+    showToast(normalized.userMessage, 'error');
+    return [];
+  }
+
+  const list = Array.isArray(data) ? data : [];
+  setState({ compoundCards: list });
   return list;
 }
 
@@ -943,5 +974,236 @@ export async function saveWhatsAppConfiguration({ scope, templateText, adminEmai
     invalidateCache();
     await fetchProducts();
   }
+}
+
+/* ==========================================================================
+   6. OPERAÇÕES CRUD: VITRINE DE COMPOSTOS MANIPULADOS
+   ========================================================================== */
+
+/**
+ * Cria ou atualiza um card da Vitrine de Compostos com upload WebP opcional para frasco
+ * e ilustração botânica personalizada, além de limpeza automática de arquivos órfãos.
+ *
+ * @param {Record<string, any>} payload
+ * @param {{
+ *   editingId?: string,
+ *   oldImagePath?: string,
+ *   oldBotanicalImagePath?: string,
+ *   bottleFile?: File | null,
+ *   botanicalFile?: File | null,
+ *   clearBottleImage?: boolean,
+ *   clearBotanicalImage?: boolean,
+ *   onProgress?: (pct: number) => void
+ * }} [options]
+ */
+export async function saveCompoundCard(payload, options = {}) {
+  const editingId = options.editingId || '';
+  const oldImagePath = options.oldImagePath || '';
+  const oldBotanicalImagePath = options.oldBotanicalImagePath || '';
+  const bottleFile = options.bottleFile || null;
+  const botanicalFile = options.botanicalFile || null;
+  const clearBottleImage = Boolean(options.clearBottleImage);
+  const clearBotanicalImage = Boolean(options.clearBotanicalImage);
+
+  const cleanTitle = String(payload.title || '').trim();
+  if (cleanTitle.length < 2) {
+    throw new Error('O título principal do card deve ter pelo menos 2 caracteres.');
+  }
+
+  const rawLink = String(payload.button_link || '').trim();
+  if (!isValidCompoundLink(rawLink)) {
+    throw new Error('O link de destino informado é inválido ou utiliza um esquema bloqueado.');
+  }
+
+  /** @type {{ imagePath: string, imageUrl: string } | null} */
+  let uploadedBottle = null;
+  /** @type {{ imagePath: string, imageUrl: string } | null} */
+  let uploadedBotanical = null;
+
+  try {
+    if (bottleFile) {
+      uploadedBottle = await uploadStorageWebpImage(bottleFile, {
+        folder: 'catalogo',
+        maxDimension: 1080,
+        quality: 0.86,
+        onProgress: options.onProgress,
+      });
+    }
+
+    if (botanicalFile) {
+      uploadedBotanical = await uploadStorageWebpImage(botanicalFile, {
+        folder: 'catalogo',
+        maxDimension: 640,
+        quality: 0.86,
+      });
+    }
+
+    /** @type {Record<string, any>} */
+    const record = {
+      title: cleanTitle,
+      label_subtitle: String(payload.label_subtitle ?? '').trim(),
+      label_title: String(payload.label_title ?? '').trim(),
+      label_badge: String(payload.label_badge ?? '60 CÁPSULAS').trim(),
+      show_label: payload.show_label !== false,
+      button_text: String(payload.button_text || 'COMPRAR').trim() || 'COMPRAR',
+      button_link: rawLink,
+      product_id: payload.product_id ? String(payload.product_id).trim() : null,
+      open_in_new_tab: Boolean(payload.open_in_new_tab),
+      show_button: payload.show_button !== false,
+      card_theme: String(payload.card_theme || 'green'),
+      badge_color: String(payload.badge_color || 'green'),
+      title_align: String(payload.title_align || 'center'),
+      botanical_theme: String(payload.botanical_theme || 'alcachofra'),
+      show_capsules: payload.show_capsules !== false,
+      display_order: Math.max(0, Number(payload.display_order) || 0),
+      is_active: Boolean(payload.is_active),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (uploadedBottle) {
+      record.image_path = uploadedBottle.imagePath;
+      record.image_url = uploadedBottle.imageUrl;
+    } else if (clearBottleImage) {
+      record.image_path = null;
+      record.image_url = null;
+    }
+
+    if (uploadedBotanical) {
+      record.botanical_image_path = uploadedBotanical.imagePath;
+      record.botanical_image_url = uploadedBotanical.imageUrl;
+      record.botanical_theme = 'custom';
+    } else if (clearBotanicalImage) {
+      record.botanical_image_path = null;
+      record.botanical_image_url = null;
+    }
+
+    const query = editingId
+      ? supabase.from(DB_TABLES.COMPOUNDS).update(record).eq('id', editingId)
+      : supabase.from(DB_TABLES.COMPOUNDS).insert([record]);
+
+    const { error } = await query;
+    if (error) throw error;
+
+    if (editingId && uploadedBottle && oldImagePath && oldImagePath !== uploadedBottle.imagePath) {
+      await removeStorageImageIfPresent(oldImagePath);
+    } else if (editingId && clearBottleImage && oldImagePath) {
+      await removeStorageImageIfPresent(oldImagePath);
+    }
+
+    if (
+      editingId &&
+      uploadedBotanical &&
+      oldBotanicalImagePath &&
+      oldBotanicalImagePath !== uploadedBotanical.imagePath
+    ) {
+      await removeStorageImageIfPresent(oldBotanicalImagePath);
+    } else if (editingId && clearBotanicalImage && oldBotanicalImagePath) {
+      await removeStorageImageIfPresent(oldBotanicalImagePath);
+    }
+
+    invalidateCache();
+    await fetchCompoundCards();
+  } catch (err) {
+    if (uploadedBottle?.imagePath) {
+      await removeStorageImageIfPresent(uploadedBottle.imagePath);
+    }
+    if (uploadedBotanical?.imagePath) {
+      await removeStorageImageIfPresent(uploadedBotanical.imagePath);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Exclui um card da Vitrine de Compostos e remove suas imagens personalizadas do Storage.
+ * @param {any} card
+ */
+export async function deleteCompoundCard(card) {
+  const { error } = await supabase.from(DB_TABLES.COMPOUNDS).delete().eq('id', card.id);
+  if (error) throw error;
+
+  if (card.image_path) {
+    await removeStorageImageIfPresent(card.image_path);
+  }
+  if (card.botanical_image_path) {
+    await removeStorageImageIfPresent(card.botanical_image_path);
+  }
+
+  invalidateCache();
+  await fetchCompoundCards();
+}
+
+/**
+ * Alterna rapidamente o status ativo/inativo de um card da Vitrine de Compostos.
+ * @param {string} cardId
+ * @param {boolean} isActive
+ */
+export async function toggleCompoundCardStatus(cardId, isActive) {
+  const { error } = await supabase
+    .from(DB_TABLES.COMPOUNDS)
+    .update({ is_active: Boolean(isActive), updated_at: new Date().toISOString() })
+    .eq('id', cardId);
+
+  if (error) throw error;
+
+  invalidateCache();
+  await fetchCompoundCards();
+}
+
+/**
+ * Atualiza a ordem de exibição (`display_order`) de uma lista ordenada de IDs de cards de compostos.
+ * @param {string[]} orderedIds
+ */
+export async function reorderCompoundCards(orderedIds) {
+  const updates = orderedIds.map((id, index) =>
+    supabase
+      .from(DB_TABLES.COMPOUNDS)
+      .update({ display_order: index, updated_at: new Date().toISOString() })
+      .eq('id', id)
+  );
+
+  const results = await Promise.all(updates);
+  const firstError = results.find((r) => r.error)?.error;
+  if (firstError) throw firstError;
+
+  invalidateCache();
+  await fetchCompoundCards();
+}
+
+/**
+ * Restaura/popula no Supabase os 6 cards padrões oficiais da Botica Natural.
+ */
+export async function seedDefaultCompoundCards() {
+  const activeProductIds = new Set((state.products || []).map((p) => String(p.id)));
+  const records = DEFAULT_COMPOUND_CARDS.map((card, index) => ({
+    id: card.id,
+    title: card.title,
+    label_subtitle: card.label_subtitle,
+    label_title: card.label_title,
+    label_badge: card.label_badge,
+    show_label: card.show_label,
+    button_text: card.button_text,
+    button_link: card.button_link,
+    product_id: card.product_id && activeProductIds.has(String(card.product_id)) ? card.product_id : null,
+    open_in_new_tab: card.open_in_new_tab,
+    show_button: card.show_button,
+    card_theme: card.card_theme,
+    badge_color: card.badge_color,
+    title_align: card.title_align,
+    botanical_theme: card.botanical_theme,
+    show_capsules: card.show_capsules,
+    display_order: index,
+    is_active: true,
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase
+    .from(DB_TABLES.COMPOUNDS)
+    .upsert(records, { onConflict: 'id' });
+
+  if (error) throw error;
+
+  invalidateCache();
+  await fetchCompoundCards();
 }
 

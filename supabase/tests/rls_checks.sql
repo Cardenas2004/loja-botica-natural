@@ -27,6 +27,8 @@ DECLARE
   v_active_cat      UUID := '00000000-0000-4000-c000-000000000002';
   v_inactive_slide  UUID := '00000000-0000-4000-d000-000000000001';
   v_active_slide    UUID := '00000000-0000-4000-d000-000000000002';
+  v_inactive_card   UUID := '00000000-0000-4000-e000-000000000001';
+  v_active_card     UUID := '00000000-0000-4000-e000-000000000002';
   v_count           INTEGER;
   v_updated_rows    INTEGER;
   v_deleted_rows    INTEGER;
@@ -65,6 +67,13 @@ BEGIN
   VALUES
     (v_inactive_slide, 'Banner Inativo', 'https://example.com/banner-inativo.webp', '', 99, false),
     (v_active_slide,   'Banner Ativo',   'https://example.com/banner-ativo.webp',   '', 1,  true)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- Cards de compostos de teste
+  INSERT INTO public.compound_showcase_cards (id, title, label_title, card_theme, botanical_theme, display_order, is_active)
+  VALUES
+    (v_inactive_card, 'Composto Inativo', 'INATIVO', 'green', 'alcachofra', 99, false),
+    (v_active_card,   'Composto Ativo',   'ATIVO',   'purple', 'berries',   1,  true)
   ON CONFLICT (id) DO NOTHING;
 
   -- Configurações globais de teste
@@ -108,6 +117,17 @@ BEGIN
   SELECT COUNT(*) INTO v_count FROM public.carousel_slides WHERE id = v_inactive_slide;
   IF v_count <> 0 THEN
     RAISE EXCEPTION '[FALHA TESTE 1.3] Usuário anon conseguiu ler banner inativo (linhas=%).', v_count;
+  END IF;
+
+  -- 1.3b Compound Showcase Cards
+  SELECT COUNT(*) INTO v_count FROM public.compound_showcase_cards WHERE id = v_inactive_card;
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION '[FALHA TESTE 1.3b] Usuário anon conseguiu ler card de composto inativo (linhas=%).', v_count;
+  END IF;
+
+  SELECT COUNT(*) INTO v_count FROM public.compound_showcase_cards WHERE id = v_active_card;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION '[FALHA TESTE 1.3b] Usuário anon não conseguiu ler card de composto ativo (linhas=%).', v_count;
   END IF;
 
   -- 1.4 Site Settings (whitelist estrita)
@@ -184,6 +204,19 @@ BEGIN
   END;
   IF NOT v_blocked THEN
     RAISE EXCEPTION '[FALHA TESTE 2.4] Usuário autenticado comum conseguiu fazer INSERT em carousel_slides!';
+  END IF;
+
+  -- 2.4b Bloqueio de INSERT em compound_showcase_cards
+  v_blocked := false;
+  BEGIN
+    INSERT INTO public.compound_showcase_cards (title, label_title, is_active)
+    VALUES ('Card Hack', 'HACK', true);
+  EXCEPTION
+    WHEN insufficient_privilege OR check_violation OR OTHERS THEN
+      v_blocked := true;
+  END;
+  IF NOT v_blocked THEN
+    RAISE EXCEPTION '[FALHA TESTE 2.4b] Usuário autenticado comum conseguiu fazer INSERT em compound_showcase_cards!';
   END IF;
 
   -- 2.5 Bloqueio de UPDATE em site_settings

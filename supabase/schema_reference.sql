@@ -231,6 +231,61 @@ CREATE POLICY "site_settings_delete_admin" ON public.site_settings
   FOR DELETE TO authenticated
   USING (public.is_admin());
 
--- 9. STORAGE: BUCKET 'product-images' E POLICIES
+-- 9. TABELA DE VITRINE DE COMPOSTOS MANIPULADOS (COMPOUND_SHOWCASE_CARDS)
+CREATE TABLE IF NOT EXISTS public.compound_showcase_cards (
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  title                TEXT        NOT NULL CHECK (char_length(trim(title)) >= 2),
+  label_subtitle       TEXT        NOT NULL DEFAULT '',
+  label_title          TEXT        NOT NULL DEFAULT '',
+  label_badge          TEXT        NOT NULL DEFAULT '60 CÁPSULAS',
+  show_label           BOOLEAN     NOT NULL DEFAULT true,
+  button_text          TEXT        NOT NULL DEFAULT 'COMPRAR',
+  button_link          TEXT        NOT NULL DEFAULT '',
+  product_id           UUID        REFERENCES public.products(id) ON DELETE SET NULL,
+  open_in_new_tab      BOOLEAN     NOT NULL DEFAULT false,
+  show_button          BOOLEAN     NOT NULL DEFAULT true,
+  card_theme           TEXT        NOT NULL DEFAULT 'green'
+                       CHECK (card_theme IN ('green', 'purple', 'emerald', 'plum', 'gold')),
+  badge_color          TEXT        NOT NULL DEFAULT 'green'
+                       CHECK (badge_color IN ('green', 'purple', 'gold', 'dark')),
+  title_align          TEXT        NOT NULL DEFAULT 'center'
+                       CHECK (title_align IN ('left', 'center', 'right')),
+  botanical_theme      TEXT        NOT NULL DEFAULT 'alcachofra'
+                       CHECK (botanical_theme IN ('alcachofra', 'berries', 'turmeric', 'hibiscus', 'chamomile', 'rosehip', 'custom', 'none')),
+  show_capsules        BOOLEAN     NOT NULL DEFAULT true,
+  image_url            TEXT,
+  image_path           TEXT,
+  botanical_image_url  TEXT,
+  botanical_image_path TEXT,
+  display_order        INTEGER     NOT NULL DEFAULT 0,
+  is_active            BOOLEAN     NOT NULL DEFAULT true,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.compound_showcase_cards ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "compound_showcase_cards_select_public" ON public.compound_showcase_cards
+  FOR SELECT TO anon
+  USING (is_active = true);
+
+CREATE POLICY "compound_showcase_cards_select_authenticated" ON public.compound_showcase_cards
+  FOR SELECT TO authenticated
+  USING (is_active = true OR public.is_admin());
+
+CREATE POLICY "compound_showcase_cards_insert_admin" ON public.compound_showcase_cards
+  FOR INSERT TO authenticated
+  WITH CHECK (public.is_admin());
+
+CREATE POLICY "compound_showcase_cards_update_admin" ON public.compound_showcase_cards
+  FOR UPDATE TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+CREATE POLICY "compound_showcase_cards_delete_admin" ON public.compound_showcase_cards
+  FOR DELETE TO authenticated
+  USING (public.is_admin());
+
+-- 10. STORAGE: BUCKET 'product-images' E POLICIES
 -- Leituras públicas permitidas para entrega estática de imagens
 -- Escritas (INSERT, UPDATE, DELETE) restritas exclusivamente a public.is_admin()

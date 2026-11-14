@@ -135,6 +135,7 @@ export const DB_TABLES = Object.freeze({
   CATEGORIES: 'categories',
   PRODUCTS: 'products',
   CAROUSEL: 'carousel_slides',
+  COMPOUNDS: 'compound_showcase_cards',
   SETTINGS: 'site_settings',
 });
 
@@ -549,6 +550,18 @@ export function normalizeSupabaseError(
   if (
     rawCode === '42P01' ||
     rawCode === 'PGRST205' ||
+    lowerMsg.includes('compound_showcase_cards')
+  ) {
+    return {
+      success: false,
+      userMessage:
+        'A tabela "compound_showcase_cards" ainda não foi criada no Supabase. Execute a migração "supabase/migrations/20261113230000_compound_showcase_cards.sql" no SQL Editor do Supabase.',
+      code: 'TABLE_NOT_FOUND',
+      status: 404,
+    };
+  }
+
+  if (
     lowerMsg.includes('carousel_slides') ||
     lowerMsg.includes('does not exist')
   ) {

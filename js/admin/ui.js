@@ -87,18 +87,28 @@ export function createIcon(className) {
 }
 
 /**
+ * Remove todos os nós filhos de um elemento DOM de forma segura.
+ * @param {HTMLElement | null | undefined} node
+ */
+export function clearElement(node) {
+  if (!node) return;
+  node.replaceChildren();
+}
+
+/**
  * Helper declarativo seguro para criar elementos DOM sem `innerHTML`.
+ * Aceita filhos tanto em um array no 3º argumento quanto como argumentos variádicos.
  *
  * @template {keyof HTMLElementTagNameMap} K
  * @param {K} tag
  * @param {Record<string, any>} [attrs]
- * @param {Array<Node | string | null | undefined | false>} [children]
+ * @param {...any} childrenArgs
  * @returns {HTMLElementTagNameMap[K]}
  */
-export function el(tag, attrs = {}, children = []) {
+export function el(tag, attrs = {}, ...childrenArgs) {
   const element = document.createElement(tag);
 
-  for (const [key, value] of Object.entries(attrs)) {
+  for (const [key, value] of Object.entries(attrs || {})) {
     if (value === undefined || value === null || value === false) continue;
 
     if (key === 'className') {
@@ -127,10 +137,11 @@ export function el(tag, attrs = {}, children = []) {
     }
   }
 
-  for (const child of children) {
+  const flatChildren = childrenArgs.flat(Infinity);
+  for (const child of flatChildren) {
     if (child === null || child === undefined || child === false) continue;
-    if (typeof child === 'string') {
-      element.appendChild(document.createTextNode(child));
+    if (typeof child === 'string' || typeof child === 'number') {
+      element.appendChild(document.createTextNode(String(child)));
     } else if (child instanceof Node) {
       element.appendChild(child);
     }

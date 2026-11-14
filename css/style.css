@@ -1692,7 +1692,8 @@ strong { font-weight: 600; }
 .stat__label { font-size: 0.8125rem; color: var(--text-medium); font-weight: 500; }
 
 @media (min-width: 1024px) {
-  .about__inner { grid-template-columns: 1fr 1.1fr; gap: 5rem; }
+  .about__inner { grid-template-columns: 0.92fr 1.18fr; gap: 4.5rem; align-items: start; }
+  .about__media { position: sticky; top: calc(var(--header-h) + 2rem); }
   .about__placeholder, .about__media img { aspect-ratio: 4 / 5; }
   .about__badge { left: auto; right: -1.5rem; bottom: 2.5rem; }
 }
@@ -4316,6 +4317,28 @@ body.category-sheet-lock {
   background: linear-gradient(180deg, #521B7C 0%, #421266 100%);
 }
 
+.compound-card--emerald {
+  background: linear-gradient(180deg, #136F48 0%, #0C5133 100%);
+}
+
+.compound-card--plum {
+  background: linear-gradient(180deg, #6E1E52 0%, #4E1239 100%);
+}
+
+.compound-card--gold {
+  background: linear-gradient(180deg, #9C6317 0%, #74460B 100%);
+}
+
+.compound-card--align-left .compound-card__title {
+  text-align: left;
+  align-self: stretch;
+}
+
+.compound-card--align-right .compound-card__title {
+  text-align: right;
+  align-self: stretch;
+}
+
 .compound-card__title {
   font-family: var(--font-body);
   font-size: 1.15rem;
@@ -4404,6 +4427,18 @@ body.category-sheet-lock {
   line-height: 1.1;
 }
 
+.compound-card__label-dose--purple {
+  background: linear-gradient(90deg, #521B7C 0%, #6E2CA3 100%);
+}
+
+.compound-card__label-dose--gold {
+  background: linear-gradient(90deg, #9E5E0B 0%, #C67C1B 100%);
+}
+
+.compound-card__label-dose--dark {
+  background: linear-gradient(90deg, #22162E 0%, #3A274D 100%);
+}
+
 /* Cápsulas 3D Flutuantes */
 .compound-card__pill {
   position: absolute;
@@ -4463,6 +4498,10 @@ body.category-sheet-lock {
   filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.28));
 }
 
+.compound-card__botanical--img {
+  object-fit: contain;
+}
+
 /* Botão COMPRAR */
 .compound-card__btn {
   display: inline-flex;
@@ -4490,6 +4529,18 @@ body.category-sheet-lock {
 
 .compound-card--purple .compound-card__btn {
   color: #4D1976;
+}
+
+.compound-card--emerald .compound-card__btn {
+  color: #10603E;
+}
+
+.compound-card--plum .compound-card__btn {
+  color: #631949;
+}
+
+.compound-card--gold .compound-card__btn {
+  color: #7D4D0E;
 }
 
 .compound-card__btn::after {

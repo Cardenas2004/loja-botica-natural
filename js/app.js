@@ -30,6 +30,10 @@ import {
 
 import { extractPlainText } from './shared/richtext.js';
 import { createCategoryIconElement } from './shared/categoryIcons.js';
+import {
+  DEFAULT_COMPOUND_CARDS,
+  createCompoundCardElement,
+} from './shared/compoundShowcaseRenderer.js';
 
 /* ==========================================================================
    1. CONFIGURAÇÕES GLOBAIS E FORMATAÇÃO (SINGLE SOURCE OF TRUTH)
@@ -64,6 +68,10 @@ const catalogState = {
   categories: [],
   /** @type {Array<import('./supabaseClient.js').Product>} */
   products: [],
+  /** @type {Array<any>} Cards ativos da Vitrine de Compostos Manipulados */
+  compoundCards: [],
+  /** @type {boolean} Indica se os cards de compostos vieram do banco de dados */
+  compoundCardsLoadedFromDb: false,
   /** @type {string} ID da categoria selecionada ('all' por padrão) */
   activeCategory: 'all',
   /** @type {string} Termo de busca textual em tempo real */
@@ -651,6 +659,7 @@ function renderBestSellers() {
       bestSellersSection.hidden = false;
       container.replaceChildren(createStorefrontFallbackElement());
       container.setAttribute('aria-busy', 'false');
+      renderCompoundsShowcase();
       return;
     }
     container.replaceChildren();
@@ -688,6 +697,45 @@ function renderBestSellers() {
     swiperRoot.swiper.update();
   }
 
+  renderCompoundsShowcase();
+}
+
+function renderCompoundsShowcase() {
+  const showcase = document.getElementById('compounds-showcase');
+  if (!showcase) return;
+
+  const track = showcase.querySelector('.compounds-showcase__track');
+  if (!track) return;
+
+  if (catalogState.compoundCardsLoadedFromDb && catalogState.compoundCards.length > 0) {
+    const fragment = document.createDocumentFragment();
+    catalogState.compoundCards.forEach((card, index) => {
+      const cardEl = createCompoundCardElement(card, {
+        products: catalogState.products,
+        isPreview: false,
+        uniqueIndex: index,
+      });
+      fragment.appendChild(cardEl);
+    });
+    track.replaceChildren(fragment);
+    showcase.hidden = false;
+    return;
+  }
+
+  if (track.children.length === 0) {
+    const fallbackFragment = document.createDocumentFragment();
+    DEFAULT_COMPOUND_CARDS.forEach((card, index) => {
+      const cardEl = createCompoundCardElement(card, {
+        products: catalogState.products,
+        isPreview: false,
+        uniqueIndex: index,
+      });
+      fallbackFragment.appendChild(cardEl);
+    });
+    track.replaceChildren(fallbackFragment);
+  }
+
+  showcase.hidden = false;
   syncCompoundsShowcase();
 }
 
@@ -1393,7 +1441,12 @@ async function loadCatalogData() {
 
   try {
     catalogState.hasError = false;
-    const [carouselResponse, categoriesResponse, productsResponse] = await Promise.all([
+    const [
+      carouselResponse,
+      categoriesResponse,
+      productsResponse,
+      compoundsResponse,
+    ] = await Promise.all([
       supabase
         .from(DB_TABLES.CAROUSEL)
         .select('*')
@@ -1414,6 +1467,13 @@ async function loadCatalogData() {
         .eq('is_active', true)
         .order('created_at', { ascending: false }),
 
+      supabase
+        .from(DB_TABLES.COMPOUNDS)
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+
       fetchProductWhatsAppTemplate(),
     ]);
 
@@ -1421,6 +1481,14 @@ async function loadCatalogData() {
       !carouselResponse.error && Array.isArray(carouselResponse.data)
         ? carouselResponse.data
         : [];
+
+    if (!compoundsResponse.error && Array.isArray(compoundsResponse.data) && compoundsResponse.data.length > 0) {
+      catalogState.compoundCards = compoundsResponse.data;
+      catalogState.compoundCardsLoadedFromDb = true;
+    } else {
+      catalogState.compoundCards = [];
+      catalogState.compoundCardsLoadedFromDb = false;
+    }
 
     if (categoriesResponse.error) {
       throw categoriesResponse.error;

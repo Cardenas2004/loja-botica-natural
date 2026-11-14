@@ -20,6 +20,7 @@ const SIDEBAR_STORAGE_KEY = 'botica_admin_sidebar_collapsed';
  * @property {Array<any>} categories
  * @property {Array<any>} products
  * @property {Array<any>} carouselSlides
+ * @property {Array<any>} compoundCards
  * @property {string | null} whatsappTemplate
  * @property {string} whatsappScope
  * @property {number} selectedSampleIndex
@@ -50,6 +51,7 @@ export const state = {
   categories: [],
   products: [],
   carouselSlides: [],
+  compoundCards: [],
   whatsappTemplate: null,
   whatsappScope: '__global__',
   selectedSampleIndex: 0,
@@ -170,6 +172,7 @@ export function resetAuthenticatedState() {
   state.categories = [];
   state.products = [];
   state.carouselSlides = [];
+  state.compoundCards = [];
   state.whatsappTemplate = null;
   state.whatsappScope = '__global__';
   state.lastFetchedAt = 0;
