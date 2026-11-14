@@ -89,14 +89,9 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
         const card1 = await cards.nth(1).boundingBox();
 
         if (card0 && card1) {
-          if (vp.width >= 340) {
-            // Em telas >= 340px, os dois primeiros cards devem estar na mesma linha (lado a lado)
-            expect(Math.abs(card0.y - card1.y)).toBeLessThanOrEqual(6);
-            expect(card1.x).toBeGreaterThan(card0.x + card0.width - 2);
-          } else {
-            // Em telas < 340px (ex: 320px), os cards empilham em 1 coluna
-            expect(card1.y).toBeGreaterThan(card0.y + card0.height - 2);
-          }
+          // Em todas as larguras mobile-first (>= 320px), os dois primeiros cards ficam lado a lado em 2 colunas
+          expect(Math.abs(card0.y - card1.y)).toBeLessThanOrEqual(6);
+          expect(card1.x).toBeGreaterThan(card0.x + card0.width - 2);
         }
       }
     });

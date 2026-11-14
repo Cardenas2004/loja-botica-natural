@@ -581,6 +581,35 @@ if (importResolutionErrors === 0) {
 }
 
 /* ==========================================================================
+   7.1. VERIFICAÇÃO DE BREAKPOINTS RESPONSIVOS PADRONIZADOS (MED-07 / FASE 2)
+   ========================================================================== */
+console.log('\n7.1. Verificando padronização de breakpoints CSS (480px, 768px, 1024px, 1280px mobile-first)...');
+const ALLOWED_WIDTH_BREAKPOINTS = new Set(['480px', '768px', '1024px', '1280px']);
+const CSS_FILES_BREAKPOINT_CHECK = ['css/style.css', 'css/product.css', 'css/admin.css'];
+let invalidBreakpointCount = 0;
+
+for (const cssFile of CSS_FILES_BREAKPOINT_CHECK) {
+  const strippedCss = readUtf8(cssFile).replace(/\/\*[\s\S]*?\*\//g, '');
+  const mediaMatches = [...strippedCss.matchAll(/@media\s*([^{]+)\{/g)];
+  for (const m of mediaMatches) {
+    const cond = m[1].trim();
+    const widthConds = [...cond.matchAll(/\(\s*(min-width|max-width)\s*:\s*([^)]+)\)/gi)];
+    for (const wc of widthConds) {
+      const prop = wc[1].toLowerCase();
+      const val = wc[2].trim().toLowerCase();
+      if (prop !== 'min-width' || !ALLOWED_WIDTH_BREAKPOINTS.has(val)) {
+        invalidBreakpointCount += 1;
+        fail(`${cssFile}: breakpoint fora do padrão mobile-first permitido -> @media ${cond} (${prop}: ${val})`);
+      }
+    }
+  }
+}
+
+if (invalidBreakpointCount === 0) {
+  pass('Todos os breakpoints de largura em css/style.css, css/product.css e css/admin.css usam min-width em {480px, 768px, 1024px, 1280px}.');
+}
+
+/* ==========================================================================
    8. [MODO PRODUÇÃO] VERIFICAÇÃO DE PLACEHOLDERS [PREENCHER (APENAS --prod)
    ========================================================================== */
 const IS_PROD = process.argv.includes('--prod');

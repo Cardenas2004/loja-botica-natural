@@ -8,6 +8,8 @@ const VIEWPORTS = [
   { width: 768, height: 1024, name: '768px' },
   { width: 1024, height: 768, name: '1024px' },
   { width: 1440, height: 900, name: '1440px' },
+  { width: 1920, height: 1080, name: '1920px' },
+  { width: 2560, height: 1440, name: '2560px' },
 ];
 
 const PAGES = [

@@ -107,4 +107,20 @@ Eventos frequentes da biblioteca do Supabase (`TOKEN_REFRESHED` a cada 60 min e 
 2. **Versionamento e Timestamp**: O consentimento é registrado em `localStorage` no formato `{ v: 1, ts: <timestamp>, choices: { analytics: boolean, marketing: boolean } }`.
 3. **Página de Privacidade Transparente**: `privacidade.html` detalha a finalidade do processamento dos dados em conformidade com as diretrizes da ANPD e da Anvisa.
 
+---
+
+## 10. Padronização Mobile-First de Breakpoints Responsivos (MED-07 / Fase 2)
+
+### Contexto
+As folhas de estilo (`css/style.css`, `css/product.css` e `css/admin.css`) continham valores dispersos de `@media` misturando `min-width` e `max-width` (`340px`, `359px`, `400px`, `420px`, `639px`, `640px`, `767px`, `900px`, `1023px`, `1120px`), dificultando a manutenção e gerando zonas cinzentas entre dispositivos móveis e tablets.
+
+### Decisão
+1. **Quatro Breakpoints Mobile-First Exclusivos**: Todas as media queries de largura do projeto utilizam exclusivamente `min-width` nos valores:
+   - `480px`: celulares largos / phablets;
+   - `768px`: tablets em retrato;
+   - `1024px`: tablets em paisagem / laptops compactos (ex.: transição do seletor mobile de categorias para abas horizontais e abertura da sidebar fixa no admin);
+   - `1280px`: desktops amplos.
+2. **Verificação Automatizada**: `scripts/verify.mjs` inspeciona todas as diretivas `@media` de `css/style.css`, `css/product.css` e `css/admin.css` e falha imediatamente caso surja qualquer `max-width` ou valor de `min-width` fora do conjunto `{480px, 768px, 1024px, 1280px}`.
+
+
 
