@@ -38,7 +38,7 @@ export const SAMPLE_PREVIEW_PRODUCT = Object.freeze({
   package_info: 'Exemplo: Pote lacrado com 60 cápsulas.',
   allergen_info: 'Não contém lactose e glúten.',
   quality_note:
-    'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.',
+    'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas, rastreabilidade e rigoroso controle de qualidade farmacêutico.',
   whatsapp_message: '',
   text_options: { _v: 2, ...DEFAULT_FIELD_MODES },
   image_url: '',

@@ -38,7 +38,7 @@ import {
 } from '../ui.js';
 
 const DEFAULT_QUALITY_NOTE =
-  'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas e rigoroso controle de qualidade farmacêutico, garantindo melhor eficácia.';
+  'Todos os produtos da Botica Natural são preparados com matérias-primas selecionadas, rastreabilidade e rigoroso controle de qualidade farmacêutico.';
 const DEFAULT_ALLERGENS = 'Não contém lactose e glúten.';
 const DEFAULT_PAYMENT_INFO = 'Consulte formas de pagamento via WhatsApp / Cartão e Pix';
 

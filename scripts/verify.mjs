@@ -354,6 +354,23 @@ if (machinePathFound.length === 0) {
   fail(`Caminhos de máquina local encontrados em: ${machinePathFound.join(', ')}`);
 }
 
+// Checagem regulatória de termos proibidos no HTML público fora de comentários (ALTO-06 / Fase 1)
+const regulatoryTermRegex =
+  /(?:^|[^\p{L}])(cura|curar|garante|100%|sem\s+efeitos\s+colaterais|emagrec\p{L}*|milagr\p{L}*|comprovad\p{L}*|sem\s+contraindica\p{L}*|tratamento\s+garantido|respostas\s+at[eé]\s+22h|pelos\s+Correios)(?=$|[^\p{L}])/giu;
+const regulatoryViolations = [];
+for (const htmlFile of PUBLIC_HTML_FILES) {
+  const withoutComments = readUtf8(htmlFile).replace(/<!--[\s\S]*?-->/g, '');
+  const matches = [...withoutComments.matchAll(regulatoryTermRegex)].map((m) => m[1]);
+  if (matches.length > 0) {
+    regulatoryViolations.push(`${htmlFile} (${[...new Set(matches)].join(', ')})`);
+  }
+}
+if (regulatoryViolations.length === 0) {
+  pass('Ausente no HTML público (fora de comentários): alegações regulatórias proibidas (ALTO-06)');
+} else {
+  fail(`Termos regulatórios proibidos encontrados em: ${regulatoryViolations.join('; ')}`);
+}
+
 /* ==========================================================================
    4. VERIFICAÇÃO DE REFERÊNCIAS A ARQUIVOS LOCAIS (HTML, CSS, JS)
    ========================================================================== */
