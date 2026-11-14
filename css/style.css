@@ -234,6 +234,18 @@ strong { font-weight: 600; }
 
 [hidden] { display: none !important; }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link {
   position: absolute;
   top: 0.75rem;
@@ -4203,7 +4215,9 @@ body.category-sheet-lock {
   pointer-events: none;
 }
 
-.catalog-custom-banner h3 {
+.catalog-custom-banner h2,
+.catalog-custom-banner h3,
+.catalog-custom-banner__title {
   color: var(--white);
   font-size: var(--fs-h2);
   margin-bottom: 0.75rem;

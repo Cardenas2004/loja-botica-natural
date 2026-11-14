@@ -11,7 +11,7 @@ Plataforma digital para farmácia de manipulação desenvolvida com arquitetura 
 - **Segurança & Zero-Trust**:
   - Autorização estrita baseada na tabela `public.admin_users` via RPC `is_admin() SECURITY DEFINER` (sem leitura de `user_metadata` nem e-mails hardcoded).
   - Sanitizador de HTML em árvore AST puro (`js/shared/richtext.js`) com proteção contra XSS/mXSS e arquitetura `_v: 2` imune a acúmulo de entidades (`&amp;`).
-  - Content Security Policy (CSP) estrita com eliminação total de `unsafe-inline` em estilos e scripts.
+  - Content Security Policy (CSP) com `script-src 'self'` estrito (evoluindo para `style-src 'self'` e fontes locais na Fase 5 da auditoria).
   - Conformidade LGPD com gestão granular de consentimento de cookies (Aceitar todos, Rejeitar opcionais, Configurar e Revogar no rodapé).
   - Acessibilidade WCAG 2.1 AA auditada sem violações graves/críticas via `@axe-core/playwright`.
 
@@ -30,7 +30,7 @@ Plataforma digital para farmácia de manipulação desenvolvida com arquitetura 
 │   ├── style.css               # Design System principal e estilos da vitrine pública
 │   ├── product.css             # Estilos dedicados da página de produto e blocos ricos
 │   ├── admin.css               # Estilos da interface administrativa e modo escuro
-│   ├── icons.css               # Mapeamento do SVG sprite local para ícones da interface
+│   ├── icons.css               # Ícones vetoriais via CSS mask-image com data URIs SVG locais
 │   └── vendor/
 │       └── swiper-11.2.4.bundle.min.css # Bundle local do Swiper (zero CDN)
 │
@@ -56,7 +56,6 @@ Plataforma digital para farmácia de manipulação desenvolvida com arquitetura 
 │       └── swiper-11.2.4.bundle.min.js  # Bundle local consolidado do Swiper 11
 │
 ├── images/
-│   ├── icons.svg               # Sprite SVG local (zero requisições de webfonts externas)
 │   ├── logo.png / logo.webp    # Identidade visual da farmácia
 │   └── og-image.jpg            # Imagem Open Graph para compartilhamento social
 │
@@ -81,7 +80,7 @@ Plataforma digital para farmácia de manipulação desenvolvida com arquitetura 
 │   ├── test-richtext.mjs       # Suíte unitária do sanitizador AST (21 testes)
 │   ├── repair-escapes.mjs      # Script de reparo de entidades acumuladas no banco
 │   ├── bundle-vendor.mjs       # Script de geração dos bundles ESM locais em js/vendor/
-│   └── build-icons-sprite.mjs  # Gerador do sprite SVG local e css/icons.css
+│   └── build-icons-sprite.mjs  # Gerador de css/icons.css com máscaras SVG locais
 │
 ├── docs/
 │   ├── decisoes.md             # Architecture Decision Records (ADR)
@@ -112,7 +111,7 @@ npm install
 ```bash
 npm run serve
 ```
-Acesse a aplicação no navegador em `http://localhost:8080/`.
+Acesse a aplicação no navegador em `http://127.0.0.1:3000/`.
 
 ---
 
@@ -154,7 +153,7 @@ node scripts/repair-escapes.mjs
 ```
 
 ### Atualização dos Bundles Locais de Terceiros
-Para atualizar o cliente Supabase ou o Swiper mantendo a entrega 100% estática e local:
+Para atualizar o cliente Supabase mantendo a entrega 100% estática e local:
 ```bash
 node scripts/bundle-vendor.mjs
 ```
@@ -171,11 +170,11 @@ O repositório já inclui configurações prontas para as principais plataformas
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: SAMEORIGIN`
   - `Referrer-Policy: strict-origin-when-cross-origin`
-  - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
+  - `Permissions-Policy: camera=(), microphone=(), geolocation=()` (evoluindo para incluir `payment=()` na Fase 5)
 - **Vercel**: O arquivo `vercel.json` aplica as mesmas diretivas via rotas do Vercel Edge Network.
 
 ---
 
 ## 7. Dados Pendentes & Validação Regulatória
 
-Consulte o arquivo **[`PENDENCIAS.md`](file:///c:/Users/eduar/Desktop/vscode/botica_natura/PENDENCIAS.md)** antes de realizar o deploy em ambiente produtivo. Ele consolida os dados reais obrigatórios do estabelecimento (CNPJ, CRF-RS, Licença Sanitária/AFE, nome do Farmacêutico RT) e os itens sujeitos a parecer técnico do Responsável Técnico conforme a **RDC 67/2007** e **RDC 96/2008** da Anvisa.
+Consulte o arquivo **[`PENDENCIAS.md`](PENDENCIAS.md)** antes de realizar o deploy em ambiente produtivo. Ele consolida os dados reais obrigatórios do estabelecimento (CNPJ, CRF-RS, Licença Sanitária/AFE, nome do Farmacêutico RT) e os itens sujeitos a parecer técnico do Responsável Técnico conforme a **RDC 67/2007** e **RDC 96/2008** da Anvisa.

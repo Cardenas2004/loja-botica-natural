@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Catálogo de Produtos | Botica Natural — Fórmulas & Medicamentos Manipulados</title>
-    <meta name="description" content="Explore o catálogo completo da Botica Natural: dermocosméticos, suplementos, emagrecimento, fitoterápicos e veterinária. Peça pelo WhatsApp com orientação farmacêutica.">
+    <meta name="description" content="Catálogo da Botica Natural: dermocosméticos, suplementos, cápsulas, fitoterápicos e linha veterinária. Solicite orçamento pelo WhatsApp com suporte técnico.">
     <meta name="theme-color" content="#3D1E6D">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://njdkuhgoophzjxmmempu.supabase.co; connect-src 'self' https://njdkuhgoophzjxmmempu.supabase.co wss://njdkuhgoophzjxmmempu.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self';">
@@ -76,7 +76,7 @@
                     <a class="btn btn--secondary btn--lg btn--block" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20gostaria%20de%20mandar%20minha%20receita." data-wa="menu-catalogo">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar receita
                     </a>
-                    <p class="nav__hours"><i class="fa-regular fa-clock" aria-hidden="true"></i> Seg à Sex 8:30–12:00 e 13:30–18:00 · Sáb 08:30–12:00</p>
+                    <p class="nav__hours"><i class="fa-regular fa-clock" aria-hidden="true"></i> Seg a Sex 08:30–12:00 e 13:30–18:00; Sáb 08:30–12:00</p>
                 </div>
             </nav>
 
@@ -121,7 +121,8 @@
 
         <!-- ================= CATÁLOGO COM ABAS ================= -->
         <!-- REVISAR COM RT: RDC 67/2007 e normas de publicidade da Anvisa (exibição de preços de manipulados no catálogo) -->
-        <section class="section" id="catalogo" aria-label="Lista de produtos por categoria">
+        <section class="section" id="catalogo" aria-labelledby="catalogo-section-title">
+            <h2 class="sr-only" id="catalogo-section-title">Lista de produtos por categoria</h2>
             <div class="container">
                 <!-- Barra de Categorias: Seletor Inteligente Mobile + Abas de Acesso Rápido -->
                 <div class="catalog-category-bar" id="catalog-category-bar">
@@ -217,7 +218,7 @@
                 <!-- Empty State de Busca / Categoria -->
                 <div class="catalog-empty" id="catalog-empty" data-catalog-empty hidden>
                     <i class="fa-solid fa-box-open catalog-empty__icon" aria-hidden="true"></i>
-                    <h3 class="catalog-empty__title" id="catalog-empty-title">Nenhum produto disponível nesta categoria no momento.</h3>
+                    <h2 class="catalog-empty__title" id="catalog-empty-title">Nenhum produto disponível nesta categoria no momento.</h2>
                     <p class="catalog-empty__desc" id="catalog-empty-desc">Não encontrou o produto desejado? Nós manipulamos qualquer fórmula sob prescrição médica ou indicação personalizada!</p>
                     <a class="btn btn--secondary btn--lg" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20procurei%20uma%20f%C3%B3rmula%20no%20cat%C3%A1logo%20e%20queria%20saber%20se%20voc%C3%AAs%20manipulam." target="_blank" rel="noopener noreferrer" data-wa="catalogo-empty-cta">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Falar com o Farmacêutico no WhatsApp
@@ -229,7 +230,7 @@
 
                 <!-- Banner Inferior de Receita Personalizada -->
                 <div class="catalog-custom-banner">
-                    <h3>Tem uma receita médica ou odontológica?</h3>
+                    <h2 class="catalog-custom-banner__title">Tem uma receita médica ou odontológica?</h2>
                     <p>Manipulamos fórmulas personalizadas sob medida na dosagem exata indicada pelo seu médico, nutricionista ou veterinário. Envie a foto da receita e receba o orçamento em minutos.</p>
                     <a class="btn btn--secondary btn--lg btn--pulse" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tenho%20uma%20receita%20e%20gostaria%20de%20fazer%20um%20or%C3%A7amento." data-wa="catalogo-custom-recipe">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar foto da receita pelo WhatsApp
@@ -275,8 +276,8 @@
             <div class="footer__col">
                 <h3>Horário</h3>
                 <ul class="footer__links footer__hours">
-                    <li><span>Seg à Sex</span> 8:30-12:00 / 13:30-18:00</li>
-                    <li><span>Sábado</span> 08:30-12:00</li>
+                    <li><span>Seg a Sex</span> 08:30–12:00 e 13:30–18:00</li>
+                    <li><span>Sáb</span> 08:30–12:00</li>
                     <li><span>WhatsApp</span> respostas até 22h</li>
                 </ul>
             </div>
@@ -287,7 +288,7 @@
                     <li><a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 8554-3448</a></li>
                     <li><a href="tel:+555185543448"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 8554-3448</a></li>
                     <li><a href="mailto:boticanatural@terra.com.br"><i class="fa-solid fa-envelope" aria-hidden="true"></i> boticanatural@terra.com.br</a></li>
-                    <li><a href="https://www.google.com/maps/search/?api=1&amp;query=Rua+Assis+Brasil+31+Centro+Triunfo+RS" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Rua Assis Brasil, 31 – Centro, Triunfo/RS</a></li>
+                    <li><a href="https://www.google.com/maps/search/?api=1&amp;query=Rua+Assis+Brasil+31+Centro+Triunfo+RS" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Rua Assis Brasil, 31, Centro, Triunfo/RS</a></li>
                 </ul>
             </div>
         </div>
@@ -297,7 +298,7 @@
                 <p class="footer__copyright">© <span data-year>2026</span> Botica Natural Farmácia de Manipulação LTDA. Todos os direitos reservados.</p>
                 <p class="footer__company">
                     <span class="footer__company-item">CNPJ 04.063.559/0001-11</span>
-                    <span class="footer__company-item">Rua Assis Brasil, 31 – Triunfo/RS</span>
+                    <span class="footer__company-item">Rua Assis Brasil, 31, Centro, Triunfo/RS</span>
                     <span class="footer__company-item">CEP 95840-000</span>
                 </p>
                 <p class="footer__company">

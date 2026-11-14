@@ -94,9 +94,9 @@ Eventos frequentes da biblioteca do Supabase (`TOKEN_REFRESHED` a cada 60 min e 
 ## 8. Eliminação Total de Dependências de CDNs Externos
 
 ### Decisão
-1. **Bundles Locais ESM**: `scripts/bundle-vendor.mjs` gera versões locais e fixadas de `@supabase/supabase-js` (2.49.1) e `Swiper` (11.2.4) em `js/vendor/` e `css/vendor/`.
-2. **Sprite SVG Local**: Font Awesome foi completamente descontinuado em favor do sprite SVG local `images/icons.svg` e da folha de estilos `css/icons.css`. O site agora funciona 100% offline ou em redes restritas sem requisições para servidores externos de fontes ou CDNs.
-3. **CSP Estrita sem CDNs**: `script-src` e `style-src` das páginas públicas e do admin apontam exclusivamente para `'self'`, sem permissões para `cdn.jsdelivr.net` ou `cdnjs.cloudflare.com`.
+1. **Bundles Locais ESM**: `scripts/bundle-vendor.mjs` gera versão local e fixada de `@supabase/supabase-js` (2.49.1) em `js/vendor/`.
+2. **Ícones via Máscaras CSS SVG Locais**: Font Awesome foi descontinuado em favor da folha de estilos `css/icons.css` gerada por `scripts/build-icons-sprite.mjs` utilizando `mask-image` com data URIs SVG locais.
+3. **CSP sem CDNs de Script**: `script-src` das páginas públicas e do admin aponta exclusivamente para `'self'`, sem permissões para `cdn.jsdelivr.net` ou `cdnjs.cloudflare.com` (com auto-hospedagem de fontes e `style-src 'self'` concluídos na Fase 5).
 
 ---
 

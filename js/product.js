@@ -160,7 +160,22 @@ function initLivePreviewMode() {
   ensureNoIndexMeta();
   document.title = `Pré-visualização do Produto | ${BRAND_NAME}`;
 
-  // Renderiza imediatamente o estado de exemplo
+  const isSameOriginIframe =
+    window.parent !== window &&
+    (() => {
+      try {
+        return window.parent.location.origin === window.location.origin;
+      } catch {
+        return false;
+      }
+    })();
+
+  if (!isSameOriginIframe) {
+    showErrorState('Pré-visualização disponível apenas no painel administrativo');
+    return;
+  }
+
+  // Renderiza imediatamente o estado de exemplo apenas dentro do iframe do painel administrativo
   renderProduct(document, SAMPLE_PREVIEW_PRODUCT, { isPreview: true });
 
   window.addEventListener('message', (event) => {

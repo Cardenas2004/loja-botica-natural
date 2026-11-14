@@ -42,7 +42,7 @@ export async function loginAdmin(email, password) {
     return {
       ok: false,
       errorMessage:
-        'Configuração pendente: preencha SUPABASE_URL e SUPABASE_ANON_KEY em "js/config.js".',
+        'Configuração pendente: preencha SUPABASE_URL e SUPABASE_ANON_KEY em "js/supabaseClient.js".',
     };
   }
 
@@ -114,7 +114,7 @@ export async function logoutAdmin() {
 export async function initAuthLifecycle(callbacks) {
   if (!isSupabaseConfigured || !supabase) {
     callbacks.onUnauthenticated(
-      'Configure SUPABASE_URL e SUPABASE_ANON_KEY em "js/config.js" para habilitar o painel.'
+      'Configure SUPABASE_URL e SUPABASE_ANON_KEY em "js/supabaseClient.js" para habilitar o painel.'
     );
     return;
   }

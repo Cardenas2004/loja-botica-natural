@@ -7,10 +7,19 @@
  */
 
 /**
- * Nome oficial padronizado da marca em todo o projeto.
- * [PREENCHER: confirmar com o proprietário se o nome empresarial/fantasia oficial é "Botica Natural"]
+ * Nome oficial padronizado da marca em todo o projeto (confirmado pelo proprietário).
  */
 export const BRAND_NAME = 'Botica Natural';
+
+/**
+ * Horário oficial de atendimento confirmado pelo proprietário.
+ */
+export const BUSINESS_HOURS_TEXT = 'Seg a Sex 08:30–12:00 e 13:30–18:00; Sáb 08:30–12:00';
+
+/**
+ * Endereço físico oficial confirmado pelo proprietário.
+ */
+export const BUSINESS_ADDRESS_TEXT = 'Rua Assis Brasil, 31, Centro, Triunfo/RS';
 
 /**
  * Domínio canônico oficial usado em URLs absolutas, canonical, Open Graph e JSON-LD.
@@ -54,6 +63,8 @@ export const SHOW_INSTALLMENTS = false;
  */
 export const SITE_CONFIG = Object.freeze({
   BRAND_NAME,
+  BUSINESS_HOURS_TEXT,
+  BUSINESS_ADDRESS_TEXT,
   SITE_DOMAIN,
   WHATSAPP_PHONE,
   WHATSAPP_DISPLAY,

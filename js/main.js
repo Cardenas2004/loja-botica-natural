@@ -569,7 +569,7 @@ import {
     startAutoplayTimer();
   };
 
-  /* 8. CONTADORES (lê apenas valores numéricos reais do HTML; preserva placeholders [PREENCHER: ...]) */
+  /* 8. CONTADORES (lê apenas valores numéricos reais do HTML; preserva marcadores pendentes) */
   const initCounters = () => {
     const counters = $$('[data-counter]');
     if (!counters.length || prefersReducedMotion || !('IntersectionObserver' in window)) return;

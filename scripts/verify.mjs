@@ -12,8 +12,15 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { WHATSAPP_PHONE, BRAND_NAME } from '../js/config.js';
+import {
+  WHATSAPP_PHONE,
+  BRAND_NAME,
+  SITE_DOMAIN,
+  BUSINESS_HOURS_TEXT,
+  BUSINESS_ADDRESS_TEXT,
+} from '../js/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const ROOT_DIR = path.resolve(path.dirname(__filename), '..');
@@ -95,8 +102,9 @@ const FORBIDDEN_PATTERNS = [
   { pattern: /Farmac[eê]utico\s+online\s+agora|est[aá]\s+online\s+agora/i, label: 'Indicador falso fixo de farmacêutico online agora' },
   { pattern: /Resposta\s+m[eé]dia\s+em\s+5\s+minutos/i, label: 'Promessa fixa "Resposta média em 5 minutos"' },
   { pattern: /contato@boticanatural\.com\.br/i, label: 'E-mail não confirmado contato@boticanatural.com.br' },
-  { pattern: /eduardodudusants12345@gmail\.com/i, label: 'E-mail pessoal hardcoded eduardodudusants12345@gmail.com' },
 ];
+
+const FORBIDDEN_EMAIL_SHA256 = '20275d345d5925c101800d71d8baed9cbec4620bf72b0761c1726ef5fc817bf8';
 
 let totalChecks = 0;
 let failedChecks = 0;
@@ -202,6 +210,75 @@ if (whatsappConsistent) {
 }
 
 /* ==========================================================================
+   2.1. CONSISTÊNCIA DE HORÁRIO, ENDEREÇO E DOMÍNIO (MED-08 / CRIT-03)
+   ========================================================================== */
+console.log(`\n2.1. Verificando consistência de horário, endereço e domínio (${SITE_DOMAIN})...`);
+const PUBLIC_HTML_FILES = ['index.html', 'produtos.html', 'produto.html', 'privacidade.html'];
+let hoursAndAddressConsistent = true;
+for (const htmlFile of PUBLIC_HTML_FILES) {
+  const content = readUtf8(htmlFile);
+  if (!content.includes(BUSINESS_HOURS_TEXT)) {
+    hoursAndAddressConsistent = false;
+    fail(`${htmlFile}: string oficial de horário ("${BUSINESS_HOURS_TEXT}") ausente.`);
+  }
+  if (
+    !content.includes('<li><span>Seg a Sex</span> 08:30–12:00 e 13:30–18:00</li>') ||
+    !content.includes('<li><span>Sáb</span> 08:30–12:00</li>')
+  ) {
+    hoursAndAddressConsistent = false;
+    fail(`${htmlFile}: rodapé de horários (.footer__hours) diverge do padrão oficial.`);
+  }
+  if (!content.includes(BUSINESS_ADDRESS_TEXT)) {
+    hoursAndAddressConsistent = false;
+    fail(`${htmlFile}: endereço oficial ("${BUSINESS_ADDRESS_TEXT}") ausente.`);
+  }
+}
+const indexContentForHours = readUtf8('index.html');
+if (
+  !indexContentForHours.includes(`<p class="cta-final__note"><i class="fa-regular fa-clock" aria-hidden="true"></i> ${BUSINESS_HOURS_TEXT}</p>`)
+) {
+  hoursAndAddressConsistent = false;
+  fail('index.html: nota de horário em #orcamento (.cta-final__note) diverge de BUSINESS_HOURS_TEXT.');
+}
+if (hoursAndAddressConsistent) {
+  pass(`Horário ("${BUSINESS_HOURS_TEXT}") e endereço ("${BUSINESS_ADDRESS_TEXT}") idênticos em todas as páginas públicas.`);
+}
+
+let domainConsistent = true;
+for (const htmlFile of PUBLIC_HTML_FILES) {
+  const content = readUtf8(htmlFile);
+  const canonicalMatch = content.match(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']/i);
+  if (canonicalMatch && !canonicalMatch[1].startsWith(SITE_DOMAIN) && !canonicalMatch[1].startsWith('produtos.html')) {
+    domainConsistent = false;
+    fail(`${htmlFile}: canonical "${canonicalMatch[1]}" não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+  }
+  const ogUrlMatch = content.match(/<meta\s+property=["']og:url["']\s+content=["']([^"']+)["']/i);
+  if (ogUrlMatch && !ogUrlMatch[1].startsWith(SITE_DOMAIN)) {
+    domainConsistent = false;
+    fail(`${htmlFile}: og:url "${ogUrlMatch[1]}" não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+  }
+  const ogImageMatch = content.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
+  if (ogImageMatch && !ogImageMatch[1].startsWith(SITE_DOMAIN)) {
+    domainConsistent = false;
+    fail(`${htmlFile}: og:image "${ogImageMatch[1]}" não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+  }
+}
+const robotsContent = readUtf8('robots.txt');
+if (!robotsContent.includes(`Sitemap: ${SITE_DOMAIN}/sitemap.xml`)) {
+  domainConsistent = false;
+  fail(`robots.txt: Sitemap não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+}
+const sitemapContent = readUtf8('sitemap.xml');
+const sitemapLocs = [...sitemapContent.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
+if (sitemapLocs.length === 0 || sitemapLocs.some((loc) => !loc.startsWith(SITE_DOMAIN))) {
+  domainConsistent = false;
+  fail(`sitemap.xml: uma ou mais tags <loc> não utilizam SITE_DOMAIN (${SITE_DOMAIN}).`);
+}
+if (domainConsistent) {
+  pass(`Domínio canônico (${SITE_DOMAIN}) consistente em canonical, og:url, og:image, robots.txt e sitemap.xml.`);
+}
+
+/* ==========================================================================
    3. AUSÊNCIA DE CONTEÚDO FICTÍCIO E DADOS HARDCODED PROIBIDOS
    ========================================================================== */
 console.log('\n3. Verificando ausência de dados fictícios e hardcoded...');
@@ -226,6 +303,55 @@ for (const { pattern, label } of FORBIDDEN_PATTERNS) {
   } else {
     fail(`Encontrado ${label} em: ${foundIn.join(', ')}`);
   }
+}
+
+// Checagem por hash SHA-256 de e-mail pessoal proibido (MED-06: sem string literal no código)
+let forbiddenEmailFoundIn = [];
+for (const rel of [...filesToScanForbidden, 'scripts/verify.mjs']) {
+  const content = readUtf8(rel);
+  const emails = [...content.matchAll(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)].map((m) =>
+    m[0].toLowerCase()
+  );
+  for (const em of emails) {
+    const digest = crypto.createHash('sha256').update(em).digest('hex');
+    if (digest === FORBIDDEN_EMAIL_SHA256) {
+      forbiddenEmailFoundIn.push(rel);
+      break;
+    }
+  }
+}
+if (forbiddenEmailFoundIn.length === 0) {
+  pass('Ausente em todo o código ativo: E-mail pessoal hardcoded (verificado por hash SHA-256)');
+} else {
+  fail(`E-mail pessoal hardcoded encontrado em: ${forbiddenEmailFoundIn.join(', ')}`);
+}
+
+// Checagem de ausência de caminhos locais de máquina com nome de usuário (MED-06 / DOC)
+const filesToScanMachinePaths = [
+  ...HTML_FILES,
+  ...JS_FILES,
+  ...CSS_FILES,
+  'README.md',
+  'RELATORIO.md',
+  'PENDENCIAS.md',
+  'docs/decisoes.md',
+  'docs/layout-auditoria.md',
+  'docs/admin-regressao.md',
+  'artifacts/audit-baseline-report.json',
+];
+const machinePathRegex = /[cC]:[/\\][uU]sers[/\\]|file:\/\/\/[cC]:/i;
+const machinePathFound = [];
+for (const rel of filesToScanMachinePaths) {
+  const full = path.join(ROOT_DIR, rel);
+  if (!fs.existsSync(full)) continue;
+  if (machinePathRegex.test(fs.readFileSync(full, 'utf8'))) {
+    machinePathFound.push(rel);
+  }
+}
+if (machinePathFound.length === 0) {
+  pass('Ausente em todo o repositório e documentação: caminhos absolutos de máquina local');
+} else {
+  fail(`Caminhos de máquina local encontrados em: ${machinePathFound.join(', ')}`);
 }
 
 /* ==========================================================================
@@ -444,15 +570,20 @@ const IS_PROD = process.argv.includes('--prod');
 if (IS_PROD) {
   console.log('\n8. [MODO PRODUÇÃO] Verificando ausência de placeholders [PREENCHER...');
   let placeholdersFound = 0;
-  for (const file of [...HTML_FILES, ...JS_FILES]) {
+  const prodScanFiles = [...HTML_FILES, ...JS_FILES, 'robots.txt', 'sitemap.xml'];
+  for (const file of prodScanFiles) {
     const fullPath = path.resolve(ROOT_DIR, file);
     if (!fs.existsSync(fullPath)) continue;
-    const content = fs.readFileSync(fullPath, 'utf8');
-    const matches = content.match(/\[PREENCHER:[^\]]+\]/g);
-    if (matches && matches.length > 0) {
-      fail(`${file}: contém ${matches.length} placeholder(s) pendente(s) [PREENCHER: ...]`);
-      placeholdersFound += matches.length;
-    }
+    const lines = fs.readFileSync(fullPath, 'utf8').split(/\r?\n/);
+    lines.forEach((lineText, idx) => {
+      const matches = lineText.match(/\[PREENCHER:[^\]]+\]/g);
+      if (matches) {
+        for (const placeholder of matches) {
+          fail(`${file}:${idx + 1} -> ${placeholder}`);
+          placeholdersFound += 1;
+        }
+      }
+    });
   }
   if (placeholdersFound === 0) {
     pass('Nenhum placeholder [PREENCHER: ...] encontrado nos arquivos de produção.');
