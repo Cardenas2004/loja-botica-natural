@@ -705,10 +705,8 @@ strong { font-weight: 600; }
 }
 
 /* ==========================================================================
-   5b. PROMO — Hero Banner Full-Bleed (1920x600 / 16:5 & 4:5 Mobile) com CLS Zero
-   Design mobile-first: fluido, sem faixas pretas e com paginação elegante.
-   Suporte a proporção oficial panorâmica (1920x600 / 16:5) e
-   suporte a arte mobile vertical 4:5 dedicada (1080x1350).
+   5b. PROMO — Hero Banner Full-Bleed (1920x600 / 16:5) com Ajuste Automático
+   Design mobile-first: fluido em celular e desktop, swipe tátil nativo e CLS Zero.
    ========================================================================== */
 .promo {
   position: relative;
@@ -732,10 +730,10 @@ strong { font-weight: 600; }
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--promo-aspect, 16 / 5);
   overflow: hidden;
   background: transparent;
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
   color-scheme: light;
 }
 
@@ -751,10 +749,11 @@ strong { font-weight: 600; }
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  touch-action: pan-y;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 
 .promo__track::-webkit-scrollbar {
@@ -766,12 +765,12 @@ strong { font-weight: 600; }
   flex: 0 0 100%;
   width: 100%;
   height: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--promo-aspect, 16 / 5);
   scroll-snap-align: start;
   scroll-snap-stop: always;
   overflow: hidden;
   background: transparent;
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
 }
 
 .promo__link {
@@ -780,6 +779,10 @@ strong { font-weight: 600; }
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: pan-x pan-y;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .promo__picture {
@@ -788,15 +791,16 @@ strong { font-weight: 600; }
   height: 100%;
 }
 
-/* Recorte responsivo controlado pelo ponto de foco (--focus-x / --focus-y) */
+/* Ajuste responsivo automático mantendo a proporção panorâmica em celular e desktop */
 .promo__img,
 .promo__slide img {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
-  object-position: var(--focus-x, 50%) var(--focus-y, 50%);
+  object-position: center center;
   background: transparent;
+  touch-action: pan-x pan-y;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -874,56 +878,6 @@ strong { font-weight: 600; }
   outline-offset: 3px;
 }
 
-/* Botão visível de pausa/retomada do autoplay (WCAG 2.2.2) — contraste >= 4.5:1 e alvo >= 44x44px */
-.promo__pause {
-  position: absolute;
-  bottom: 8px;
-  right: 10px;
-  z-index: 12;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: var(--radius-pill);
-  background: rgba(26, 13, 46, 0.82);
-  color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  font-size: 0.75rem;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  cursor: pointer;
-  transition: background-color var(--t-fast), border-color var(--t-fast);
-}
-
-.promo__pause[hidden] {
-  display: none !important;
-}
-
-.promo__pause:hover {
-  background: rgba(26, 13, 46, 0.94);
-  border-color: rgba(255, 255, 255, 0.65);
-}
-
-.promo__pause:focus-visible {
-  outline: 2px solid #FFFFFF;
-  outline-offset: 2px;
-}
-
-.promo__pause-label {
-  display: none;
-}
-
-@media (min-width: 480px) {
-  .promo__pause-label {
-    display: inline;
-  }
-}
-
 /* Setas de Navegação: ocultas no mobile (< 768px, navegação via swipe) e >= 44x44px em telas maiores */
 .promo__nav {
   display: none;
@@ -983,7 +937,7 @@ strong { font-weight: 600; }
 
   .promo__carousel,
   .promo__slide {
-    aspect-ratio: 16 / 5;
+    aspect-ratio: var(--promo-aspect, 16 / 5);
     max-width: 100%;
     max-height: none;
     padding-bottom: 0;
@@ -992,17 +946,12 @@ strong { font-weight: 600; }
   .promo__img,
   .promo__slide img {
     object-fit: cover;
-    object-position: var(--focus-x, 50%) var(--focus-y, 50%);
+    object-position: center center;
   }
 
   .promo__pagination {
     bottom: 1rem;
     padding: 0.4rem 0.85rem;
-  }
-
-  .promo__pause {
-    bottom: 1rem;
-    right: clamp(0.75rem, 2.5vw, 2.25rem);
   }
 
   .promo__nav:not([hidden]) {

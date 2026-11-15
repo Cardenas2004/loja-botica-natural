@@ -22,13 +22,13 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
       const carousel = page.locator('.promo__carousel');
       await expect(carousel).toBeVisible();
 
-      // Verifica dimensões e proporção 16:9 no mobile (< 768px)
+      // Verifica dimensões e proporção panorâmica automática 16:5 no mobile
       const box = await carousel.boundingBox();
       expect(box).not.toBeNull();
       if (box) {
         expect(box.width).toBeGreaterThanOrEqual(vp.width - 2);
-        // Proporção 16:9: para 320px a altura é ~180px
-        const expectedHeight = vp.width * (9 / 16);
+        // Proporção 16:5: para 320px a altura é ~100px (mantendo laterais visíveis)
+        const expectedHeight = vp.width * (5 / 16);
         expect(Math.abs(box.height - expectedHeight)).toBeLessThanOrEqual(4);
       }
 

@@ -381,25 +381,14 @@ function resolveCarouselSlideImageUrl(slide) {
   return resolveSafeStorageImageUrl(slide?.image_url, slide?.image_path, '');
 }
 
-function clampSlideFocus(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return 50;
-  return Math.min(100, Math.max(0, Math.round(num * 100) / 100));
-}
-
-function createHeroCarouselSlideElement(slide, index) {
+function createHeroCarouselSlideElement(slide, index, carouselEl) {
   const imageUrl = resolveCarouselSlideImageUrl(slide);
   if (!imageUrl) return null;
-
-  const focusX = clampSlideFocus(slide.focus_x ?? 50);
-  const focusY = clampSlideFocus(slide.focus_y ?? 50);
 
   const slideEl = document.createElement('div');
   slideEl.className = 'promo__slide';
   slideEl.dataset.slideId = String(slide.id || '');
   slideEl.dataset.slideIndex = String(index);
-  slideEl.style.setProperty('--focus-x', `${focusX}%`);
-  slideEl.style.setProperty('--focus-y', `${focusY}%`);
 
   const altText =
     String(slide.title || '').trim() ||
@@ -412,6 +401,7 @@ function createHeroCarouselSlideElement(slide, index) {
     const anchor = document.createElement('a');
     anchor.className = 'promo__link';
     anchor.href = safeHref;
+    anchor.draggable = false;
     anchor.setAttribute('aria-label', altText);
     if (/^https?:\/\//i.test(safeHref)) {
       anchor.target = '_blank';
@@ -431,6 +421,7 @@ function createHeroCarouselSlideElement(slide, index) {
   img.className = 'promo__img';
   img.src = imageUrl;
   img.alt = altText;
+  img.draggable = false;
   img.width = 1920;
   img.height = 600;
 
@@ -438,6 +429,27 @@ function createHeroCarouselSlideElement(slide, index) {
     img.loading = 'eager';
     img.setAttribute('fetchpriority', 'high');
     img.decoding = 'sync';
+
+    // Ajusta automaticamente a proporção do carrossel (desktop e mobile) ao banner real carregado
+    if (carouselEl) {
+      const syncCarouselAspect = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (w >= 200 && h > 0) {
+          const ratio = w / h;
+          if (ratio >= 1.33 && ratio <= 4.2) {
+            img.width = w;
+            img.height = h;
+            carouselEl.style.setProperty('--promo-aspect', `${w} / ${h}`);
+          }
+        }
+      };
+      if (img.complete && img.naturalWidth > 0) {
+        syncCarouselAspect();
+      } else {
+        img.addEventListener('load', syncCarouselAspect, { once: true });
+      }
+    }
   } else {
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -472,10 +484,6 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     carouselEl.querySelector('[data-hero-carousel-next]') ||
       carouselEl.querySelector('.promo__nav--next')
   );
-  const pauseBtn = /** @type {HTMLButtonElement | null} */ (
-    carouselEl.querySelector('[data-hero-carousel-pause]') ||
-      carouselEl.querySelector('.promo__pause')
-  );
 
   const hasMultipleSlides = slideCount > 1;
   const reducedMotionMQ =
@@ -485,13 +493,23 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
   let prefersReducedMotion = Boolean(reducedMotionMQ?.matches);
 
   let currentIndex = 0;
-  let isManuallyPaused = prefersReducedMotion;
   let isHoverPaused = false;
   let isFocusPaused = false;
+  let isTouchInteracting = false;
+  let lastInputWasPointer = false;
+  /** @type {number | null} */
+  let pointerResetTimerId = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let touchStartIndex = 0;
+  let didHorizontalDrag = false;
   /** @type {number | null} */
   let autoplayTimerId = null;
   /** @type {number | null} */
   let scrollRafId = null;
+  /** @type {number | null} */
+  let resizeRafId = null;
   /** @type {number | null} */
   let programmaticTargetIdx = null;
   /** @type {number | null} */
@@ -526,26 +544,6 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
 
   if (prevBtn) prevBtn.hidden = !hasMultipleSlides;
   if (nextBtn) nextBtn.hidden = !hasMultipleSlides;
-  if (pauseBtn) pauseBtn.hidden = !hasMultipleSlides;
-
-  function syncPauseButtonUI() {
-    if (!pauseBtn) return;
-    pauseBtn.setAttribute('aria-pressed', String(isManuallyPaused));
-    pauseBtn.setAttribute(
-      'aria-label',
-      isManuallyPaused
-        ? 'Retomar banners — rotação automática'
-        : 'Pausar banners — rotação automática'
-    );
-    const iconEl = pauseBtn.querySelector('i');
-    if (iconEl) {
-      iconEl.className = isManuallyPaused ? 'fa-solid fa-play' : 'fa-solid fa-pause';
-    }
-    const labelEl = pauseBtn.querySelector('.promo__pause-label');
-    if (labelEl) {
-      labelEl.textContent = isManuallyPaused ? 'Retomar banners' : 'Pausar banners';
-    }
-  }
 
   function syncActiveIndicators() {
     bullets.forEach((b, idx) => {
@@ -609,11 +607,23 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
   function canAutoplayRun() {
     return (
       hasMultipleSlides &&
-      !isManuallyPaused &&
+      !prefersReducedMotion &&
       !isHoverPaused &&
       !isFocusPaused &&
+      !isTouchInteracting &&
       !document.hidden
     );
+  }
+
+  function markPointerInteraction() {
+    lastInputWasPointer = true;
+    if (pointerResetTimerId !== null) {
+      window.clearTimeout(pointerResetTimerId);
+    }
+    pointerResetTimerId = window.setTimeout(() => {
+      lastInputWasPointer = false;
+      pointerResetTimerId = null;
+    }, 600);
   }
 
   function startAutoplayTimer() {
@@ -639,19 +649,8 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     restartAutoplayIfAllowed();
   };
 
-  const onPauseClick = () => {
-    isManuallyPaused = !isManuallyPaused;
-    syncPauseButtonUI();
-    if (isManuallyPaused) {
-      stopAutoplayTimer();
-    } else {
-      isFocusPaused = false;
-      isHoverPaused = false;
-      startAutoplayTimer();
-    }
-  };
-
   const onKeyDown = (/** @type {KeyboardEvent} */ e) => {
+    lastInputWasPointer = false;
     if (!hasMultipleSlides) return;
     if (e.key === 'ArrowRight') {
       e.preventDefault();
@@ -664,17 +663,28 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     }
   };
 
-  const onMouseEnter = () => {
+  const onPointerDownCapture = () => {
+    markPointerInteraction();
+  };
+
+  const onPointerEnter = (/** @type {PointerEvent} */ e) => {
+    if (e.pointerType !== 'mouse') return;
     isHoverPaused = true;
     stopAutoplayTimer();
   };
 
-  const onMouseLeave = () => {
+  const onPointerLeave = (/** @type {PointerEvent} */ e) => {
+    if (e.pointerType !== 'mouse') return;
     isHoverPaused = false;
     startAutoplayTimer();
   };
 
-  const onFocusIn = () => {
+  const onFocusIn = (/** @type {FocusEvent} */ e) => {
+    const target = /** @type {Element | null} */ (e.target);
+    const isFocusVisible = Boolean(
+      target && typeof target.matches === 'function' && target.matches(':focus-visible')
+    );
+    if (lastInputWasPointer && !isFocusVisible) return;
     isFocusPaused = true;
     stopAutoplayTimer();
   };
@@ -684,6 +694,84 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     if (!nextTarget || !carouselEl.contains(nextTarget)) {
       isFocusPaused = false;
       startAutoplayTimer();
+    }
+  };
+
+  const onTouchStart = (/** @type {TouchEvent} */ e) => {
+    markPointerInteraction();
+    if (!hasMultipleSlides || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    isTouchInteracting = true;
+    isHoverPaused = false;
+    isFocusPaused = false;
+    didHorizontalDrag = false;
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchStartTime = Date.now();
+    touchStartIndex = currentIndex;
+    clearProgrammaticScrollLock();
+    stopAutoplayTimer();
+  };
+
+  const onTouchMove = (/** @type {TouchEvent} */ e) => {
+    if (!isTouchInteracting || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+      didHorizontalDrag = true;
+    }
+  };
+
+  const finishTouchInteraction = (/** @type {TouchEvent} */ e) => {
+    if (!isTouchInteracting) return;
+    const changed = e.changedTouches && e.changedTouches[0];
+    const endDx = changed ? changed.clientX - touchStartX : 0;
+    const endDy = changed ? changed.clientY - touchStartY : 0;
+    const elapsed = Date.now() - touchStartTime;
+    const w = wrapperEl.clientWidth || carouselEl.clientWidth || 1;
+    const nearestIdx = Math.round(wrapperEl.scrollLeft / w);
+    const maxScroll = Math.max(0, wrapperEl.scrollWidth - w);
+    const isHorizontalGesture = Math.abs(endDx) > Math.abs(endDy) * 1.1;
+
+    isTouchInteracting = false;
+
+    if (hasMultipleSlides && e.type === 'touchend' && isHorizontalGesture) {
+      const quickFlick = Math.abs(endDx) >= 32 && elapsed < 500;
+      const deliberateSwipe = Math.abs(endDx) >= Math.min(56, w * 0.14);
+      if (touchStartIndex === 0 && endDx > 36 && wrapperEl.scrollLeft <= 2) {
+        goToSlide(slideCount - 1);
+      } else if (
+        touchStartIndex === slideCount - 1 &&
+        endDx < -36 &&
+        wrapperEl.scrollLeft >= maxScroll - 2
+      ) {
+        goToSlide(0);
+      } else if (nearestIdx === touchStartIndex && (quickFlick || deliberateSwipe)) {
+        goToSlide(endDx < 0 ? touchStartIndex + 1 : touchStartIndex - 1);
+      } else if (nearestIdx >= 0 && nearestIdx < slideCount && nearestIdx !== currentIndex) {
+        currentIndex = nearestIdx;
+        syncActiveIndicators();
+      }
+    } else if (nearestIdx >= 0 && nearestIdx < slideCount && nearestIdx !== currentIndex) {
+      currentIndex = nearestIdx;
+      syncActiveIndicators();
+    }
+
+    restartAutoplayIfAllowed();
+
+    if (didHorizontalDrag) {
+      window.setTimeout(() => {
+        didHorizontalDrag = false;
+      }, 60);
+    }
+  };
+
+  const onTrackClickCapture = (/** @type {MouseEvent} */ e) => {
+    if (didHorizontalDrag) {
+      e.preventDefault();
+      e.stopPropagation();
+      didHorizontalDrag = false;
     }
   };
 
@@ -707,6 +795,24 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
 
   const onScrollEnd = () => {
     clearProgrammaticScrollLock();
+    const w = wrapperEl.clientWidth || 1;
+    const idx = Math.round(wrapperEl.scrollLeft / w);
+    if (idx >= 0 && idx < slideCount && idx !== currentIndex) {
+      currentIndex = idx;
+      syncActiveIndicators();
+    }
+  };
+
+  const onWindowResize = () => {
+    if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
+    resizeRafId = requestAnimationFrame(() => {
+      resizeRafId = null;
+      const w = wrapperEl.clientWidth || 0;
+      if (w > 0 && !isTouchInteracting) {
+        clearProgrammaticScrollLock();
+        wrapperEl.scrollLeft = currentIndex * w;
+      }
+    });
   };
 
   const onVisibilityChange = () => {
@@ -717,26 +823,31 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
   const onReducedMotionChange = (/** @type {MediaQueryListEvent} */ e) => {
     prefersReducedMotion = e.matches;
     if (prefersReducedMotion) {
-      isManuallyPaused = true;
-      syncPauseButtonUI();
       stopAutoplayTimer();
+    } else {
+      startAutoplayTimer();
     }
   };
 
   prevBtn?.addEventListener('click', onPrevClick);
   nextBtn?.addEventListener('click', onNextClick);
-  pauseBtn?.addEventListener('click', onPauseClick);
   carouselEl.addEventListener('keydown', onKeyDown);
-  carouselEl.addEventListener('mouseenter', onMouseEnter);
-  carouselEl.addEventListener('mouseleave', onMouseLeave);
+  carouselEl.addEventListener('pointerdown', onPointerDownCapture, { capture: true });
+  carouselEl.addEventListener('pointerenter', onPointerEnter);
+  carouselEl.addEventListener('pointerleave', onPointerLeave);
   carouselEl.addEventListener('focusin', onFocusIn);
   carouselEl.addEventListener('focusout', onFocusOut);
+  wrapperEl.addEventListener('touchstart', onTouchStart, { passive: true });
+  wrapperEl.addEventListener('touchmove', onTouchMove, { passive: true });
+  wrapperEl.addEventListener('touchend', finishTouchInteraction, { passive: true });
+  wrapperEl.addEventListener('touchcancel', finishTouchInteraction, { passive: true });
+  wrapperEl.addEventListener('click', onTrackClickCapture, { capture: true });
   wrapperEl.addEventListener('scroll', onScroll, { passive: true });
   wrapperEl.addEventListener('scrollend', onScrollEnd, { passive: true });
+  window.addEventListener('resize', onWindowResize, { passive: true });
   document.addEventListener('visibilitychange', onVisibilityChange);
   reducedMotionMQ?.addEventListener('change', onReducedMotionChange);
 
-  syncPauseButtonUI();
   syncActiveIndicators();
   startAutoplayTimer();
 
@@ -744,16 +855,24 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     stopAutoplayTimer();
     clearProgrammaticScrollLock();
     if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+    if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
+    if (pointerResetTimerId !== null) window.clearTimeout(pointerResetTimerId);
     prevBtn?.removeEventListener('click', onPrevClick);
     nextBtn?.removeEventListener('click', onNextClick);
-    pauseBtn?.removeEventListener('click', onPauseClick);
     carouselEl.removeEventListener('keydown', onKeyDown);
-    carouselEl.removeEventListener('mouseenter', onMouseEnter);
-    carouselEl.removeEventListener('mouseleave', onMouseLeave);
+    carouselEl.removeEventListener('pointerdown', onPointerDownCapture, { capture: true });
+    carouselEl.removeEventListener('pointerenter', onPointerEnter);
+    carouselEl.removeEventListener('pointerleave', onPointerLeave);
     carouselEl.removeEventListener('focusin', onFocusIn);
     carouselEl.removeEventListener('focusout', onFocusOut);
+    wrapperEl.removeEventListener('touchstart', onTouchStart);
+    wrapperEl.removeEventListener('touchmove', onTouchMove);
+    wrapperEl.removeEventListener('touchend', finishTouchInteraction);
+    wrapperEl.removeEventListener('touchcancel', finishTouchInteraction);
+    wrapperEl.removeEventListener('click', onTrackClickCapture, { capture: true });
     wrapperEl.removeEventListener('scroll', onScroll);
     wrapperEl.removeEventListener('scrollend', onScrollEnd);
+    window.removeEventListener('resize', onWindowResize);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     reducedMotionMQ?.removeEventListener('change', onReducedMotionChange);
   };
@@ -783,7 +902,11 @@ function renderHeroCarousel() {
   let validSlideCount = 0;
 
   activeSlides.forEach((slide, index) => {
-    const slideNode = createHeroCarouselSlideElement(slide, index);
+    const slideNode = createHeroCarouselSlideElement(
+      slide,
+      index,
+      /** @type {HTMLElement} */ (carouselEl)
+    );
     if (slideNode) {
       fragment.appendChild(slideNode);
       validSlideCount += 1;
