@@ -233,8 +233,12 @@ async function initProductPage() {
   const pathSlugMatch = window.location.pathname.match(/\/produtos\/([a-z0-9-]+)\/?$/i);
 
   const productId = urlParams.get('id')?.trim() || metaProductId || '';
-  const productSlug =
-    urlParams.get('slug')?.trim() || metaProductSlug || pathSlugMatch?.[1] || '';
+  const productSlug = (
+    urlParams.get('slug')?.trim() ||
+    metaProductSlug ||
+    pathSlugMatch?.[1] ||
+    ''
+  ).replace(/^\/+|\/+$/g, '');
 
   const hasStaticRender = Boolean(DOM.content && !DOM.content.hidden && (metaProductId || metaProductSlug));
 

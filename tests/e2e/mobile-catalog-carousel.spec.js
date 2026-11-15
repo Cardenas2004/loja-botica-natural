@@ -68,27 +68,82 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
       expect(labelFontSize).toBeGreaterThanOrEqual(16);
     });
 
-    test(`[${vp.name}] Grid de produtos exibe 2 colunas lado a lado (>= 340px) com cards alinhados`, async ({
+    test(`[${vp.name}] Grid de produtos exibe 1 coluna (< 340px) ou 2 colunas lado a lado (>= 340px) sem overflow`, async ({
       page,
     }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await setupPageMocks(page);
 
       await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('#catalog-grid')).toHaveAttribute('aria-busy', 'false');
       const cards = page.locator('.product-card:not(.product-card--skeleton)');
-      const count = await cards.count();
-      if (count >= 2) {
-        const card0 = await cards.nth(0).boundingBox();
-        const card1 = await cards.nth(1).boundingBox();
+      await expect(cards.nth(1)).toBeVisible();
 
-        if (card0 && card1) {
-          // Em todas as larguras mobile-first (>= 320px), os dois primeiros cards ficam lado a lado em 2 colunas
+      const card0 = await cards.nth(0).boundingBox();
+      const card1 = await cards.nth(1).boundingBox();
+      expect(card0).not.toBeNull();
+      expect(card1).not.toBeNull();
+
+      if (card0 && card1) {
+        if (vp.width >= 340) {
+          // Em telas >= 340px, os dois primeiros cards devem ficar na mesma linha (2 colunas lado a lado)
           expect(Math.abs(card0.y - card1.y)).toBeLessThanOrEqual(6);
           expect(card1.x).toBeGreaterThan(card0.x + card0.width - 2);
+        } else {
+          // Em telas < 340px (ex: 320px), os cards empilham em 1 coluna
+          expect(card1.y).toBeGreaterThan(card0.y + card0.height - 2);
         }
       }
+
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
     });
   }
+
+  test('Fronteira responsiva do grid em 339px (1 coluna) vs 340px (2 colunas) sem overflow horizontal', async ({
+    page,
+  }) => {
+    await setupPageMocks(page);
+
+    for (const target of [
+      { url: '/produtos.html', gridSelector: '#catalog-grid' },
+      { url: '/index.html', gridSelector: '#bestsellers-grid' },
+    ]) {
+      for (const width of [339, 340]) {
+        await page.setViewportSize({ width, height: 658 });
+        await page.goto(target.url, { waitUntil: 'domcontentloaded' });
+        await expect(page.locator(target.gridSelector)).toHaveAttribute('aria-busy', 'false');
+
+        const cards = page.locator(`${target.gridSelector} .product-card:not(.product-card--skeleton)`);
+        await expect(cards.nth(1)).toBeVisible();
+
+        const card0 = await cards.nth(0).boundingBox();
+        const card1 = await cards.nth(1).boundingBox();
+        expect(card0).not.toBeNull();
+        expect(card1).not.toBeNull();
+
+        if (card0 && card1) {
+          if (width < 340) {
+            expect(card1.y).toBeGreaterThan(card0.y + card0.height - 2);
+          } else {
+            expect(Math.abs(card0.y - card1.y)).toBeLessThanOrEqual(6);
+            expect(card1.x).toBeGreaterThan(card0.x + card0.width - 2);
+          }
+        }
+
+        const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        }));
+        expect(scrollWidth, `Overflow horizontal em ${target.url} a ${width}px`).toBeLessThanOrEqual(
+          clientWidth + 1
+        );
+      }
+    }
+  });
 
   test('Em >= 1024px exibe apenas #catalog-tabs-wrapper sem máscara de opacidade e sincroniza seleção do bottom sheet mobile', async ({
     page,

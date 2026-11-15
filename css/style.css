@@ -333,7 +333,7 @@ strong { font-weight: 600; }
 
 .eyebrow--light {
   background: rgba(255, 255, 255, 0.1);
-  color: var(--accent-light);
+  color: #E9D5FF;
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -386,9 +386,9 @@ strong { font-weight: 600; }
 }
 
 .btn--secondary {
-  background: var(--primary-light);
+  background: #7843BC;
   color: var(--white);
-  box-shadow: 0 8px 20px rgba(156, 106, 222, 0.28);
+  box-shadow: 0 8px 20px rgba(120, 67, 188, 0.28);
 }
 
 .btn--light {
@@ -1596,8 +1596,8 @@ strong { font-weight: 600; }
   border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.15), transparent 50%),
-    linear-gradient(135deg, var(--primary-light), var(--primary-dark));
-  color: rgba(255, 255, 255, 0.75);
+    linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: rgba(255, 255, 255, 0.92);
   box-shadow: var(--shadow-lg);
 }
 
@@ -1800,7 +1800,7 @@ strong { font-weight: 600; }
   gap: 0.5rem;
   margin: 1.25rem 0 0;
   font-size: var(--fs-sm);
-  color: var(--accent-light);
+  color: #E9D5FF;
 }
 
 @media (min-width: 480px) {
@@ -2245,7 +2245,7 @@ body {
 @media (hover: hover) and (pointer: fine) {
   .btn--wa:hover { background: var(--wa-hover); box-shadow: 0 12px 28px rgba(19, 138, 71, 0.38); translate: 0 -2px; }
   .btn--primary:hover { background: var(--primary-dark); }
-  .btn--secondary:hover { background: var(--accent-light); box-shadow: 0 12px 28px rgba(156, 106, 222, 0.38); translate: 0 -2px; }
+  .btn--secondary:hover { background: #6330A6; box-shadow: 0 12px 28px rgba(99, 48, 166, 0.38); translate: 0 -2px; }
   .btn--light:hover { translate: 0 -2px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25); }
   .btn--ghost:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.7); }
 
@@ -2283,8 +2283,6 @@ body {
 .js .reveal {
   opacity: 0;
   transform: translateY(24px);
-  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
-  transition-delay: var(--reveal-delay, 0ms);
 }
 
 .js .reveal[data-reveal-step="1"] { --reveal-delay: 90ms; }
@@ -2292,7 +2290,12 @@ body {
 .js .reveal[data-reveal-step="3"] { --reveal-delay: 270ms; }
 .js .reveal[data-reveal-step="4"] { --reveal-delay: 360ms; }
 
-.js .reveal.is-visible { opacity: 1; transform: none; }
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+  transition-delay: var(--reveal-delay, 0ms);
+}
 
 /* ==========================================================================
    18b. CATÁLOGO DE PRODUTOS & MAIS VENDIDOS
@@ -3000,20 +3003,26 @@ body.category-sheet-lock {
 }
 
 /* ==========================================================================
-   Grid de Produtos Determinístico (Mobile-First 2 Colunas Lado a Lado)
-   Decisão arquitetural: grid-template-columns com repeat(2, minmax(0, 1fr))
-   Mobile-First para celulares e iPhones (320px a 767px), garantindo
-   cards sempre lado a lado sem quebra de layout:
-     - 320px a 767px (celulares e iPhones): 2 colunas lado a lado
+   Grid de Produtos Determinístico (Mobile-First: 1 Coluna < 340px; 2+ >= 340px)
+   Decisão arquitetural: grid-template-columns mobile-first garantindo cards
+   empilhados sem aperto abaixo de 340px e lado a lado a partir de 340px:
+     - < 340px (telas micro, ex.: 320px): 1 coluna empilhada
+     - 340px a 767px (celulares e iPhones): 2 colunas lado a lado
      - 768px a 1023px (tablets): 3 colunas
      - 1024px a 1279px (notebooks): 4 colunas
      - 1280px+: 4 colunas com container limitado a 1320px
    ========================================================================== */
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-items: stretch;
+}
+
+@media (min-width: 340px) {
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 480px) {
@@ -3124,7 +3133,7 @@ body.category-sheet-lock {
 
 .product-badge--bestseller {
   background: linear-gradient(135deg, #FFB800 0%, #FF8A00 100%);
-  color: #FFFFFF;
+  color: var(--primary-dark);
 }
 
 .product-badge--cat {
@@ -4287,7 +4296,7 @@ body.category-sheet-lock {
 }
 
 .compound-card--green {
-  background: linear-gradient(180deg, #2FA83B 0%, #259030 100%);
+  background: linear-gradient(180deg, #1E7D28 0%, #176820 100%);
 }
 
 .compound-card--purple {
@@ -4393,7 +4402,7 @@ body.category-sheet-lock {
 
 .compound-card__label-dose {
   display: inline-block;
-  background: linear-gradient(90deg, #1E9338 0%, #2BB348 100%);
+  background: linear-gradient(90deg, #146926 0%, #1B7F30 100%);
   color: #FFFFFF;
   font-family: var(--font-body);
   font-size: 0.43rem;
@@ -4409,7 +4418,7 @@ body.category-sheet-lock {
 }
 
 .compound-card__label-dose--gold {
-  background: linear-gradient(90deg, #9E5E0B 0%, #C67C1B 100%);
+  background: linear-gradient(90deg, #7F4B06 0%, #935709 100%);
 }
 
 .compound-card__label-dose--dark {
@@ -4501,7 +4510,7 @@ body.category-sheet-lock {
 }
 
 .compound-card--green .compound-card__btn {
-  color: #269231;
+  color: #1B7524;
 }
 
 .compound-card--purple .compound-card__btn {

@@ -64,7 +64,9 @@ const server = http.createServer((req, res) => {
 
     if (!fs.existsSync(safePath) || fs.statSync(safePath).isDirectory()) {
       if (rawProductMatch) {
-        res.writeHead(302, { Location: `/produto.html?slug=${encodeURIComponent(rawProductMatch[1])}` });
+        const fallbackParams = new URLSearchParams(parsedUrl.search);
+        fallbackParams.set('slug', rawProductMatch[1].toLowerCase());
+        res.writeHead(302, { Location: `/produto.html?${fallbackParams.toString()}` });
         res.end();
         return;
       }

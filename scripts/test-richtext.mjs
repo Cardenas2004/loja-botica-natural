@@ -165,7 +165,7 @@ test('Retrocompatibilidade no modo "inline": remove quebras de linha e blocos ma
 
 // 8. Utilitários auxiliares
 test('sanitizeLinkHref aceita https:, http:, mailto:, tel: e rejeita protocolos perigosos', () => {
-  assert.equal(sanitizeLinkHref('https://boticanatural.com.br/produtos'), 'https://boticanatural.com.br/produtos');
+  assert.equal(sanitizeLinkHref('https://boticanaturaltriunfo.com.br/produtos'), 'https://boticanaturaltriunfo.com.br/produtos');
   assert.equal(sanitizeLinkHref('mailto:contato@exemplo.com'), 'mailto:contato@exemplo.com');
   assert.equal(sanitizeLinkHref('tel:+5511999999999'), 'tel:+5511999999999');
   assert.equal(sanitizeLinkHref('javascript:void(0)'), null);

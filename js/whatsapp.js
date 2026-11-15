@@ -81,7 +81,7 @@ export const AVAILABLE_VARIABLES = Object.freeze([
     aliases: ['{url}'],
     label: 'Link da Página',
     description: 'URL direta para a página do produto',
-    example: 'https://www.boticanatural.com.br/produto.html?id=4299',
+    example: `${SITE_DOMAIN}/produto.html?id=4299`,
   },
   {
     token: '{sku}',
@@ -170,16 +170,190 @@ function resolveCategoryName(product) {
  * @param {any} product
  * @returns {string}
  */
-export function buildProductDetailHref(product) {
-  const slug = String(product?.slug || '').trim().toLowerCase();
-  if (slug && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+const PRODUCT_SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * Conjunto em cache dos slugs presentes em `sitemap.xml` (nulo quando não carregado/indisponível).
+ * @type {Set<string> | null}
+ */
+let cachedBuiltProductSlugs = null;
+/** @type {Promise<Set<string> | null> | null} */
+let builtProductSlugsPromise = null;
+
+/**
+ * Normaliza e valida um slug de produto.
+ * @param {string | null | undefined} rawSlug
+ * @returns {string}
+ */
+export function normalizeProductSlug(rawSlug) {
+  const cleaned = String(rawSlug || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^\/+|\/+$/g, '');
+  return PRODUCT_SLUG_PATTERN.test(cleaned) ? cleaned : '';
+}
+
+/**
+ * Retorna o cache síncrono dos slugs estáticos carregados de `sitemap.xml` (ou `null`).
+ * @returns {Set<string> | null}
+ */
+export function getBuiltProductSlugs() {
+  return cachedBuiltProductSlugs;
+}
+
+/**
+ * Carrega uma única vez a lista de páginas estáticas `/produtos/<slug>/` publicadas no `sitemap.xml`.
+ * Permite identificar produtos cadastrados dinamicamente no Supabase entre builds.
+ *
+ * @param {{ force?: boolean }} [options]
+ * @returns {Promise<Set<string> | null>}
+ */
+export async function loadBuiltProductSlugs(options = {}) {
+  if (!options?.force && cachedBuiltProductSlugs instanceof Set) {
+    return cachedBuiltProductSlugs;
+  }
+  if (!options?.force && builtProductSlugsPromise) {
+    return builtProductSlugsPromise;
+  }
+
+  builtProductSlugsPromise = (async () => {
+    try {
+      if (typeof fetch !== 'function' || typeof window === 'undefined') {
+        return null;
+      }
+      const isProductSubpath = /\/produtos\/[^/]+\/?$/i.test(window.location.pathname || '');
+      const sitemapUrl = isProductSubpath ? '../../sitemap.xml' : 'sitemap.xml';
+      const response = await fetch(sitemapUrl, { cache: 'no-cache' });
+      if (!response.ok) {
+        return null;
+      }
+      const xmlText = await response.text();
+      if (!/<urlset[\s>]/i.test(xmlText)) {
+        return null;
+      }
+      const slugs = new Set();
+      for (const match of xmlText.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) {
+        const pathMatch = match[1].match(/\/produtos\/([a-z0-9-]+)\/?$/i);
+        const normalized = normalizeProductSlug(pathMatch?.[1]);
+        if (normalized) {
+          slugs.add(normalized);
+        }
+      }
+      cachedBuiltProductSlugs = slugs;
+      return slugs;
+    } catch {
+      return null;
+    } finally {
+      builtProductSlugsPromise = null;
+    }
+  })();
+
+  return builtProductSlugsPromise;
+}
+
+/**
+ * Extrai o slug de produto de um link interno ou URL do mesmo site apontando para `produtos/<slug>/`.
+ * Ignora URLs externas e bloqueia esquemas/protocol-relative (`//`).
+ *
+ * @param {string | null | undefined} rawHref
+ * @returns {string}
+ */
+export function extractProductSlugFromHref(rawHref) {
+  const trimmed = String(rawHref || '').trim();
+  if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//') || trimmed.startsWith('\\')) {
+    return '';
+  }
+
+  const relativeMatch = trimmed.match(/^(?:\.?\/)?produtos\/([a-z0-9-]+)\/?(?:[?#].*)?$/i);
+  if (relativeMatch?.[1]) {
+    return normalizeProductSlug(relativeMatch[1]);
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      const siteOrigin = new URL(SITE_DOMAIN).origin;
+      const currentOrigin =
+        typeof window !== 'undefined' && window.location ? window.location.origin : '';
+      if (parsed.origin !== siteOrigin && (!currentOrigin || parsed.origin !== currentOrigin)) {
+        return '';
+      }
+      const pathMatch = parsed.pathname.match(/\/produtos\/([a-z0-9-]+)\/?$/i);
+      return normalizeProductSlug(pathMatch?.[1]);
+    } catch {
+      return '';
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Constrói a rota dinâmica de fallback `produto.html?id=...&slug=...` (relativa ao diretório atual).
+ *
+ * @param {any} [product]
+ * @param {string} [overrideSlug='']
+ * @returns {string}
+ */
+export function buildFallbackProductHref(product, overrideSlug = '') {
+  const slug = normalizeProductSlug(overrideSlug || product?.slug);
+  const productId = String(product?.id || '').trim();
+  const params = new URLSearchParams();
+  if (productId) {
+    params.set('id', productId);
+  }
+  if (slug) {
+    params.set('slug', slug);
+  }
+  const qs = params.toString();
+  return qs ? `produto.html?${qs}` : 'produto.html';
+}
+
+export function buildProductDetailHref(product, options = {}) {
+  const slug = normalizeProductSlug(product?.slug);
+  const builtSlugs =
+    options && 'builtSlugs' in options ? options.builtSlugs : cachedBuiltProductSlugs;
+
+  if (slug) {
+    if (builtSlugs instanceof Set && !builtSlugs.has(slug)) {
+      return buildFallbackProductHref(product, slug);
+    }
     return `produtos/${encodeURIComponent(slug)}/`;
   }
-  const productId = String(product?.id || '').trim();
-  if (productId) {
-    return `produto.html?id=${encodeURIComponent(productId)}`;
+  return buildFallbackProductHref(product);
+}
+
+/**
+ * Converte links manuais `produtos/<slug>/` para `produto.html?...` quando a página estática
+ * ainda não foi gerada no build atual, preservando links externos e âncoras normais.
+ *
+ * @param {string | null | undefined} rawHref
+ * @param {Array<any>} [products=[]]
+ * @param {{ builtSlugs?: Set<string> | null }} [options={}]
+ * @returns {string}
+ */
+export function resolveSafeProductHref(rawHref, products = [], options = {}) {
+  const trimmed = String(rawHref || '').trim();
+  if (!trimmed) return '';
+  const slug = extractProductSlugFromHref(trimmed);
+  if (!slug) {
+    return trimmed;
   }
-  return 'produto.html';
+
+  const builtSlugs =
+    options && 'builtSlugs' in options ? options.builtSlugs : cachedBuiltProductSlugs;
+  const list = Array.isArray(products) ? products : [];
+  const matchedProduct =
+    list.find((item) => normalizeProductSlug(item?.slug) === slug) || null;
+
+  if (builtSlugs instanceof Set && !builtSlugs.has(slug)) {
+    return buildFallbackProductHref(matchedProduct, slug);
+  }
+
+  if (/^\/produtos\//i.test(trimmed)) {
+    return `produtos/${encodeURIComponent(slug)}/`;
+  }
+  return trimmed;
 }
 
 /**

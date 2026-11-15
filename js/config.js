@@ -22,10 +22,10 @@ export const BUSINESS_HOURS_TEXT = 'Seg a Sex 08:30–12:00 e 13:30–18:00; Sá
 export const BUSINESS_ADDRESS_TEXT = 'Rua Assis Brasil, 31, Centro, Triunfo/RS';
 
 /**
- * Domínio canônico oficial usado em URLs absolutas, canonical, Open Graph e JSON-LD.
- * [PREENCHER: confirmar domínio oficial de produção]
+ * Domínio canônico oficial confirmado pelo proprietário, usado em URLs absolutas,
+ * canonical, Open Graph, Sitemap e JSON-LD.
  */
-export const SITE_DOMAIN = 'https://www.boticanatural.com.br';
+export const SITE_DOMAIN = 'https://boticanaturaltriunfo.com.br';
 
 /**
  * Número oficial de WhatsApp da farmácia em formato internacional (DDI + DDD + Número, apenas dígitos).

@@ -309,6 +309,53 @@ for (const htmlFile of PUBLIC_HTML_FILES) {
     domainConsistent = false;
     fail(`${htmlFile}: og:image "${ogImageMatch[1]}" não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
   }
+  const jsonLdScripts = [
+    ...content.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi),
+  ];
+  for (const [idx, m] of jsonLdScripts.entries()) {
+    try {
+      const ld = JSON.parse(m[1].trim());
+      for (const field of ['url', '@id']) {
+        if (typeof ld[field] === 'string' && !ld[field].startsWith(SITE_DOMAIN)) {
+          domainConsistent = false;
+          fail(`${htmlFile} (JSON-LD #${idx + 1}): campo "${field}" ("${ld[field]}") não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+        }
+      }
+      if (typeof ld.image === 'string') {
+        const validImg =
+          ld.image.startsWith(SITE_DOMAIN) ||
+          (isGeneratedProd && ld.image.startsWith('https://njdkuhgoophzjxmmempu.supabase.co/'));
+        if (!validImg) {
+          domainConsistent = false;
+          fail(`${htmlFile} (JSON-LD #${idx + 1}): campo "image" ("${ld.image}") não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+        }
+      }
+      if (ld.offers && typeof ld.offers.url === 'string' && !ld.offers.url.startsWith(SITE_DOMAIN)) {
+        domainConsistent = false;
+        fail(`${htmlFile} (JSON-LD #${idx + 1}): campo "offers.url" ("${ld.offers.url}") não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+      }
+      if (Array.isArray(ld.itemListElement)) {
+        for (const item of ld.itemListElement) {
+          if (typeof item?.item === 'string' && !item.item.startsWith(SITE_DOMAIN)) {
+            domainConsistent = false;
+            fail(`${htmlFile} (JSON-LD #${idx + 1}): Breadcrumb item ("${item.item}") não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+          }
+        }
+      }
+    } catch {
+      // Erros de sintaxe JSON-LD são reportados na seção 5
+    }
+  }
+}
+if (!SITE_DOMAIN.includes('www.boticanatural.com.br')) {
+  const provisionalUrlPattern = /(?:https?:\/\/|https%3A%2F%2F)www\.boticanatural\.com\.br/i;
+  for (const activeFile of [...HTML_FILES, ...JS_FILES, 'robots.txt', 'sitemap.xml']) {
+    const fileText = readUtf8(activeFile);
+    if (provisionalUrlPattern.test(fileText)) {
+      domainConsistent = false;
+      fail(`${activeFile}: ainda contém referência ao domínio provisório www.boticanatural.com.br.`);
+    }
+  }
 }
 const produtoHtmlContent = readUtf8('produto.html');
 if (!/<meta\s+name=["']robots["']\s+content=["']noindex,\s*follow["']/i.test(produtoHtmlContent)) {
@@ -667,8 +714,8 @@ if (importResolutionErrors === 0) {
 /* ==========================================================================
    7.1. VERIFICAÇÃO DE BREAKPOINTS RESPONSIVOS PADRONIZADOS (MED-07 / FASE 2)
    ========================================================================== */
-console.log('\n7.1. Verificando padronização de breakpoints CSS (480px, 768px, 1024px, 1280px mobile-first)...');
-const ALLOWED_WIDTH_BREAKPOINTS = new Set(['480px', '768px', '1024px', '1280px']);
+console.log('\n7.1. Verificando padronização de breakpoints CSS (340px para grid 1→2 col e 480px, 768px, 1024px, 1280px mobile-first)...');
+const ALLOWED_WIDTH_BREAKPOINTS = new Set(['340px', '480px', '768px', '1024px', '1280px']);
 const CSS_FILES_BREAKPOINT_CHECK = ['css/style.css', 'css/product.css', 'css/admin.css'];
 let invalidBreakpointCount = 0;
 
@@ -690,7 +737,7 @@ for (const cssFile of CSS_FILES_BREAKPOINT_CHECK) {
 }
 
 if (invalidBreakpointCount === 0) {
-  pass('Todos os breakpoints de largura em css/style.css, css/product.css e css/admin.css usam min-width em {480px, 768px, 1024px, 1280px}.');
+  pass('Todos os breakpoints de largura em css/style.css, css/product.css e css/admin.css usam min-width em {340px, 480px, 768px, 1024px, 1280px}.');
 }
 
 /* ==========================================================================

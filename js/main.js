@@ -844,7 +844,17 @@ import {
     }
   };
 
+  const initNotFoundProductFallback = () => {
+    if (!document.getElementById('not-found-title')) return;
+    const match = window.location.pathname.match(/^(.*)\/produtos\/([a-z0-9-]+)\/?$/i);
+    if (!match?.[2]) return;
+    const basePath = match[1] || '';
+    const slug = encodeURIComponent(match[2].toLowerCase());
+    window.location.replace(`${basePath}/produto.html?slug=${slug}`);
+  };
+
   const init = () => {
+    initNotFoundProductFallback();
     initWhatsApp();
     initScrollEffects();
     initMobileMenu();

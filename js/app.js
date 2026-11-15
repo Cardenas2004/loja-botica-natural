@@ -20,7 +20,13 @@ import {
 import {
   buildProductWhatsAppUrl as buildCentralProductWhatsAppUrl,
   buildProductDetailHref,
+  buildFallbackProductHref,
+  extractProductSlugFromHref,
   fetchProductWhatsAppTemplate,
+  getBuiltProductSlugs,
+  loadBuiltProductSlugs,
+  normalizeProductSlug,
+  resolveSafeProductHref,
 } from './whatsapp.js';
 
 import {
@@ -393,7 +399,10 @@ function createHeroCarouselSlideElement(slide, index, carouselEl) {
   const altText =
     String(slide.title || '').trim() ||
     'Destaque Botica Natural — Farmácia de Manipulação';
-  const safeHref = sanitizeBannerLink(slide.button_link);
+  const safeHref = resolveSafeProductHref(
+    sanitizeBannerLink(slide.button_link),
+    catalogState.products
+  );
 
   /** @type {HTMLAnchorElement | HTMLDivElement} */
   let wrapperEl;
@@ -1788,6 +1797,7 @@ async function loadCatalogData() {
       fetchActiveProducts(),
       fetchActiveCompoundCards(),
       fetchProductWhatsAppTemplate(),
+      loadBuiltProductSlugs(),
     ]);
 
     catalogState.carouselSlides =
@@ -1857,6 +1867,66 @@ function initCatalogSearchListeners() {
   }
 }
 
+function bindResilientProductNavigation() {
+  if (document.documentElement.dataset.bnProductNavBound === '1') return;
+  document.documentElement.dataset.bnProductNavBound = '1';
+
+  document.addEventListener('click', async (event) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    const targetEl = /** @type {Element | null} */ (event.target);
+    const anchor = targetEl?.closest?.('a[href]');
+    if (!(anchor instanceof HTMLAnchorElement)) return;
+
+    const rawHref = anchor.getAttribute('href') || '';
+    const slug = extractProductSlugFromHref(rawHref);
+    if (!slug) return;
+
+    const builtSlugs = getBuiltProductSlugs();
+    if (builtSlugs instanceof Set && builtSlugs.has(slug)) {
+      return;
+    }
+
+    event.preventDefault();
+    const matched = catalogState.products.find(
+      (item) => normalizeProductSlug(item?.slug) === slug
+    );
+    const fallbackHref = buildFallbackProductHref(matched, slug);
+    const openInNewTab = anchor.target === '_blank';
+    const popup = openInNewTab ? window.open('', '_blank') : null;
+    if (popup) {
+      popup.opener = null;
+    }
+
+    let resolvedHref = rawHref;
+    try {
+      const probe = await fetch(anchor.href, { method: 'HEAD', cache: 'no-store' });
+      if (!probe.ok) {
+        resolvedHref = fallbackHref;
+      }
+    } catch {
+      resolvedHref = fallbackHref;
+    }
+
+    if (popup && !popup.closed) {
+      popup.location.replace(resolvedHref);
+    } else if (openInNewTab) {
+      window.open(resolvedHref, '_blank', 'noopener,noreferrer');
+    } else {
+      window.location.assign(resolvedHref);
+    }
+  });
+}
+
 async function initPublicStorefront() {
   const hasHeroCarousel = Boolean(
     document.getElementById('hero-carousel') ||
@@ -1875,6 +1945,8 @@ async function initPublicStorefront() {
   );
 
   if (!hasHeroCarousel && !hasBestsellersSection && !hasCatalogSection) return;
+
+  bindResilientProductNavigation();
 
   if (hasCatalogSection) {
     initCatalogSearchListeners();

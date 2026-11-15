@@ -42,7 +42,7 @@ Substitua os placeholders abaixo após decisão/confirmação final antes de rod
 
 | Item / Dado | Estado / Placeholder Atual | Onde aparece / Como atualizar |
 |---|---|---|
-| **Domínio Oficial de Produção (`CRIT-03`)** | Provisório `https://www.boticanatural.com.br` com `[PREENCHER: confirmar domínio oficial]` | Rodar `node scripts/set-domain.mjs https://<seu-dominio-oficial>` e depois `npm run build:products` (`index.html`, `produtos.html`, `produto.html`, `privacidade.html`, `produtos/*/index.html`, `js/config.js`, `robots.txt`, `sitemap.xml`) |
+| **Domínio Oficial de Produção (`CRIT-03`)** | ✅ Confirmado e aplicado (`https://boticanaturaltriunfo.com.br`) | `index.html`, `produtos.html`, `produto.html`, `privacidade.html`, `produtos/*/index.html`, `js/config.js`, `js/whatsapp.js`, `robots.txt`, `sitemap.xml` |
 | **Encarregado de Dados — DPO (LGPD)** | `[PREENCHER: Nome do Encarregado / Responsável LGPD]` (e-mail preenchido: `boticanatural@terra.com.br`) | `privacidade.html` (seção Encarregado pelo Tratamento de Dados Pessoais) |
 | **GA4 e Meta Pixel (`ALTO-05`)** | Desligado por padrão (`ga4MeasurementId: ''`, `metaPixelId: ''`) com `[PREENCHER]` | Se decidir ativar, preencher IDs em `ANALYTICS` (`js/config.js`) e liberar os domínios na CSP (ver seção 4.1) |
 | **Números da Seção "Sobre"** | Valores mantidos sem alteração (`26 anos`, `129.644` clientes, `245.735` fórmulas, `1` Farmacêutico Responsável) | `index.html` (seção `#sobre` e card lateral do Hero) — confirmar exatidão antes da publicação |
@@ -71,7 +71,7 @@ Os pontos abaixo estão documentados em `docs/auditoria/revisao-rt.md` e marcado
 - **Checklist no Painel da Cloudflare (produção)**:
   1. Em **Security → Scrape Shield → Email Address Obfuscation**, manter **desligado** (ou confiar nos marcadores `<!--email_off-->` já aplicados nos HTMLs) para evitar injeção de script de decodificação incompatível com `script-src 'self'`.
   2. Em **Speed → Optimization → Content Optimization**, manter **Rocket Loader** desligado para não injetar scripts externos (`ajax.cloudflare.com`) bloqueados pela CSP estrita.
-  3. Em **SSL/TLS → Overview**, utilizar modo **Full (strict)** ao apontar domínio próprio, executando `node scripts/set-domain.mjs https://seudominio.com.br` + `npm run build:products` após definir o domínio oficial.
+  3. Em **SSL/TLS → Overview**, utilizar modo **Full (strict)** ao apontar o domínio oficial `boticanaturaltriunfo.com.br` (configurando regra de redirecionamento `301` de `https://www.boticanaturaltriunfo.com.br/*` para `https://boticanaturaltriunfo.com.br/$1` para evitar conteúdo duplicado), e em **Supabase Dashboard → Authentication → URL Configuration**, definir *Site URL* como `https://boticanaturaltriunfo.com.br` e adicionar `https://boticanaturaltriunfo.com.br/**` em *Redirect URLs*. Caso mude de domínio no futuro, rode `node scripts/set-domain.mjs https://<novo-dominio>` + `npm run build:products`.
 - `vercel.json`: espelha exatamente os mesmos headers e políticas de cache caso o projeto seja espelhado na Vercel Edge Network.
 
 ### 4.2 Caso Decida Ativar GA4 e/ou Meta Pixel no Futuro

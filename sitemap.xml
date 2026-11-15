@@ -1,68 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- [PREENCHER: confirmar domínio oficial de produção nas tags <loc> abaixo] -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.boticanatural.com.br/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/privacidade</loc>
+    <loc>https://boticanaturaltriunfo.com.br/privacidade</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/serum-renovador-c/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/serum-renovador-c/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/composto-calmante-passiflora-mulungu/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/composto-calmante-passiflora-mulungu/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/gel-creme-clareador-acido-tranexamico-3/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/gel-creme-clareador-acido-tranexamico-3/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/alcachofra-berinjela-60-capsulas/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/alcachofra-berinjela-60-capsulas/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/locao-hidratante-com-ureia-10/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/locao-hidratante-com-ureia-10/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/extrato-concentrado-de-propolis-verde-30ml/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/extrato-concentrado-de-propolis-verde-30ml/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/colageno-verisol-com-acido-hialuronico-e-biotina/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/colageno-verisol-com-acido-hialuronico-e-biotina/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.boticanatural.com.br/produtos/formula-magistral-personalizada-sob-medida/</loc>
+    <loc>https://boticanaturaltriunfo.com.br/produtos/formula-magistral-personalizada-sob-medida/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

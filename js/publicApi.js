@@ -586,7 +586,10 @@ export async function fetchActiveProductById(productId) {
  * @returns {Promise<{ data: any | null, error: any | null }>}
  */
 export async function fetchActiveProductBySlug(productSlug) {
-  const normalizedSlug = String(productSlug || '').trim().toLowerCase();
+  const normalizedSlug = String(productSlug || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^\/+|\/+$/g, '');
   if (!normalizedSlug) {
     return { data: null, error: null };
   }

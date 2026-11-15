@@ -4,6 +4,8 @@
  * (`js/app.js`) e a Pré-visualização em Tempo Real do Painel Administrativo (`js/admin/views/compounds.js`).
  */
 
+import { buildProductDetailHref, resolveSafeProductHref } from '../whatsapp.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export const DEFAULT_BOTTLE_IMAGE_URL = 'images/frasco-botica-showcase.webp';
@@ -271,17 +273,6 @@ function normalizeMatchText(value) {
     .trim();
 }
 
-function resolveProductHref(product) {
-  const slug = String(product?.slug || '').trim().toLowerCase();
-  if (slug && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
-    return `produtos/${encodeURIComponent(slug)}/`;
-  }
-  if (product?.id) {
-    return `produto.html?id=${encodeURIComponent(String(product.id))}`;
-  }
-  return '#produtos';
-}
-
 /**
  * Resolve o link final de destino do botão do card considerando:
  * 1. `product_id` vinculado a um produto ativo do catálogo;
@@ -289,15 +280,17 @@ function resolveProductHref(product) {
  * 3. Correspondência inteligente por nome no catálogo de produtos;
  * 4. Fallback seguro para `#produtos`.
  */
-export function resolveCompoundDestination(card, products = []) {
+export function resolveCompoundDestination(card, products = [], options = {}) {
   const safeCard = card || {};
   const productList = Array.isArray(products) ? products : [];
+  const routeOptions =
+    options && 'builtSlugs' in options ? { builtSlugs: options.builtSlugs } : {};
 
   if (safeCard.product_id) {
     const byId = productList.find((item) => String(item.id) === String(safeCard.product_id));
     if (byId) {
       return {
-        href: resolveProductHref(byId),
+        href: buildProductDetailHref(byId, routeOptions),
         matchedProduct: byId
       };
     }
@@ -310,13 +303,13 @@ export function resolveCompoundDestination(card, products = []) {
       const linkedProd = productList.find((item) => String(item.id) === idMatch[1]);
       if (linkedProd) {
         return {
-          href: resolveProductHref(linkedProd),
+          href: buildProductDetailHref(linkedProd, routeOptions),
           matchedProduct: linkedProd
         };
       }
     }
     return {
-      href: customLink,
+      href: resolveSafeProductHref(customLink, productList, routeOptions),
       matchedProduct: null
     };
   }
@@ -330,7 +323,7 @@ export function resolveCompoundDestination(card, products = []) {
       });
       if (matched) {
         return {
-          href: resolveProductHref(matched),
+          href: buildProductDetailHref(matched, routeOptions),
           matchedProduct: matched
         };
       }

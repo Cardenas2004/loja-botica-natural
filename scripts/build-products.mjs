@@ -520,7 +520,6 @@ function buildSitemapXml(products) {
 
   return (
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<!-- [PREENCHER: confirmar domínio oficial de produção nas tags <loc> abaixo] -->\n` +
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     `${urlNodes}\n` +
     `</urlset>\n`

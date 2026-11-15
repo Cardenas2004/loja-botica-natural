@@ -5,13 +5,13 @@
  * Botica Natural — Script de Troca Idempotente de Domínio (`scripts/set-domain.mjs`)
  * ============================================================================
  * Uso:
- *   node scripts/set-domain.mjs https://www.seudominio.com.br
+ *   node scripts/set-domain.mjs https://boticanaturaltriunfo.com.br
  *
  * O que este script faz:
  *   1. Valida o formato do domínio (deve iniciar com https://, sem barra final,
  *      sem caminho, query ou fragmento).
  *   2. Lê o valor atual de `SITE_DOMAIN` em `js/config.js`.
- *   3. Substitui de forma idempotente todas as ocorrências em:
+ *   3. Substitui de forma idempotente todas as ocorrências (literais e URL-encoded) em:
  *      - `js/config.js`
  *      - `index.html`, `produtos.html`, `produto.html`, `privacidade.html`
  *      - páginas estáticas geradas em `produtos/<slug>/index.html` (se existirem)
@@ -37,7 +37,7 @@ const ROOT = path.resolve(path.dirname(__filename), '..');
 function validateDomainInput(rawInput) {
   const input = String(rawInput || '').trim();
   if (!input) {
-    console.error('Erro: informe o domínio oficial. Exemplo: node scripts/set-domain.mjs https://www.boticanatural.com.br');
+    console.error('Erro: informe o domínio oficial. Exemplo: node scripts/set-domain.mjs https://boticanaturaltriunfo.com.br');
     process.exit(1);
   }
 
@@ -110,6 +110,9 @@ function main() {
     ...collectGeneratedProductPages(path.join(ROOT, 'produtos')),
   ];
 
+  const currentEncoded = encodeURIComponent(currentDomain);
+  const targetEncoded = encodeURIComponent(targetDomain);
+
   let updatedFilesCount = 0;
 
   for (const relPath of targetFiles) {
@@ -117,7 +120,11 @@ function main() {
     if (!fs.existsSync(absPath)) continue;
 
     const before = fs.readFileSync(absPath, 'utf8');
-    const after = before.split(currentDomain).join(targetDomain);
+    const after = before
+      .split(currentDomain)
+      .join(targetDomain)
+      .split(currentEncoded)
+      .join(targetEncoded);
 
     if (after !== before) {
       fs.writeFileSync(absPath, after, 'utf8');
