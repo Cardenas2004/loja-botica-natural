@@ -319,7 +319,9 @@ import {
 
     $$('[data-stagger]').forEach((group) => {
       [...group.children].forEach((child, i) => {
-        child.style.setProperty('--reveal-delay', `${Math.min(i * 90, 360)}ms`);
+        if (i > 0) {
+          child.dataset.revealStep = String(Math.min(i, 4));
+        }
       });
     });
 
@@ -329,9 +331,15 @@ import {
           if (!entry.isIntersecting) return;
           const el = entry.target;
           el.classList.add('is-visible');
-          el.addEventListener('transitionend', () => el.style.removeProperty('--reveal-delay'), {
-            once: true,
-          });
+          el.addEventListener(
+            'transitionend',
+            () => {
+              if (el instanceof HTMLElement) {
+                delete el.dataset.revealStep;
+              }
+            },
+            { once: true }
+          );
           obs.unobserve(el);
         });
       },

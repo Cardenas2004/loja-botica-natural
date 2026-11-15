@@ -243,7 +243,13 @@ export function createRichTextEditor(config) {
   });
 
   if (config.minHeight) {
-    editableArea.style.minHeight = `${config.minHeight}px`;
+    const sizeMod =
+      config.minHeight >= 180
+        ? 'rte-editable--tall'
+        : config.minHeight >= 100
+          ? 'rte-editable--medium'
+          : 'rte-editable--compact';
+    editableArea.classList.add(sizeMod);
   }
 
   // Contador de caracteres

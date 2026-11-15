@@ -18,11 +18,9 @@
  */
 
 import {
-  supabase,
-  DB_TABLES,
   isSupabaseConfigured,
-  normalizeSupabaseError,
-} from './supabaseClient.js';
+  fetchPublicSiteSetting,
+} from './publicApi.js';
 
 import {
   BRAND_NAME,
@@ -339,11 +337,7 @@ export async function fetchProductWhatsAppTemplate(forceRefresh = false) {
         return cachedTemplate;
       }
 
-      const { data, error } = await supabase
-        .from(DB_TABLES.SETTINGS || 'site_settings')
-        .select('value')
-        .eq('key', SETTING_KEY_PRODUCT_TEMPLATE)
-        .maybeSingle();
+      const { data, error } = await fetchPublicSiteSetting(SETTING_KEY_PRODUCT_TEMPLATE);
 
       if (error) {
         // Log discreto sem interromper a execução da vitrine

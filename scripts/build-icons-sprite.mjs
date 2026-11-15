@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,8 +14,7 @@ const FONTAWESOME_DIR = path.resolve(
   'svgs'
 );
 
-const ICONS = [
-  // Storefront & Admin Icons
+const CANDIDATE_ICONS = [
   { name: 'whatsapp', type: 'brands' },
   { name: 'facebook-f', type: 'brands' },
   { name: 'instagram', type: 'brands' },
@@ -117,15 +117,102 @@ const ICONS = [
   { name: 'circle', type: 'solid' },
   { name: 'pause', type: 'solid' },
   { name: 'play', type: 'solid' },
+  { name: 'box-archive', type: 'solid' },
 ];
 
-let spriteSymbols = [];
-let cssRules = [];
+function collectPublicCorpus() {
+  const files = ['index.html', 'produtos.html', 'produto.html', 'privacidade.html'];
+  const chunks = files
+    .filter((f) => fs.existsSync(path.join(ROOT_DIR, f)))
+    .map((f) => fs.readFileSync(path.join(ROOT_DIR, f), 'utf8'));
 
-cssRules.push(`/**
- * Botica Natural — Sistema Local de Ícones SVG
- * Substitui o download completo do Font Awesome (120 KB CSS + 1.5 MB de fontes web .woff2)
- * por máscaras vetoriais ultraleves integradas.
+  function walkPublicJs(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'vendor' && entry.name !== 'admin') {
+          walkPublicJs(full);
+        }
+      } else if (entry.isFile() && entry.name.endsWith('.js') && entry.name !== 'admin.js') {
+        chunks.push(fs.readFileSync(full, 'utf8'));
+      }
+    }
+  }
+  walkPublicJs(path.join(ROOT_DIR, 'js'));
+  return chunks.join('\n');
+}
+
+function collectAdminCorpus() {
+  const chunks = [];
+  if (fs.existsSync(path.join(ROOT_DIR, 'admin.html'))) {
+    chunks.push(fs.readFileSync(path.join(ROOT_DIR, 'admin.html'), 'utf8'));
+  }
+  if (fs.existsSync(path.join(ROOT_DIR, 'js', 'admin.js'))) {
+    chunks.push(fs.readFileSync(path.join(ROOT_DIR, 'js', 'admin.js'), 'utf8'));
+  }
+  function walkAdminJs(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walkAdminJs(full);
+      } else if (entry.isFile() && entry.name.endsWith('.js')) {
+        chunks.push(fs.readFileSync(full, 'utf8'));
+      }
+    }
+  }
+  walkAdminJs(path.join(ROOT_DIR, 'js', 'admin'));
+  return chunks.join('\n');
+}
+
+const publicCorpus = collectPublicCorpus();
+const adminCorpus = collectAdminCorpus();
+
+// Margem de ícones dinâmicos compartilhados para vitrine/categorias/alertas
+const SHARED_FALLBACK_ICONS = new Set([
+  'bars',
+  'capsules',
+  'bottle-droplet',
+  'pump-medical',
+  'shapes',
+  'star',
+  'circle-check',
+  'circle-exclamation',
+  'circle-notch',
+  'triangle-exclamation',
+]);
+
+function buildIconCssRule(icon) {
+  let svgPath = path.resolve(FONTAWESOME_DIR, icon.type, `${icon.name}.svg`);
+  if (!fs.existsSync(svgPath) && icon.type !== 'solid') {
+    svgPath = path.resolve(FONTAWESOME_DIR, 'solid', `${icon.name}.svg`);
+  }
+  if (!fs.existsSync(svgPath)) {
+    console.warn(`Aviso: ícone não encontrado: ${icon.type}/${icon.name}`);
+    return null;
+  }
+
+  const svgContent = fs.readFileSync(svgPath, 'utf8');
+  const viewBoxMatch = svgContent.match(/viewBox="([^"]+)"/);
+  const pathMatch = svgContent.match(/<path[^>]*d="([^"]+)"/);
+
+  if (!viewBoxMatch || !pathMatch) {
+    console.warn(`Aviso: falha ao extrair viewBox/path do ícone ${icon.name}`);
+    return null;
+  }
+
+  const viewBox = viewBoxMatch[1];
+  // Arredonda coordenadas decimais em canvas 512x512 para inteiros (reduz ~48% no gzip sem perda visual em 1em)
+  const d = pathMatch[1].replace(/(\d+)\.\d+/g, (_, intPart) => intPart);
+  const encodedSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='${viewBox}'><path d='${d}'/></svg>`;
+  return `.fa-${icon.name}{--icon:url("${encodedSvg}")}`;
+}
+
+const publicRules = [
+  `/**
+ * Botica Natural — Sistema Local de Ícones SVG (css/icons.css)
+ * Cada ícone define --icon apenas uma vez; .fa-solid/.fa-regular/.fa-brands aplica mask-image: var(--icon).
  */
 .fa-solid, .fa-regular, .fa-brands {
   display: inline-block;
@@ -133,6 +220,8 @@ cssRules.push(`/**
   height: 1em;
   vertical-align: -0.125em;
   background-color: currentColor;
+  -webkit-mask-image: var(--icon);
+  mask-image: var(--icon);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: contain;
@@ -154,52 +243,57 @@ cssRules.push(`/**
 @keyframes fa-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-`);
+}`,
+];
 
-for (const icon of ICONS) {
-  let svgPath = path.resolve(FONTAWESOME_DIR, icon.type, `${icon.name}.svg`);
-  if (!fs.existsSync(svgPath) && icon.type !== 'solid') {
-    svgPath = path.resolve(FONTAWESOME_DIR, 'solid', `${icon.name}.svg`);
-  }
-  if (!fs.existsSync(svgPath)) {
-    console.warn(`Aviso: ícone não encontrado: ${icon.type}/${icon.name}`);
+const adminOnlyRules = [];
+let publicCount = 0;
+let adminCount = 0;
+
+for (const icon of CANDIDATE_ICONS) {
+  const pattern = new RegExp(`fa-${icon.name}(?![a-z0-9-])`);
+  const inPublic = pattern.test(publicCorpus) || SHARED_FALLBACK_ICONS.has(icon.name);
+  const inAdmin = pattern.test(adminCorpus);
+
+  if (!inPublic && !inAdmin) {
     continue;
   }
 
-  const svgContent = fs.readFileSync(svgPath, 'utf8');
-  const viewBoxMatch = svgContent.match(/viewBox="([^"]+)"/);
-  const pathMatch = svgContent.match(/<path[^>]*d="([^"]+)"/);
+  const rule = buildIconCssRule(icon);
+  if (!rule) continue;
 
-  if (!viewBoxMatch || !pathMatch) {
-    console.warn(`Aviso: falha ao extrair viewBox/path do ícone ${icon.name}`);
-    continue;
+  if (inPublic) {
+    publicRules.push(rule);
+    publicCount++;
+  } else if (inAdmin) {
+    adminOnlyRules.push(rule);
+    adminCount++;
   }
-
-  const viewBox = viewBoxMatch[1];
-  const d = pathMatch[1];
-
-  // 1. Adiciona ao sprite SVG
-  spriteSymbols.push(`  <symbol id="${icon.name}" viewBox="${viewBox}">\n    <path fill="currentColor" d="${d}"/>\n  </symbol>`);
-
-  // 2. Cria SVG codificado para mask-image no CSS
-  const encodedSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='${viewBox}'><path fill='black' d='${d}'/></svg>`;
-
-  cssRules.push(`.fa-${icon.name} {
-  -webkit-mask-image: url("${encodedSvg}");
-  mask-image: url("${encodedSvg}");
-}`);
 }
 
-// Salva images/icons.svg
-const spriteXml = `<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">\n${spriteSymbols.join('\n')}\n</svg>\n`;
-const imagesDir = path.resolve(ROOT_DIR, 'images');
-if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-fs.writeFileSync(path.resolve(imagesDir, 'icons.svg'), spriteXml, 'utf8');
-console.log(`✓ images/icons.svg gerado com ${spriteSymbols.length} símbolos.`);
-
-// Salva css/icons.css
 const cssDir = path.resolve(ROOT_DIR, 'css');
-fs.writeFileSync(path.resolve(cssDir, 'icons.css'), cssRules.join('\n\n') + '\n', 'utf8');
-console.log(`✓ css/icons.css gerado com ${spriteSymbols.length} regras.`);
+const finalIconsCss = publicRules.join('\n') + '\n';
+fs.writeFileSync(path.resolve(cssDir, 'icons.css'), finalIconsCss, 'utf8');
 
+// Atualiza bloco de ícones exclusivos do admin em css/admin.css
+const adminCssPath = path.resolve(cssDir, 'admin.css');
+if (fs.existsSync(adminCssPath)) {
+  const START_MARKER = '/* BEGIN GENERATED ADMIN ICONS */';
+  const END_MARKER = '/* END GENERATED ADMIN ICONS */';
+  const adminBlock = `${START_MARKER}\n${adminOnlyRules.join('\n')}\n${END_MARKER}`;
+  let adminCss = fs.readFileSync(adminCssPath, 'utf8');
+  if (adminCss.includes(START_MARKER) && adminCss.includes(END_MARKER)) {
+    const startIdx = adminCss.indexOf(START_MARKER);
+    const endIdx = adminCss.indexOf(END_MARKER) + END_MARKER.length;
+    adminCss = adminCss.slice(0, startIdx) + adminBlock + adminCss.slice(endIdx);
+  } else {
+    adminCss = adminCss.trimEnd() + `\n\n${adminBlock}\n`;
+  }
+  fs.writeFileSync(adminCssPath, adminCss, 'utf8');
+}
+
+const rawBytes = Buffer.byteLength(finalIconsCss, 'utf8');
+const gzipBytes = zlib.gzipSync(Buffer.from(finalIconsCss, 'utf8')).length;
+console.log(
+  `✓ css/icons.css gerado com ${publicCount} ícones públicos (${rawBytes} B raw / ${gzipBytes} B gzip = ${(gzipBytes / 1024).toFixed(2)} KB gzip) + ${adminCount} ícones exclusivos de admin em css/admin.css.`
+);

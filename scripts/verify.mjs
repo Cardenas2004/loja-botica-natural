@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
   WHATSAPP_PHONE,
@@ -33,10 +34,11 @@ const HTML_FILES = [
   'admin.html',
 ];
 
-const CSS_FILES = ['css/style.css', 'css/product.css', 'css/admin.css', 'css/icons.css'];
+const CSS_FILES = ['css/style.css', 'css/product.css', 'css/admin.css', 'css/icons.css', 'css/fonts.css'];
 
 const JS_FILES = [
   'js/config.js',
+  'js/publicApi.js',
   'js/supabaseClient.js',
   'js/whatsapp.js',
   'js/main.js',
@@ -72,8 +74,9 @@ const REQUIRED_SEO_FILES = [
   'images/apple-touch-icon.png',
   'images/logo.png',
   'images/og-image.jpg',
-  'images/icons.svg',
+  'css/fonts.css',
   'css/icons.css',
+  'js/publicApi.js',
   'js/vendor/supabase-js-2.49.1.esm.js',
   'supabase/migrations/20261104200000_security_hardening.sql',
   'supabase/migrations/20261104210000_product_richtext_options.sql',
@@ -142,6 +145,11 @@ const UNUSED_IMAGES = [
   'images/bg-lavender.jpg',
   'images/icone-serum.jpg',
   'images/icone-serum-cropped.jpg',
+  'images/icons.svg',
+  'images/icone-homeopatia-transparent.png',
+  'images/icone-sache-transparent.png',
+  'images/icone-serum-transparent.png',
+  'images/icone-xarope-transparent.png',
 ];
 for (const unused of UNUSED_IMAGES) {
   if (!fs.existsSync(path.join(ROOT_DIR, unused))) {
@@ -607,6 +615,99 @@ for (const cssFile of CSS_FILES_BREAKPOINT_CHECK) {
 
 if (invalidBreakpointCount === 0) {
   pass('Todos os breakpoints de largura em css/style.css, css/product.css e css/admin.css usam min-width em {480px, 768px, 1024px, 1280px}.');
+}
+
+/* ==========================================================================
+   7.2. VERIFICAÇÃO DE PERFORMANCE E CABEÇALHOS (FASE 5: MED-04, MED-05, ALTO-07, BX-04)
+   ========================================================================== */
+console.log('\n7.2. Verificando orçamento de ícones, separação de SDK público, CSP e paridade _headers vs vercel.json...');
+
+const iconsCssRaw = fs.readFileSync(path.join(ROOT_DIR, 'css/icons.css'));
+const iconsCssGzipBytes = zlib.gzipSync(iconsCssRaw).length;
+if (iconsCssGzipBytes <= 6 * 1024) {
+  pass(`css/icons.css respeita o orçamento de <= 6 KB gzip (${iconsCssGzipBytes} B = ${(iconsCssGzipBytes / 1024).toFixed(2)} KB gzip).`);
+} else {
+  fail(`css/icons.css excedeu 6 KB gzip (${iconsCssGzipBytes} B).`);
+}
+
+const PUBLIC_JS_ENTRY_MODULES = [
+  'js/main.js',
+  'js/app.js',
+  'js/product.js',
+  'js/whatsapp.js',
+  'js/shared/productRenderer.js',
+];
+let sdkInPublicCount = 0;
+for (const pubMod of PUBLIC_JS_ENTRY_MODULES) {
+  const src = readUtf8(pubMod);
+  if (/supabaseClient\.js|supabase-js/i.test(src)) {
+    sdkInPublicCount += 1;
+    fail(`${pubMod} ainda importa supabaseClient.js ou supabase-js no bundle público.`);
+  }
+}
+if (sdkInPublicCount === 0) {
+  pass('Módulos públicos usam exclusivamente js/publicApi.js (zero @supabase/supabase-js na vitrine).');
+}
+
+// Paridade de headers de segurança entre _headers e vercel.json + CSP sem 'unsafe-inline' em style-src
+const headersText = readUtf8('_headers');
+const vercelConfig = JSON.parse(readUtf8('vercel.json'));
+const REQUIRED_SECURITY_HEADERS = [
+  'Strict-Transport-Security',
+  'X-Content-Type-Options',
+  'X-Frame-Options',
+  'Referrer-Policy',
+  'Permissions-Policy',
+  'Content-Security-Policy',
+];
+
+const parseNetlifySection = (sectionHeader) => {
+  const lines = headersText.split(/\r?\n/);
+  const startIdx = lines.findIndex((l) => l.trim() === sectionHeader);
+  /** @type {Record<string, string>} */
+  const map = {};
+  if (startIdx === -1) return map;
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    if (!/^\s+/.test(line)) break;
+    const colonIdx = line.indexOf(':');
+    if (colonIdx > 0) {
+      const k = line.slice(0, colonIdx).trim();
+      const v = line.slice(colonIdx + 1).trim();
+      map[k] = v;
+    }
+  }
+  return map;
+};
+
+const netlifyRootHeaders = parseNetlifySection('/*');
+const vercelRootEntry = (vercelConfig.headers || []).find((h) => h.source === '/(.*)');
+/** @type {Record<string, string>} */
+const vercelRootHeaders = {};
+if (vercelRootEntry && Array.isArray(vercelRootEntry.headers)) {
+  for (const h of vercelRootEntry.headers) {
+    vercelRootHeaders[h.key] = h.value;
+  }
+}
+
+let headerParityErrors = 0;
+for (const key of REQUIRED_SECURITY_HEADERS) {
+  if (!netlifyRootHeaders[key] || netlifyRootHeaders[key] !== vercelRootHeaders[key]) {
+    headerParityErrors += 1;
+    fail(`Divergência no header "${key}" entre _headers ("${netlifyRootHeaders[key]}") e vercel.json ("${vercelRootHeaders[key]}").`);
+  }
+}
+if (
+  netlifyRootHeaders['Content-Security-Policy'] &&
+  (netlifyRootHeaders['Content-Security-Policy'].includes("'unsafe-inline'") ||
+    netlifyRootHeaders['Content-Security-Policy'].includes('fonts.googleapis.com'))
+) {
+  headerParityErrors += 1;
+  fail('CSP em _headers/vercel.json ainda contém unsafe-inline ou fonts.googleapis.com.');
+}
+if (headerParityErrors === 0) {
+  pass('Paridade 100% entre _headers e vercel.json, com CSP estrita (style-src self; font-src self) e Cache-Control.');
 }
 
 /* ==========================================================================

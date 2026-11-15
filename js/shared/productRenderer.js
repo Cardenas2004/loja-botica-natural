@@ -5,7 +5,7 @@
  * em tempo real do painel administrativo (`produto.html?preview=1`).
  */
 
-import { getProductImageUrl, isTrustedStorageUrl } from '../supabaseClient.js';
+import { getProductImageUrl, isTrustedStorageUrl } from '../publicApi.js';
 import { buildProductWhatsAppUrl } from '../whatsapp.js';
 import {
   DEFAULT_FIELD_MODES,

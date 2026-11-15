@@ -2109,6 +2109,7 @@ body {
 
 /* Utilitários sem inline style */
 .skeleton-shimmer--fill { width: 100%; height: 100%; }
+.grid-span-full { grid-column: 1 / -1; }
 .breadcrumb-separator { font-size: 0.65rem; }
 .text-accent { color: var(--accent); }
 .privacy-content { max-width: 860px; display: flex; flex-direction: column; gap: 28px; line-height: 1.7; }
@@ -2336,6 +2337,11 @@ body {
   transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
   transition-delay: var(--reveal-delay, 0ms);
 }
+
+.js .reveal[data-reveal-step="1"] { --reveal-delay: 90ms; }
+.js .reveal[data-reveal-step="2"] { --reveal-delay: 180ms; }
+.js .reveal[data-reveal-step="3"] { --reveal-delay: 270ms; }
+.js .reveal[data-reveal-step="4"] { --reveal-delay: 360ms; }
 
 .js .reveal.is-visible { opacity: 1; transform: none; }
 

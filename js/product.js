@@ -13,11 +13,10 @@
  */
 
 import {
-  supabase,
   isSupabaseConfigured,
-  DB_TABLES,
   normalizeSupabaseError,
-} from './supabaseClient.js';
+  fetchActiveProductById,
+} from './publicApi.js';
 
 import { fetchProductWhatsAppTemplate } from './whatsapp.js';
 import { BRAND_NAME, SITE_DOMAIN } from './config.js';
@@ -226,7 +225,7 @@ async function initProductPage() {
     return;
   }
 
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     showErrorState('O catálogo está em manutenção temporária. Consulte nosso atendimento via WhatsApp.');
     return;
   }
@@ -234,12 +233,7 @@ async function initProductPage() {
   try {
     // Busca o produto ativo em paralelo com o template global do WhatsApp
     const [{ data, error }, _waTemplate] = await Promise.all([
-      supabase
-        .from(DB_TABLES.PRODUCTS)
-        .select('*, categories(id, name, slug)')
-        .eq('id', productId)
-        .eq('is_active', true)
-        .maybeSingle(),
+      fetchActiveProductById(productId),
       fetchProductWhatsAppTemplate(),
     ]);
 

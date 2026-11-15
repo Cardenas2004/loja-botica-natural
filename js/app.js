@@ -7,13 +7,15 @@
  */
 
 import {
-  supabase,
-  DB_TABLES,
   isSupabaseConfigured,
   getPublicImageUrl,
   resolveSafeStorageImageUrl,
   normalizeSupabaseError,
-} from './supabaseClient.js';
+  fetchActiveCarouselSlides,
+  fetchActiveCategories,
+  fetchActiveProducts,
+  fetchActiveCompoundCards,
+} from './publicApi.js';
 
 import {
   buildProductWhatsAppUrl as buildCentralProductWhatsAppUrl,
@@ -62,11 +64,11 @@ const FALLBACK_PRODUCT_IMAGE =
    ========================================================================== */
 
 const catalogState = {
-  /** @type {Array<import('./supabaseClient.js').CarouselSlide>} */
+  /** @type {Array<any>} */
   carouselSlides: [],
-  /** @type {Array<import('./supabaseClient.js').Category>} */
+  /** @type {Array<any>} */
   categories: [],
-  /** @type {Array<import('./supabaseClient.js').Product>} */
+  /** @type {Array<any>} */
   products: [],
   /** @type {Array<any>} Cards ativos da Vitrine de Compostos Manipulados */
   compoundCards: [],
@@ -788,8 +790,7 @@ function renderHeroCarousel() {
  */
 function createStorefrontFallbackElement() {
   const wrapper = document.createElement('div');
-  wrapper.className = 'catalog-empty';
-  wrapper.style.gridColumn = '1 / -1';
+  wrapper.className = 'catalog-empty grid-span-full';
 
   const iconWrap = document.createElement('div');
   iconWrap.className = 'catalog-empty__icon';
@@ -1617,33 +1618,10 @@ async function loadCatalogData() {
       productsResponse,
       compoundsResponse,
     ] = await Promise.all([
-      supabase
-        .from(DB_TABLES.CAROUSEL)
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: false }),
-
-      supabase
-        .from(DB_TABLES.CATEGORIES)
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .order('name', { ascending: true }),
-
-      supabase
-        .from(DB_TABLES.PRODUCTS)
-        .select('*, categories(id, name, slug)')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false }),
-
-      supabase
-        .from(DB_TABLES.COMPOUNDS)
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: true }),
-
+      fetchActiveCarouselSlides(),
+      fetchActiveCategories(),
+      fetchActiveProducts(),
+      fetchActiveCompoundCards(),
       fetchProductWhatsAppTemplate(),
     ]);
 
