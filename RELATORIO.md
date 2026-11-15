@@ -321,17 +321,17 @@ Criar um script Node.js zero-dependências (`scripts/prerender-products.mjs`, us
 
 ---
 
-## 7. Status da Linha de Base (2026-11-14)
+## 7. Status Final da Auditoria Corretiva (2026-11-15)
 
-| Verificação | Ferramenta | Status |
+A consolidação completa por IDs, métricas antes/depois, hashes de commit, inventário de migrações, capturas visuais e pendências do proprietário/RT está registrada em [`docs/auditoria/RELATORIO_FINAL.md`](docs/auditoria/RELATORIO_FINAL.md).
+
+| Verificação | Ferramenta / Escopo | Resultado Observado |
 |---|---|---|
-| Sanitização de Texto Rico (21 testes unitários) | `scripts/test-richtext.mjs` | **100% APROVADO** |
-| Integridade Estática e Ausência de Fictícios (60+ checagens) | `scripts/verify.mjs` | **100% APROVADO** |
-| BUG-ESCAPE & Roundtrip E2E (3 navegadores) | `tests/e2e/richtext-roundtrip.spec.js` | **100% APROVADO** |
-| Resiliência de Autenticação E2E (3 navegadores) | `tests/e2e/admin-auth-events.spec.js` | **100% APROVADO** |
-| Content Security Policy Estrita (3 navegadores) | `tests/e2e/csp.spec.js` | **100% APROVADO** |
-| Prevenção de Overflow Horizontal (3 navegadores) | `tests/e2e/no-overflow.spec.js` | **100% APROVADO** |
-| Acessibilidade WCAG 2.1 AA (3 navegadores) | `tests/e2e/accessibility.spec.js` | **100% APROVADO** |
+| Sanitização de Texto Rico (`js/shared/richtext.js`) | `node scripts/test-richtext.mjs` | **21/21 aprovados** |
+| Verificação Estática, Segurança, SEO e Breakpoints | `npm run verify` | **111/111 aprovados** |
+| Prontidão de Produção (Placeholders `[PREENCHER]`) | `npm run verify:prod` | **111/134** (`23` `[PREENCHER]` preservados aguardando dono) |
+| Suíte E2E Multi-Navegador (Chromium, Firefox, WebKit) | `npx playwright test` | **249/249 aprovados** (`0` falhas) |
+| Responsabilidade Técnico-Regulatória e Bloqueios | [`docs/auditoria/revisao-rt.md`](docs/auditoria/revisao-rt.md) & [`docs/auditoria/bloqueios.md`](docs/auditoria/bloqueios.md) | Documentados para validação |
 
 
 

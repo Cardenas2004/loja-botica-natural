@@ -175,7 +175,7 @@ Para reproduzir e medir os testes em qualquer navegador (Chrome, Edge, Safari, F
 | **ISSUE-05** | Risco de colapso/estouro horizontal entre logo, botão CTA e hambúrguer em viewports ultra-estreitos (320px). | Média | ✅ **CORRIGIDO** | Zero overflow horizontal em 320px validado. |
 | **ISSUE-06** | Barra de busca do catálogo e abas de categorias com rolagem sem suavidade nativa no mobile. | Baixa | ✅ **CORRIGIDO** | Rolagem inercial ativada e abas com área de clique confortável. |
 | **ISSUE-07** | Na versão mobile da página de produto, o botão de compra de WhatsApp não ficava imediatamente acessível na rolagem. | Média | ✅ **CORRIGIDO** | Barra fixa sticky mobile com WhatsApp sincronizado e compensação de padding-bottom. |
-| **ISSUE-08** | Banners sem reserva de espaço proporcional entre mobile (16:9) e desktop (16:5), com potencial risco de CLS. | Média | ✅ **CORRIGIDO** | aspect-ratio 16:9 (mobile) e 16:5 (desktop) aplicados; CLS = 0. |
+| **ISSUE-08** | Banners sem reserva de espaço proporcional no layout, com potencial risco de CLS. | Média | ✅ **CORRIGIDO** | `--promo-aspect` padrão `16 / 5` reservado com ajuste automático às dimensões reais do banner; CLS = 0. |
 
 ### 4.1 Resumo dos Critérios de Aceite Atendidos
 
@@ -183,5 +183,7 @@ Para reproduzir e medir os testes em qualquer navegador (Chrome, Edge, Safari, F
 - **Pilha Vertical Resiliente:** .cookie, .mobile-cta e .wa-float coexistem com --fixed-bottom-offset e classe html.has-cookie; colisão eliminada.
 - **Alvos de Toque WCAG 2.5.8:** Botões, links, abas e controles interativos com área de toque >= 44×44 px em telas touchscreen (pointer: coarse).
 - **Prevenção de Zoom no iOS:** Inputs, selects e textareas com font-size: 1rem (16px) em todo o painel admin e formulários.
-- **CLS Zero:** Imagens com width/height explícitos e aspect-ratio reservado (16:9 mobile, 16:5 desktop nos banners; 1:1 nos produtos).
+- **CLS Zero:** Imagens com width/height explícitos e aspect-ratio reservado (16:5 com adaptação automática por proporção real nos banners; 1:1 nos produtos).
 - **Painel Admin Responsivo:** Sidebar drawer em <1024px, tabelas em cards no mobile, live preview com scale dinâmico e suporte a visualViewport no rodapé de salvamento.
+- **Refinamentos da Auditoria (Fases 2, 3, 4 e ajuste final):** Breakpoints CSS padronizados exclusivamente para `min-width` em `{480px, 768px, 1024px, 1280px}`; carrossel Hero nativo com enquadramento automático proporcional `16:5` em celular e desktop sem cortes laterais e sem botão sobreposto de pausa; e exclusividade estrita em `1024px` entre `#catalog-category-mobile` e `.catalog-tabs-wrapper`.
+

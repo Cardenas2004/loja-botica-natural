@@ -79,4 +79,12 @@ Mapeamento completo das funcionalidades existentes no painel administrativo (`ad
 - [x] **Zero Violações de CSP**: Sem nenhum script inline, sem `onerror` inline e sem estilos inline em todo o HTML do painel.
 - [x] **Zero Violações WCAG 2.1 AA**: Auditado via `@axe-core/playwright` com zero erros críticos ou sérios de acessibilidade.
 
+## 11. Auditoria Novembro/2026 — Compostos, Enquadramento Automático, Destaques e Slugs
+- [x] **Vitrine de Compostos (`#/compostos`)**: Edição dos cards da seção `#compounds-showcase`, prévia ao vivo e fallback seguro em `js/shared/compoundShowcaseRenderer.js`.
+- [x] **Banners do Carrossel (`#/banners`)**: Upload único simplificado sem arte mobile separada, sem moldura de recorte ou controles manuais X/Y, com pré-visualização proporcional limpa e ajuste automático em celular e computador (`16:5` / proporção natural da arte).
+- [x] **Destaques da Home (`#/produtos/:id`)**: Controle de `home_featured` e `home_position` persistidos no banco (`idx_products_home_featured`).
+- [x] **Slug Amigável (`#/produtos/:id`)**: Campo `#prod-slug` com geração automática pelo nome do produto, preservação de edição manual e prévia em tempo real da URL `/produtos/<slug>/` na aba SEO.
+- [x] **Concorrência Atômica e Arquivamento Seguro**: Atualização atômica condicionada a `updated_at` (`CONCURRENT_MODIFICATION`) e detecção de referências em banners/compostos recomendando arquivar (`is_active = false`) antes de excluir permanentemente.
+
+
 

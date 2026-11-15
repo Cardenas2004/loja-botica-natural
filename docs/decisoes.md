@@ -134,6 +134,44 @@ A auditoria sugeriu avaliar o uso do atributo `sandbox` no `<iframe>` de pré-vi
 2. **Não utilizar `sandbox="allow-scripts allow-same-origin"`**: combinar ambas as flags anula o isolamento do sandbox (o documento embutido pode remover o próprio atributo `sandbox` via DOM) e gera alertas de segurança nos navegadores.
 3. **Mitigação adotada**: manter o iframe na mesma origem sem `sandbox`, com validação rígida de `event.origin === window.location.origin` e `event.source === window.parent` em ambos os lados (`js/admin/preview.js` e `js/product.js`), sanitização/DOM API pura sem `innerHTML` e URLs validadas via `js/shared/richtext.js` e `sanitizeAssetUrl`.
 
+---
+
+## 12. Páginas Estáticas de Produto por Slug (ALTO-09 / Fase 7)
+
+### Contexto
+Páginas servidas via `produto.html?id=<uuid>` dependem de `fetch` client-side ao Supabase para preencher `<title>`, `meta description`, `og:*` e JSON-LD. Robôs sem execução de JS (ex.: prévia do WhatsApp) viam metadados genéricos, e URLs com query string UUID prejudicavam SEO.
+
+### Decisão
+1. **Coluna Única `products.slug`**: adicionada via `supabase/migrations/20261114120000_products_slug.sql` (com trigger de normalização sem acentos, dedup e `_rollback.sql`).
+2. **Gerador Zero-Dependências (`scripts/build-products.mjs`)**: gera `produtos/<slug>/index.html` com SEO completo, JSON-LD `Product` e `BreadcrumbList` e conteúdo principal pré-renderizado a partir do Supabase (ou fallback seguro offline), além de atualizar `sitemap.xml` e integrar-se ao `vercel.json` (`"buildCommand": "npm run build:products"`).
+3. **Prevenção de Conteúdo Duplicado**: `produto.html` mantém funcionamento como fallback dinâmico (`?id=` / `?slug=`) com `<meta name="robots" content="noindex, follow">` e `canonical` apontando para `produtos.html`, enquanto cards e links internos passam a apontar para `produtos/<slug>/`.
+
+---
+
+## 13. Infraestrutura de Analytics Condicionada ao Consentimento LGPD (ALTO-05 / Fase 8)
+
+### Contexto
+O proprietário ainda não decidiu se ativará GA4 e Meta Pixel nem definiu seus IDs. Era necessário deixar a arquitetura pronta, desligada por padrão, sem violar a CSP estrita (`script-src 'self'`) nem disparar antes do consentimento explícito.
+
+### Decisão
+1. **Desligado por Padrão (`js/config.js`)**: exporta `ANALYTICS = Object.freeze({ ga4MeasurementId: '', metaPixelId: '' })` com marcador `[PREENCHER]`. Com IDs vazios, zero scripts ou requisições externas são emitidos mesmo após o aceite de cookies.
+2. **Consentimento Granular e Sem Inline Script (`js/main.js`)**: `saveConsentRecord` dispara `bn:cookie-consent-updated`, acionando `initAnalyticsIfConsented()`, que valida os formatos de ID e injeta apenas `<script async>` externos correspondentes às categorias autorizadas (`analytics` para GA4 e `marketing` para Meta Pixel), de forma idempotente.
+3. **CSP Conservadora**: mantém `script-src 'self'` em produção enquanto os IDs estiverem vazios; as diretivas exatas para ativação futura ficam documentadas em `PENDENCIAS.md`.
+
+---
+
+## 14. Carrossel Hero — Ajuste Automático Desktop/Mobile e Remoção do Botão Visível de Pausa (Solicitação do Proprietário)
+
+### Contexto
+Na validação visual em produção, banners panorâmicos (`16:5`) possuem textos e logotipo distribuídos nas extremidades laterais. O recorte `16:9` no celular e os controles de ponto de foco manual no admin (`Área visível Mobile 16:9`, grade 3×3 e sliders X/Y) cortavam informações laterais e poluíam o painel de cadastro, assim como o botão flutuante `Pausar banners` sobrepunha o canto inferior da arte.
+
+### Decisão
+1. **Enquadramento Automático em Celular e Computador**: `.promo__carousel` e `.promo__slide` usam `aspect-ratio: var(--promo-aspect, 16 / 5)` uniformemente em mobile e desktop com `object-position: center center`, mantendo banners `16:5` íntegros de ponta a ponta em qualquer tela. Ao carregar o banner principal (`index === 0`) em `js/app.js`, o controlador lê as dimensões reais (`naturalWidth` / `naturalHeight`, para imagens horizontais reais) e ajusta `--promo-aspect` automaticamente caso outra proporção panorâmica seja cadastrada.
+2. **Admin `#/banners` Simplificado**: upload único sem arte mobile separada, sem moldura de recorte e sem controles manuais X/Y (`focus_x`/`focus_y` mantidos em `50`/`50` por compatibilidade com a coluna do banco).
+3. **Sem Botão Sobreposto de Pausa/Play e com Swipe Tátil Nativo no Celular**: `#hero-carousel-pause` removido do DOM e do CSS. Habilitado `touch-action: pan-x pan-y` e `overscroll-behavior-x: contain` na faixa do carrossel, com tratamento de gestos (`touchstart`/`touchmove`/`touchend`) que permite passar banners manualmente com o dedo em celulares (com loop contínuo e proteção contra clique acidental durante arraste) e reinicia o temporizador automático de 4,5 s logo ao soltar o toque. Interações touch nos bullets não acionam estados pegajosos de hover/foco (`pointerType === 'mouse'` para hover; `:focus-visible` / teclado para foco), mantendo a pausa automática sob `hover` com mouse, foco via teclado, aba oculta (`visibilitychange`) e `prefers-reduced-motion: reduce`.
+
+
+
 
 
 
