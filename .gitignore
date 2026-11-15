@@ -2,6 +2,7 @@
 Thumbs.db
 .vscode/
 node_modules/
+dist/
 .env
 playwright-report/
 test-results/

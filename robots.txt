@@ -2,7 +2,11 @@
 # [PREENCHER: confirmar domínio oficial de produção no Sitemap abaixo]
 User-agent: *
 Allow: /
+Disallow: /admin
 Disallow: /admin.html
+Disallow: /docs/
+Disallow: /scripts/
+Disallow: /supabase/
+Disallow: /tests/
 
 Sitemap: https://www.boticanatural.com.br/sitemap.xml
-

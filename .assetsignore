@@ -1,0 +1,24 @@
+# Exclusões caso o projeto seja publicado via Cloudflare Workers Static Assets a partir da raiz
+.git/
+.github/
+.vscode/
+node_modules/
+dist/
+docs/
+scripts/
+supabase/
+tests/
+test-results/
+playwright-report/
+artifacts/
+backups/
+*.md
+package.json
+package-lock.json
+playwright.config.js
+vercel.json
+.env
+.env.*
+.gitignore
+.DS_Store
+Thumbs.db

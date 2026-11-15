@@ -64,9 +64,15 @@ Os pontos abaixo estão documentados em `docs/auditoria/revisao-rt.md` e marcado
 
 ## 4. Infraestrutura, Hospedagem e Analytics Opcional
 
-### 4.1 Headers HTTP de Segurança
-- `_headers`: pronto para Cloudflare Pages / Netlify com HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy` com `payment=()`, CSP com `style-src 'self'` e `font-src 'self'`, e `Cache-Control` imutável para `/css/*`, `/js/*`, `/images/*` e `/fonts/*`.
-- `vercel.json`: espelha exatamente os mesmos headers para Vercel Edge Network e define `"buildCommand": "npm run build:products"`.
+### 4.1 Headers HTTP, Cache e Hospedagem na Cloudflare (Pages / Workers Assets)
+- `_headers`: configurado para **Cloudflare Pages** com HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy` com `payment=()`, CSP estrita (`style-src 'self'`; `font-src 'self'`), desanexo explícito (`! Content-Security-Policy` e `! Cache-Control`) para impedir concatenação de headers duplicados pela borda da Cloudflare, cobertura explícita de **Clean URLs** (`/admin` e `/admin.html` com `frame-src 'self' blob:` e `X-Robots-Tag: noindex, nofollow`), `/css/*` e `/js/*` com `public, max-age=0, must-revalidate` (evitando trava de cache em módulos ES sem hash após deploy), `/images/*` com `max-age=604800, stale-while-revalidate=86400` e `/fonts/*` imutável por 1 ano.
+- `404.html` e `_redirects`: impedem o modo SPA Soft-404 da Cloudflare Pages (retornando HTTP `404` real com caminhos absolutos `/...` que funcionam em qualquer profundidade) e redirecionam `/produtos/` para `/produtos` (`301`).
+- `.assetsignore` e `npm run build:pages` (`dist/`): no painel da Cloudflare Pages, é recomendável usar **Build command** `npm run build:pages` e **Output directory** `dist` para publicar apenas os arquivos públicos (sem `docs/`, `supabase/`, `tests/`, `scripts/` ou `node_modules/`). Caso prefira publicar direto da raiz sem etapa de build (`.`), mantenha essa configuração sabendo que o site funciona normalmente e os diretórios internos ficam marcados como `Disallow` no `robots.txt` e `X-Robots-Tag: noindex, nofollow` no `_headers`.
+- **Checklist no Painel da Cloudflare (produção)**:
+  1. Em **Security → Scrape Shield → Email Address Obfuscation**, manter **desligado** (ou confiar nos marcadores `<!--email_off-->` já aplicados nos HTMLs) para evitar injeção de script de decodificação incompatível com `script-src 'self'`.
+  2. Em **Speed → Optimization → Content Optimization**, manter **Rocket Loader** desligado para não injetar scripts externos (`ajax.cloudflare.com`) bloqueados pela CSP estrita.
+  3. Em **SSL/TLS → Overview**, utilizar modo **Full (strict)** ao apontar domínio próprio, executando `node scripts/set-domain.mjs https://seudominio.com.br` + `npm run build:products` após definir o domínio oficial.
+- `vercel.json`: espelha exatamente os mesmos headers e políticas de cache caso o projeto seja espelhado na Vercel Edge Network.
 
 ### 4.2 Caso Decida Ativar GA4 e/ou Meta Pixel no Futuro
 A infraestrutura em `js/main.js` já carrega os scripts **somente após consentimento explícito por categoria**. Se o proprietário optar por preencher `ANALYTICS` em `js/config.js`:

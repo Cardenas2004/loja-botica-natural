@@ -1,0 +1,3 @@
+# Botica Natural — Regras de roteamento para Cloudflare Pages
+# Como existe o diretório produtos/<slug>/ sem produtos/index.html, evita 404 ao acessar /produtos/ com barra final
+/produtos/ /produtos 301

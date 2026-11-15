@@ -12,6 +12,8 @@
     "build:vendor": "node scripts/bundle-vendor.mjs",
     "build:icons": "node scripts/build-icons-sprite.mjs",
     "build:products": "node scripts/build-products.mjs",
+    "build:cf": "node scripts/build-cf.mjs",
+    "build:pages": "node scripts/build-products.mjs && node scripts/build-cf.mjs",
     "serve": "node scripts/serve.mjs"
   },
   "devDependencies": {

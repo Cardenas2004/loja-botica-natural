@@ -170,6 +170,24 @@ Na validação visual em produção, banners panorâmicos (`16:5`) possuem texto
 2. **Admin `#/banners` Simplificado**: upload único sem arte mobile separada, sem moldura de recorte e sem controles manuais X/Y (`focus_x`/`focus_y` mantidos em `50`/`50` por compatibilidade com a coluna do banco).
 3. **Sem Botão Sobreposto de Pausa/Play e com Swipe Tátil Nativo no Celular**: `#hero-carousel-pause` removido do DOM e do CSS. Habilitado `touch-action: pan-x pan-y` e `overscroll-behavior-x: contain` na faixa do carrossel, com tratamento de gestos (`touchstart`/`touchmove`/`touchend`) que permite passar banners manualmente com o dedo em celulares (com loop contínuo e proteção contra clique acidental durante arraste) e reinicia o temporizador automático de 4,5 s logo ao soltar o toque. Interações touch nos bullets não acionam estados pegajosos de hover/foco (`pointerType === 'mouse'` para hover; `:focus-visible` / teclado para foco), mantendo a pausa automática sob `hover` com mouse, foco via teclado, aba oculta (`visibilitychange`) e `prefers-reduced-motion: reduce`.
 
+---
+
+## 15. Adequação para Produção na Cloudflare Pages / CDN
+
+### Contexto
+Ao publicar o site estático na **Cloudflare Pages**, quatro comportamentos específicos da plataforma impactam segurança, cache, roteamento e SEO:
+1. O motor de `_headers` concatena regras sobrepostas em vez de sobrescrevê-las, salvo quando o cabeçalho pai é desanexado com `! Header-Name`. Sem isso, `/admin.html` recebia dois cabeçalhos CSP combinados (bloqueando `frame-src 'self' blob:`) e `/css/*` + `/js/*` recebiam `no-cache, public, max-age=31536000, immutable`. Além disso, as Clean URLs redirecionavam `/admin.html` para `/admin` sem regra correspondente.
+2. Os módulos ES internos (`import ... from './publicApi.js'`) não possuem hash no nome do arquivo; cachear `/js/*` e `/css/*` com `immutable` por 1 ano mantém visitantes antigos presos em código obsoleto após novos deploys.
+3. Sem `404.html` na raiz, a Cloudflare Pages ativa o fallback de SPA e responde `200 OK` com `index.html` para URLs inexistentes (*soft 404*). A coexistência de `produtos.html` com o diretório `produtos/<slug>/index.html` (sem `produtos/index.html`) também exige redirecionar `/produtos/` para `/produtos` e alinhar `canonical`, `og:url` e `sitemap.xml` com as rotas limpas (`/produtos` e `/privacidade`).
+4. O recurso **Email Address Obfuscation** (Scrape Shield) reescreve links `mailto:` e injeta script externo incompatível com CSP estrita sem `'unsafe-inline'`.
+
+### Decisão
+1. **Cabeçalhos Desanexados e Clean URLs (`_headers` + `vercel.json`)**: adicionadas regras idênticas para `/admin` e `/admin.html` usando `! Content-Security-Policy` e `X-Robots-Tag: noindex, nofollow`, além de `! Cache-Control` em todos os grupos de assets. `/css/*` e `/js/*` passaram para `public, max-age=0, must-revalidate` (validação instantânea por ETag via borda Cloudflare), `/images/*` para `public, max-age=604800, stale-while-revalidate=86400` e `/fonts/*` mantido `immutable`.
+2. **Página `404.html` Real e `_redirects`**: criada `404.html` com caminhos raiz absolutos (`/css/...`, `/js/...`, `/images/...`), `noindex, nofollow` e `<h1>` único, além de `_redirects` mapeando `/produtos/ /produtos 301`. `scripts/serve.mjs` reproduz localmente as Clean URLs e o status `404` real.
+3. **Empacotamento Opcional Limpo (`scripts/build-cf.mjs` + `.assetsignore`)**: adicionados `.assetsignore` e script `npm run build:pages` que gera `dist/` apenas com ativos públicos, preservando o funcionamento zero-build na raiz.
+4. **Proteção Scrape Shield (`<!--email_off-->`)**: todos os links `mailto:` das páginas públicas foram envolvidos em `<!--email_off-->...<!--/email_off-->` e validados por `scripts/verify.mjs`.
+
+
 
 
 

@@ -7,6 +7,7 @@ const PAGES = [
   { path: '/produtos.html', name: 'Catálogo', isPublic: true },
   { path: '/produto.html?id=prod-1', name: 'Produto', isPublic: true },
   { path: '/privacidade.html', name: 'Privacidade', isPublic: true },
+  { path: '/404.html', name: '404', isPublic: true },
   { path: '/admin.html', name: 'Admin', isPublic: false },
 ];
 
@@ -60,4 +61,34 @@ test.describe('Segurança & CSP: Zero violações de CSP, zero erros no console 
       }
     });
   }
+
+  test('Rota inexistente em subdiretório responde com HTTP 404, <h1> válido e estilos da raiz', async ({
+    page,
+  }) => {
+    await setupPageMocks(page);
+    const response = await page.goto('/subpasta-inexistente/pagina-que-nao-existe', {
+      waitUntil: 'domcontentloaded',
+    });
+    expect(response?.status()).toBe(404);
+    await expect(page.locator('h1#not-found-title')).toHaveText('Página não encontrada');
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+      'content',
+      'noindex, nofollow'
+    );
+  });
+
+  test('Clean URLs (/produtos, /privacidade, /admin) carregam sem erros e /produtos/ redireciona para /produtos', async ({
+    page,
+  }) => {
+    await setupPageMocks(page);
+
+    for (const cleanPath of ['/produtos', '/privacidade', '/admin']) {
+      const res = await page.goto(cleanPath, { waitUntil: 'domcontentloaded' });
+      expect(res?.status(), `Status inesperado em ${cleanPath}`).toBe(200);
+    }
+
+    const trailingRes = await page.goto('/produtos/', { waitUntil: 'domcontentloaded' });
+    expect(trailingRes?.status()).toBe(200);
+    expect(page.url()).toMatch(/\/produtos$/);
+  });
 });

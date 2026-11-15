@@ -317,7 +317,7 @@ function buildProductPageHtml(baseTemplate, product) {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Início', item: `${SITE_DOMAIN}/` },
-      { '@type': 'ListItem', position: 2, name: 'Catálogo de Fórmulas', item: `${SITE_DOMAIN}/produtos.html` },
+      { '@type': 'ListItem', position: 2, name: 'Catálogo de Fórmulas', item: `${SITE_DOMAIN}/produtos` },
       { '@type': 'ListItem', position: 3, name: productName, item: canonicalUrl },
     ],
   };
@@ -493,8 +493,8 @@ function buildSitemapXml(products) {
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
     { loc: `${SITE_DOMAIN}/`, lastmod: today, changefreq: 'weekly', priority: '1.0' },
-    { loc: `${SITE_DOMAIN}/produtos.html`, lastmod: today, changefreq: 'daily', priority: '0.9' },
-    { loc: `${SITE_DOMAIN}/privacidade.html`, lastmod: today, changefreq: 'yearly', priority: '0.3' },
+    { loc: `${SITE_DOMAIN}/produtos`, lastmod: today, changefreq: 'daily', priority: '0.9' },
+    { loc: `${SITE_DOMAIN}/privacidade`, lastmod: today, changefreq: 'yearly', priority: '0.3' },
   ];
 
   for (const prod of products) {

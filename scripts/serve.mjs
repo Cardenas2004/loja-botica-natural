@@ -30,6 +30,13 @@ const server = http.createServer((req, res) => {
     const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     let pathname = decodeURIComponent(parsedUrl.pathname);
 
+    // Normaliza /produtos/ -> /produtos em paridade com _redirects (Cloudflare Pages)
+    if (pathname === '/produtos/') {
+      res.writeHead(301, { Location: `/produtos${parsedUrl.search}` });
+      res.end();
+      return;
+    }
+
     // Redireciona /produtos/<slug> para /produtos/<slug>/ se existir diretório estático ou fallback
     const rawProductMatch = pathname.match(/^\/produtos\/([a-z0-9-]+)\/?$/i);
     if (pathname.endsWith('/')) {
@@ -38,6 +45,14 @@ const server = http.createServer((req, res) => {
       res.writeHead(301, { Location: `/produtos/${rawProductMatch[1]}/${parsedUrl.search}` });
       res.end();
       return;
+    }
+
+    // Emula Clean URLs da Cloudflare Pages para páginas raiz sem extensão (/produtos, /privacidade, /admin, /produto)
+    if (!path.extname(pathname) && pathname !== '/' && !pathname.endsWith('/')) {
+      const cleanHtmlCandidate = path.normalize(path.join(ROOT, `${pathname}.html`));
+      if (cleanHtmlCandidate.startsWith(ROOT) && fs.existsSync(cleanHtmlCandidate) && fs.statSync(cleanHtmlCandidate).isFile()) {
+        pathname = `${pathname}.html`;
+      }
     }
 
     const safePath = path.normalize(path.join(ROOT, pathname));
@@ -51,6 +66,12 @@ const server = http.createServer((req, res) => {
       if (rawProductMatch) {
         res.writeHead(302, { Location: `/produto.html?slug=${encodeURIComponent(rawProductMatch[1])}` });
         res.end();
+        return;
+      }
+      const notFoundPage = path.join(ROOT, '404.html');
+      if (fs.existsSync(notFoundPage)) {
+        res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+        res.end(fs.readFileSync(notFoundPage));
         return;
       }
       res.writeHead(404, { 'Content-Type': 'text/plain' });

@@ -31,6 +31,7 @@ const ROOT_HTML_FILES = [
   'produtos.html',
   'produto.html',
   'privacidade.html',
+  '404.html',
   'admin.html',
 ];
 
@@ -88,7 +89,12 @@ const JS_FILES = [
 ];
 
 const REQUIRED_SEO_FILES = [
+  '_headers',
+  '_redirects',
+  '.assetsignore',
+  '404.html',
   'scripts/build-products.mjs',
+  'scripts/build-cf.mjs',
   'robots.txt',
   'sitemap.xml',
   'privacidade.html',
@@ -248,7 +254,7 @@ if (whatsappConsistent) {
    2.1. CONSISTÊNCIA DE HORÁRIO, ENDEREÇO E DOMÍNIO (MED-08 / CRIT-03)
    ========================================================================== */
 console.log(`\n2.1. Verificando consistência de horário, endereço e domínio (${SITE_DOMAIN})...`);
-const ROOT_PUBLIC_HTML_FILES = ['index.html', 'produtos.html', 'produto.html', 'privacidade.html'];
+const ROOT_PUBLIC_HTML_FILES = ['index.html', 'produtos.html', 'produto.html', 'privacidade.html', '404.html'];
 const PUBLIC_HTML_FILES = [...ROOT_PUBLIC_HTML_FILES, ...GENERATED_PRODUCT_HTML_FILES];
 let hoursAndAddressConsistent = true;
 for (const htmlFile of PUBLIC_HTML_FILES) {
@@ -309,10 +315,19 @@ if (!/<meta\s+name=["']robots["']\s+content=["']noindex,\s*follow["']/i.test(pro
   domainConsistent = false;
   fail('produto.html: <meta name="robots" content="noindex, follow"> ausente (ALTO-09).');
 }
-const robotsContent = readUtf8('robots.txt');
-if (!robotsContent.includes(`Sitemap: ${SITE_DOMAIN}/sitemap.xml`)) {
+const notFoundHtmlContent = readUtf8('404.html');
+if (!/<meta\s+name=["']robots["']\s+content=["']noindex,\s*nofollow["']/i.test(notFoundHtmlContent)) {
   domainConsistent = false;
-  fail(`robots.txt: Sitemap não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
+  fail('404.html: <meta name="robots" content="noindex, nofollow"> ausente.');
+}
+const robotsContent = readUtf8('robots.txt');
+if (
+  !robotsContent.includes(`Sitemap: ${SITE_DOMAIN}/sitemap.xml`) ||
+  !robotsContent.includes('Disallow: /admin') ||
+  !robotsContent.includes('Disallow: /admin.html')
+) {
+  domainConsistent = false;
+  fail(`robots.txt: Sitemap ou bloqueios /admin e /admin.html inconsistentes.`);
 }
 const sitemapContent = readUtf8('sitemap.xml');
 const sitemapLocs = [...sitemapContent.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
@@ -326,6 +341,25 @@ if (
 }
 if (domainConsistent) {
   pass(`Domínio canônico (${SITE_DOMAIN}) consistente em canonical, og:url, og:image, robots.txt e sitemap.xml.`);
+}
+
+// Proteção contra Scrape Shield (Email Obfuscation) em páginas com CSP script-src 'self'
+let unprotectedMailtoCount = 0;
+for (const htmlFile of PUBLIC_HTML_FILES) {
+  const html = readUtf8(htmlFile);
+  const mailtoMatches = [...html.matchAll(/href=["']mailto:[^"']+["']/gi)];
+  for (const m of mailtoMatches) {
+    const start = Math.max(0, (m.index || 0) - 60);
+    const end = Math.min(html.length, (m.index || 0) + 200);
+    const snippet = html.slice(start, end);
+    if (!snippet.includes('<!--email_off-->') || !snippet.includes('<!--/email_off-->')) {
+      unprotectedMailtoCount += 1;
+      fail(`${htmlFile}: link mailto: sem <!--email_off-->...<!--/email_off--> (risco de conflito Cloudflare Scrape Shield com CSP).`);
+    }
+  }
+}
+if (unprotectedMailtoCount === 0) {
+  pass('Todos os links mailto: nas páginas públicas estão protegidos por <!--email_off--> para compatibilidade com Cloudflare CSP.');
 }
 
 /* ==========================================================================
@@ -703,35 +737,46 @@ const REQUIRED_SECURITY_HEADERS = [
   'Content-Security-Policy',
 ];
 
-const parseNetlifySection = (sectionHeader) => {
+const parseCloudflareSection = (sectionHeader) => {
   const lines = headersText.split(/\r?\n/);
   const startIdx = lines.findIndex((l) => l.trim() === sectionHeader);
-  /** @type {Record<string, string>} */
-  const map = {};
-  if (startIdx === -1) return map;
+  /** @type {{ headers: Record<string, string>, detaches: Set<string> }} */
+  const result = { headers: {}, detaches: new Set() };
+  if (startIdx === -1) return result;
   for (let i = startIdx + 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
     if (!/^\s+/.test(line)) break;
+    const trimmed = line.trim();
+    if (trimmed.startsWith('!')) {
+      const detachedName = trimmed.slice(1).trim();
+      if (detachedName) result.detaches.add(detachedName);
+      continue;
+    }
     const colonIdx = line.indexOf(':');
     if (colonIdx > 0) {
       const k = line.slice(0, colonIdx).trim();
       const v = line.slice(colonIdx + 1).trim();
-      map[k] = v;
+      result.headers[k] = v;
+    }
+  }
+  return result;
+};
+
+const getVercelHeadersMap = (sourcePattern) => {
+  const entry = (vercelConfig.headers || []).find((h) => h.source === sourcePattern);
+  /** @type {Record<string, string>} */
+  const map = {};
+  if (entry && Array.isArray(entry.headers)) {
+    for (const h of entry.headers) {
+      map[h.key] = h.value;
     }
   }
   return map;
 };
 
-const netlifyRootHeaders = parseNetlifySection('/*');
-const vercelRootEntry = (vercelConfig.headers || []).find((h) => h.source === '/(.*)');
-/** @type {Record<string, string>} */
-const vercelRootHeaders = {};
-if (vercelRootEntry && Array.isArray(vercelRootEntry.headers)) {
-  for (const h of vercelRootEntry.headers) {
-    vercelRootHeaders[h.key] = h.value;
-  }
-}
+const netlifyRootHeaders = parseCloudflareSection('/*').headers;
+const vercelRootHeaders = getVercelHeadersMap('/(.*)');
 
 let headerParityErrors = 0;
 for (const key of REQUIRED_SECURITY_HEADERS) {
@@ -748,8 +793,54 @@ if (
   headerParityErrors += 1;
   fail('CSP em _headers/vercel.json ainda contém unsafe-inline ou fonts.googleapis.com.');
 }
+
+// Regras específicas de Cloudflare Pages: Clean URLs (/admin) e desanexo (!) sem concatenação de headers
+for (const adminRoute of ['/admin', '/admin.html']) {
+  const cfAdmin = parseCloudflareSection(adminRoute);
+  const vcAdmin = getVercelHeadersMap(adminRoute);
+  if (!cfAdmin.detaches.has('Content-Security-Policy')) {
+    headerParityErrors += 1;
+    fail(`_headers (${adminRoute}): falta "! Content-Security-Policy" para evitar concatenação com /* na Cloudflare.`);
+  }
+  if (!cfAdmin.headers['Content-Security-Policy'] || !cfAdmin.headers['Content-Security-Policy'].includes("frame-src 'self' blob:")) {
+    headerParityErrors += 1;
+    fail(`_headers (${adminRoute}): CSP deve permitir "frame-src 'self' blob:" para o preview do painel.`);
+  }
+  if (cfAdmin.headers['Content-Security-Policy'] !== vcAdmin['Content-Security-Policy']) {
+    headerParityErrors += 1;
+    fail(`Divergência de CSP em ${adminRoute} entre _headers e vercel.json.`);
+  }
+  if (cfAdmin.headers['X-Robots-Tag'] !== 'noindex, nofollow' || vcAdmin['X-Robots-Tag'] !== 'noindex, nofollow') {
+    headerParityErrors += 1;
+    fail(`${adminRoute}: X-Robots-Tag deve ser "noindex, nofollow" em _headers e vercel.json.`);
+  }
+}
+
+const CACHE_ROUTE_PAIRS = [
+  ['/css/*', '/css/(.*)', false],
+  ['/js/*', '/js/(.*)', false],
+  ['/images/*', '/images/(.*)', false],
+  ['/fonts/*', '/fonts/(.*)', true],
+];
+for (const [cfPath, vcPath, allowImmutable] of CACHE_ROUTE_PAIRS) {
+  const cfSec = parseCloudflareSection(cfPath);
+  const vcMap = getVercelHeadersMap(vcPath);
+  if (!cfSec.detaches.has('Cache-Control')) {
+    headerParityErrors += 1;
+    fail(`_headers (${cfPath}): falta "! Cache-Control" antes do novo valor para não concatenar com "no-cache" de /*.`);
+  }
+  if (!cfSec.headers['Cache-Control'] || cfSec.headers['Cache-Control'] !== vcMap['Cache-Control']) {
+    headerParityErrors += 1;
+    fail(`Divergência de Cache-Control entre _headers (${cfPath}) e vercel.json (${vcPath}).`);
+  }
+  if (!allowImmutable && cfSec.headers['Cache-Control']?.includes('immutable')) {
+    headerParityErrors += 1;
+    fail(`${cfPath}: arquivos sem hash no nome não devem usar Cache-Control immutable.`);
+  }
+}
+
 if (headerParityErrors === 0) {
-  pass('Paridade 100% entre _headers e vercel.json, com CSP estrita (style-src self; font-src self) e Cache-Control.');
+  pass('Paridade 100% entre _headers e vercel.json, com regras Cloudflare Clean URLs (/admin), desanexo (!) e cache seguro para ESM.');
 }
 
 /* ==========================================================================
