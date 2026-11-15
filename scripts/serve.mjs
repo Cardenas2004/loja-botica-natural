@@ -20,6 +20,7 @@ const MIME_TYPES = {
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
   '.xml': 'application/xml; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
 };
@@ -28,8 +29,15 @@ const server = http.createServer((req, res) => {
   try {
     const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     let pathname = decodeURIComponent(parsedUrl.pathname);
+
+    // Redireciona /produtos/<slug> para /produtos/<slug>/ se existir diretório estático ou fallback
+    const rawProductMatch = pathname.match(/^\/produtos\/([a-z0-9-]+)\/?$/i);
     if (pathname.endsWith('/')) {
       pathname += 'index.html';
+    } else if (rawProductMatch && fs.existsSync(path.join(ROOT, 'produtos', rawProductMatch[1], 'index.html'))) {
+      res.writeHead(301, { Location: `/produtos/${rawProductMatch[1]}/${parsedUrl.search}` });
+      res.end();
+      return;
     }
 
     const safePath = path.normalize(path.join(ROOT, pathname));
@@ -40,6 +48,11 @@ const server = http.createServer((req, res) => {
     }
 
     if (!fs.existsSync(safePath) || fs.statSync(safePath).isDirectory()) {
+      if (rawProductMatch) {
+        res.writeHead(302, { Location: `/produto.html?slug=${encodeURIComponent(rawProductMatch[1])}` });
+        res.end();
+        return;
+      }
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('404 Not Found');
       return;

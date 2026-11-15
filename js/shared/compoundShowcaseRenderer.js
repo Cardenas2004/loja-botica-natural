@@ -271,6 +271,17 @@ function normalizeMatchText(value) {
     .trim();
 }
 
+function resolveProductHref(product) {
+  const slug = String(product?.slug || '').trim().toLowerCase();
+  if (slug && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+    return `produtos/${encodeURIComponent(slug)}/`;
+  }
+  if (product?.id) {
+    return `produto.html?id=${encodeURIComponent(String(product.id))}`;
+  }
+  return '#produtos';
+}
+
 /**
  * Resolve o link final de destino do botão do card considerando:
  * 1. `product_id` vinculado a um produto ativo do catálogo;
@@ -286,7 +297,7 @@ export function resolveCompoundDestination(card, products = []) {
     const byId = productList.find((item) => String(item.id) === String(safeCard.product_id));
     if (byId) {
       return {
-        href: `produto.html?id=${encodeURIComponent(byId.id)}`,
+        href: resolveProductHref(byId),
         matchedProduct: byId
       };
     }
@@ -294,12 +305,12 @@ export function resolveCompoundDestination(card, products = []) {
 
   const customLink = String(safeCard.button_link || '').trim();
   if (customLink && isValidCompoundLink(customLink)) {
-    const idMatch = customLink.match(/[?&]id=([0-9a-f-]{36})/i);
+    const idMatch = customLink.match(/[?&]id=([^&#]+)/i);
     if (idMatch && productList.length > 0) {
       const linkedProd = productList.find((item) => String(item.id) === idMatch[1]);
       if (linkedProd) {
         return {
-          href: `produto.html?id=${encodeURIComponent(linkedProd.id)}`,
+          href: resolveProductHref(linkedProd),
           matchedProduct: linkedProd
         };
       }
@@ -319,7 +330,7 @@ export function resolveCompoundDestination(card, products = []) {
       });
       if (matched) {
         return {
-          href: `produto.html?id=${encodeURIComponent(matched.id)}`,
+          href: resolveProductHref(matched),
           matchedProduct: matched
         };
       }

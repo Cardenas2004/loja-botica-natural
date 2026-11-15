@@ -165,14 +165,37 @@ function resolveCategoryName(product) {
 }
 
 /**
+ * Retorna o caminho relativo canônico da página de detalhes de um produto.
+ * Prefere `/produtos/<slug>/` (página SEO estática) com fallback para `produto.html?id=...`.
+ * @param {any} product
+ * @returns {string}
+ */
+export function buildProductDetailHref(product) {
+  const slug = String(product?.slug || '').trim().toLowerCase();
+  if (slug && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+    return `produtos/${encodeURIComponent(slug)}/`;
+  }
+  const productId = String(product?.id || '').trim();
+  if (productId) {
+    return `produto.html?id=${encodeURIComponent(productId)}`;
+  }
+  return 'produto.html';
+}
+
+/**
  * Constrói a URL canônica e absoluta para a página individual do produto.
  * @param {any} product
  * @returns {string}
  */
 function resolveProductUrl(product) {
-  const productId = String(product?.id || '').trim();
+  const slug = String(product?.slug || '').trim().toLowerCase();
   const origin = SITE_DOMAIN;
 
+  if (slug && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+    return `${origin}/produtos/${encodeURIComponent(slug)}/`;
+  }
+
+  const productId = String(product?.id || '').trim();
   if (!productId) {
     return `${origin}/produtos.html`;
   }

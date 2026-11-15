@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   category_id        UUID        REFERENCES public.categories(id) ON DELETE SET NULL,
   name               TEXT        NOT NULL,
+  slug               TEXT        NOT NULL,
   sku_ref            TEXT        NOT NULL DEFAULT '',
   short_description  TEXT        NOT NULL DEFAULT '',
   description        TEXT        DEFAULT '',
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT chk_products_name_not_empty CHECK (char_length(btrim(name)) > 0 AND char_length(name) <= 200),
+  CONSTRAINT chk_products_slug_format CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
   CONSTRAINT chk_products_price_non_negative CHECK (price >= 0),
   CONSTRAINT chk_products_home_position_non_negative CHECK (home_position >= 0),
   CONSTRAINT chk_products_text_options_object CHECK (jsonb_typeof(text_options) = 'object'),
@@ -134,6 +136,9 @@ CREATE TABLE IF NOT EXISTS public.products (
     (whatsapp_message IS NULL OR char_length(whatsapp_message) <= 4000)
   )
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_products_slug_idx
+  ON public.products (slug);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku_ref_unique
   ON public.products (btrim(sku_ref))

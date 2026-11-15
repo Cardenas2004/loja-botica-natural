@@ -176,8 +176,8 @@ BEGIN
   -- 2.2 Bloqueio de INSERT em products
   v_blocked := false;
   BEGIN
-    INSERT INTO public.products (name, price, is_active)
-    VALUES ('Tentativa Invasao Insert', 10.00, true);
+    INSERT INTO public.products (name, slug, price, is_active)
+    VALUES ('Tentativa Invasao Insert', 'tentativa-invasao-insert', 10.00, true);
   EXCEPTION
     WHEN insufficient_privilege OR check_violation OR OTHERS THEN
       v_blocked := true;
@@ -298,8 +298,8 @@ BEGIN
   END IF;
 
   -- 4.2 Admin consegue inserir, atualizar e deletar
-  INSERT INTO public.products (id, name, description, price, is_active)
-  VALUES (v_admin_new_prod, 'Produto Criado Pelo Admin', 'Teste de escrita admin', 120.00, true);
+  INSERT INTO public.products (id, name, slug, description, price, is_active)
+  VALUES (v_admin_new_prod, 'Produto Criado Pelo Admin', 'produto-criado-pelo-admin', 'Teste de escrita admin', 120.00, true);
 
   UPDATE public.products SET price = 135.00 WHERE id = v_admin_new_prod;
   GET DIAGNOSTICS v_updated_rows = ROW_COUNT;

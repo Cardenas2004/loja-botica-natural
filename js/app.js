@@ -19,6 +19,7 @@ import {
 
 import {
   buildProductWhatsAppUrl as buildCentralProductWhatsAppUrl,
+  buildProductDetailHref,
   fetchProductWhatsAppTemplate,
 } from './whatsapp.js';
 
@@ -160,9 +161,7 @@ export function createProductCardElement(product) {
   const numericPrice = Number(product?.price);
   const hasValidPrice = Number.isFinite(numericPrice) && numericPrice > 0;
   const whatsappUrl = buildProductWhatsAppUrl(product);
-  const productDetailUrl = product?.id
-    ? `produto.html?id=${encodeURIComponent(product.id)}`
-    : 'produto.html';
+  const productDetailUrl = buildProductDetailHref(product);
 
   // 1. Container de Mídia (.product-card__media)
   const mediaContainer = document.createElement('div');
@@ -984,8 +983,8 @@ function syncCompoundsShowcase() {
       );
     }
 
-    if (matched && matched.id) {
-      linkEl.setAttribute('href', `produto.html?id=${encodeURIComponent(String(matched.id))}`);
+    if (matched && (matched.slug || matched.id)) {
+      linkEl.setAttribute('href', buildProductDetailHref(matched));
     }
   });
 }

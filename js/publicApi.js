@@ -420,7 +420,7 @@ export const PUBLIC_SELECT_COLUMNS = Object.freeze({
     'id,title,button_link,image_url,image_path,focus_x,focus_y,display_order,is_active,created_at,updated_at',
   CATEGORIES: 'id,name,slug,display_order,is_active,created_at,updated_at',
   PRODUCTS:
-    'id,category_id,name,sku_ref,short_description,payment_info,description,usage_instructions,composition,package_info,allergen_info,quality_note,whatsapp_message,text_options,price,image_url,image_path,is_active,is_best_seller,home_featured,home_position,created_at,updated_at,categories(id,name,slug)',
+    'id,category_id,name,slug,sku_ref,short_description,payment_info,description,usage_instructions,composition,package_info,allergen_info,quality_note,whatsapp_message,text_options,price,image_url,image_path,is_active,is_best_seller,home_featured,home_position,created_at,updated_at,categories(id,name,slug)',
   COMPOUNDS:
     'id,title,label_subtitle,label_title,label_badge,show_label,button_text,button_link,product_id,open_in_new_tab,show_button,card_theme,badge_color,title_align,botanical_theme,show_capsules,image_url,image_path,botanical_image_url,botanical_image_path,display_order,is_active,created_at,updated_at',
   SETTINGS: 'key,value,updated_at',
@@ -565,6 +565,36 @@ export async function fetchActiveProductById(productId) {
     {
       select: PUBLIC_SELECT_COLUMNS.PRODUCTS,
       id: `eq.${String(productId || '').trim()}`,
+      is_active: 'eq.true',
+      limit: '1',
+    },
+    { fallbackSelect: '*,categories(id,name,slug)' }
+  );
+
+  if (error) {
+    return { data: null, error };
+  }
+  return {
+    data: Array.isArray(data) && data.length > 0 ? data[0] : null,
+    error: null,
+  };
+}
+
+/**
+ * Busca um único produto ativo pelo `slug` (`is_active=eq.true`).
+ * @param {string} productSlug
+ * @returns {Promise<{ data: any | null, error: any | null }>}
+ */
+export async function fetchActiveProductBySlug(productSlug) {
+  const normalizedSlug = String(productSlug || '').trim().toLowerCase();
+  if (!normalizedSlug) {
+    return { data: null, error: null };
+  }
+  const { data, error } = await fetchPublicTable(
+    DB_TABLES.PRODUCTS,
+    {
+      select: PUBLIC_SELECT_COLUMNS.PRODUCTS,
+      slug: `eq.${normalizedSlug}`,
       is_active: 'eq.true',
       limit: '1',
     },

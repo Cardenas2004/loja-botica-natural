@@ -11,6 +11,7 @@
     "verify:prod": "node scripts/verify.mjs --prod",
     "build:vendor": "node scripts/bundle-vendor.mjs",
     "build:icons": "node scripts/build-icons-sprite.mjs",
+    "build:products": "node scripts/build-products.mjs",
     "serve": "node scripts/serve.mjs"
   },
   "devDependencies": {

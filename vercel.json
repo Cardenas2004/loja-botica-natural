@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build:products",
+  "outputDirectory": ".",
   "headers": [
     {
       "source": "/(.*)",

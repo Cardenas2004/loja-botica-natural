@@ -26,13 +26,35 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const ROOT_DIR = path.resolve(path.dirname(__filename), '..');
 
-const HTML_FILES = [
+const ROOT_HTML_FILES = [
   'index.html',
   'produtos.html',
   'produto.html',
   'privacidade.html',
   'admin.html',
 ];
+
+/**
+ * Coleta páginas estáticas geradas em `produtos/<slug>/index.html` se existirem.
+ * @returns {string[]}
+ */
+function collectGeneratedProductHtmlFiles() {
+  const produtosDir = path.join(ROOT_DIR, 'produtos');
+  if (!fs.existsSync(produtosDir)) return [];
+  /** @type {string[]} */
+  const list = [];
+  for (const entry of fs.readdirSync(produtosDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const rel = path.posix.join('produtos', entry.name, 'index.html');
+    if (fs.existsSync(path.join(ROOT_DIR, rel))) {
+      list.push(rel);
+    }
+  }
+  return list.sort();
+}
+
+const GENERATED_PRODUCT_HTML_FILES = collectGeneratedProductHtmlFiles();
+const HTML_FILES = [...ROOT_HTML_FILES, ...GENERATED_PRODUCT_HTML_FILES];
 
 const CSS_FILES = ['css/style.css', 'css/product.css', 'css/admin.css', 'css/icons.css', 'css/fonts.css'];
 
@@ -66,6 +88,7 @@ const JS_FILES = [
 ];
 
 const REQUIRED_SEO_FILES = [
+  'scripts/build-products.mjs',
   'robots.txt',
   'sitemap.xml',
   'privacidade.html',
@@ -88,6 +111,8 @@ const REQUIRED_SEO_FILES = [
   'supabase/migrations/20261114100000_carousel_focus_point_rollback.sql',
   'supabase/migrations/20261114110000_products_home_featured.sql',
   'supabase/migrations/20261114110000_products_home_featured_rollback.sql',
+  'supabase/migrations/20261114120000_products_slug.sql',
+  'supabase/migrations/20261114120000_products_slug_rollback.sql',
   'supabase/schema_reference.sql',
   'supabase/legacy/README.md',
   'supabase/audit/README.md',
@@ -223,7 +248,8 @@ if (whatsappConsistent) {
    2.1. CONSISTÊNCIA DE HORÁRIO, ENDEREÇO E DOMÍNIO (MED-08 / CRIT-03)
    ========================================================================== */
 console.log(`\n2.1. Verificando consistência de horário, endereço e domínio (${SITE_DOMAIN})...`);
-const PUBLIC_HTML_FILES = ['index.html', 'produtos.html', 'produto.html', 'privacidade.html'];
+const ROOT_PUBLIC_HTML_FILES = ['index.html', 'produtos.html', 'produto.html', 'privacidade.html'];
+const PUBLIC_HTML_FILES = [...ROOT_PUBLIC_HTML_FILES, ...GENERATED_PRODUCT_HTML_FILES];
 let hoursAndAddressConsistent = true;
 for (const htmlFile of PUBLIC_HTML_FILES) {
   const content = readUtf8(htmlFile);
@@ -268,10 +294,20 @@ for (const htmlFile of PUBLIC_HTML_FILES) {
     fail(`${htmlFile}: og:url "${ogUrlMatch[1]}" não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
   }
   const ogImageMatch = content.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
-  if (ogImageMatch && !ogImageMatch[1].startsWith(SITE_DOMAIN)) {
+  const isGeneratedProd = htmlFile.startsWith('produtos/');
+  const allowedOgImage =
+    ogImageMatch &&
+    (ogImageMatch[1].startsWith(SITE_DOMAIN) ||
+      (isGeneratedProd && ogImageMatch[1].startsWith('https://njdkuhgoophzjxmmempu.supabase.co/')));
+  if (ogImageMatch && !allowedOgImage) {
     domainConsistent = false;
     fail(`${htmlFile}: og:image "${ogImageMatch[1]}" não utiliza SITE_DOMAIN (${SITE_DOMAIN}).`);
   }
+}
+const produtoHtmlContent = readUtf8('produto.html');
+if (!/<meta\s+name=["']robots["']\s+content=["']noindex,\s*follow["']/i.test(produtoHtmlContent)) {
+  domainConsistent = false;
+  fail('produto.html: <meta name="robots" content="noindex, follow"> ausente (ALTO-09).');
 }
 const robotsContent = readUtf8('robots.txt');
 if (!robotsContent.includes(`Sitemap: ${SITE_DOMAIN}/sitemap.xml`)) {
@@ -280,9 +316,13 @@ if (!robotsContent.includes(`Sitemap: ${SITE_DOMAIN}/sitemap.xml`)) {
 }
 const sitemapContent = readUtf8('sitemap.xml');
 const sitemapLocs = [...sitemapContent.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
-if (sitemapLocs.length === 0 || sitemapLocs.some((loc) => !loc.startsWith(SITE_DOMAIN))) {
+if (
+  sitemapLocs.length === 0 ||
+  sitemapLocs.some((loc) => !loc.startsWith(SITE_DOMAIN)) ||
+  sitemapLocs.some((loc) => loc.includes('/produto.html'))
+) {
   domainConsistent = false;
-  fail(`sitemap.xml: uma ou mais tags <loc> não utilizam SITE_DOMAIN (${SITE_DOMAIN}).`);
+  fail(`sitemap.xml: uma ou mais tags <loc> são inválidas ou listam /produto.html.`);
 }
 if (domainConsistent) {
   pass(`Domínio canônico (${SITE_DOMAIN}) consistente em canonical, og:url, og:image, robots.txt e sitemap.xml.`);

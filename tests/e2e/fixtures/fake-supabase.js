@@ -36,6 +36,7 @@ export const initialData = {
     {
       id: 'prod-1',
       name: 'Sérum Renovador C',
+      slug: 'serum-renovador-c',
       sku_ref: 'SER-001',
       category_id: 'cat-1',
       price: 89.9,
@@ -71,6 +72,7 @@ export const initialData = {
     {
       id: 'prod-2',
       name: 'Composto Calmante Passiflora & Mulungu',
+      slug: 'composto-calmante-passiflora-mulungu',
       sku_ref: 'FIT-002',
       category_id: 'cat-2',
       price: 54.9,
@@ -94,6 +96,7 @@ export const initialData = {
     {
       id: 'prod-3',
       name: 'Gel Creme Clareador Ácido Tranexâmico 3%',
+      slug: 'gel-creme-clareador-acido-tranexamico-3',
       sku_ref: 'DER-003',
       category_id: 'cat-1',
       price: 119.0,
@@ -117,6 +120,7 @@ export const initialData = {
     {
       id: 'prod-4',
       name: 'Alcachofra + Berinjela 60 cápsulas',
+      slug: 'alcachofra-berinjela-60-capsulas',
       sku_ref: 'FIT-004',
       category_id: 'cat-2',
       price: 49.9,
@@ -140,6 +144,7 @@ export const initialData = {
     {
       id: 'prod-5',
       name: 'Loção Hidratante com Ureia 10%',
+      slug: 'locao-hidratante-com-ureia-10',
       sku_ref: 'DER-005',
       category_id: 'cat-1',
       price: 42.0,
@@ -163,6 +168,7 @@ export const initialData = {
     {
       id: 'prod-6',
       name: 'Extrato Concentrado de Própolis Verde 30ml',
+      slug: 'extrato-concentrado-de-propolis-verde-30ml',
       sku_ref: 'FIT-006',
       category_id: 'cat-2',
       price: 38.5,
@@ -186,6 +192,7 @@ export const initialData = {
     {
       id: 'prod-7',
       name: 'Colágeno Verisol com Ácido Hialurônico e Biotina',
+      slug: 'colageno-verisol-com-acido-hialuronico-e-biotina',
       sku_ref: 'DER-007',
       category_id: 'cat-1',
       price: 135.0,
@@ -209,6 +216,7 @@ export const initialData = {
     {
       id: 'prod-8',
       name: 'Fórmula Magistral Personalizada Sob Medida',
+      slug: 'formula-magistral-personalizada-sob-medida',
       sku_ref: 'ESP-008',
       category_id: 'cat-2',
       price: 0.0,

@@ -16,6 +16,7 @@ import {
   isSupabaseConfigured,
   normalizeSupabaseError,
   fetchActiveProductById,
+  fetchActiveProductBySlug,
 } from './publicApi.js';
 
 import { fetchProductWhatsAppTemplate } from './whatsapp.js';
@@ -74,7 +75,10 @@ function updateProductSeoAndJsonLd(product, resolvedImg, hasValidPrice) {
     `Fórmula manipulada sob medida na ${BRAND_NAME} com controle de qualidade farmacêutico.`;
   const productDesc = rawDesc.slice(0, 220);
 
-  const canonicalUrl = `${SITE_DOMAIN}/produto.html?id=${encodeURIComponent(String(product.id || ''))}`;
+  const rawSlug = String(product.slug || '').trim().toLowerCase();
+  const canonicalUrl = rawSlug
+    ? `${SITE_DOMAIN}/produtos/${encodeURIComponent(rawSlug)}/`
+    : `${SITE_DOMAIN}/produto.html?id=${encodeURIComponent(String(product.id || ''))}`;
   const ogImageUrl = resolvedImg.startsWith('http')
     ? resolvedImg
     : `${SITE_DOMAIN}/images/og-image.jpg`;
@@ -218,28 +222,57 @@ async function initProductPage() {
     return;
   }
 
-  const productId = urlParams.get('id')?.trim();
+  const metaProductId = document.head
+    .querySelector('meta[name="bn:product-id"]')
+    ?.getAttribute('content')
+    ?.trim();
+  const metaProductSlug = document.head
+    .querySelector('meta[name="bn:product-slug"]')
+    ?.getAttribute('content')
+    ?.trim();
+  const pathSlugMatch = window.location.pathname.match(/\/produtos\/([a-z0-9-]+)\/?$/i);
 
-  if (!productId) {
+  const productId = urlParams.get('id')?.trim() || metaProductId || '';
+  const productSlug =
+    urlParams.get('slug')?.trim() || metaProductSlug || pathSlugMatch?.[1] || '';
+
+  const hasStaticRender = Boolean(DOM.content && !DOM.content.hidden && (metaProductId || metaProductSlug));
+
+  if (!productId && !productSlug) {
     showErrorState('Nenhum código de produto foi informado no endereço da página.');
     return;
   }
 
   if (!isSupabaseConfigured) {
-    showErrorState('O catálogo está em manutenção temporária. Consulte nosso atendimento via WhatsApp.');
+    if (!hasStaticRender) {
+      showErrorState('O catálogo está em manutenção temporária. Consulte nosso atendimento via WhatsApp.');
+    }
     return;
   }
 
   try {
+    const fetchProductPromise = productId
+      ? fetchActiveProductById(productId)
+      : fetchActiveProductBySlug(productSlug);
+
     // Busca o produto ativo em paralelo com o template global do WhatsApp
-    const [{ data, error }, _waTemplate] = await Promise.all([
-      fetchActiveProductById(productId),
+    let [{ data, error }, _waTemplate] = await Promise.all([
+      fetchProductPromise,
       fetchProductWhatsAppTemplate(),
     ]);
 
+    // Fallback por slug caso o lookup inicial por ID (ou vice-versa) retorne vazio
+    if (!error && !data && productId && productSlug) {
+      const slugFallback = await fetchActiveProductBySlug(productSlug);
+      data = slugFallback.data;
+      error = slugFallback.error;
+    }
+
     if (error) {
-      const normalized = normalizeSupabaseError(error, 'Falha ao consultar detalhes do produto');
-      showErrorState(normalized.userMessage);
+      if (!hasStaticRender) {
+        const normalized = normalizeSupabaseError(error, 'Falha ao consultar detalhes do produto');
+        showErrorState(normalized.userMessage);
+      }
       return;
     }
 
@@ -255,8 +288,10 @@ async function initProductPage() {
     updateProductSeoAndJsonLd(data, resolvedImg, hasValidPrice);
     renderProduct(document, data, { isPreview: false });
   } catch (unexpectedErr) {
-    normalizeSupabaseError(unexpectedErr, 'Erro inesperado na página de produto');
-    showErrorState('Não foi possível carregar os detalhes deste produto no momento.');
+    if (!hasStaticRender) {
+      normalizeSupabaseError(unexpectedErr, 'Erro inesperado na página de produto');
+      showErrorState('Não foi possível carregar os detalhes deste produto no momento.');
+    }
   }
 }
 

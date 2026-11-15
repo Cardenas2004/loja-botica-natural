@@ -32,6 +32,7 @@ import { createLiveProductPreview } from '../preview.js';
 import {
   el,
   createIcon,
+  generateSlug,
   showToast,
   setButtonLoading,
   confirmAction,
@@ -177,6 +178,10 @@ export async function renderProductFormView(container, context) {
   function restoreDraft(data) {
     if (!data) return;
     if (data.name !== undefined) nameInput.value = data.name;
+    if (data.slug !== undefined) {
+      slugInput.value = data.slug;
+      slugManuallyEdited = Boolean(String(data.slug).trim());
+    }
     if (data.sku_ref !== undefined) skuInput.value = data.sku_ref;
     if (data.category_id !== undefined) categorySelect.value = data.category_id;
     if (data.price !== undefined) {
@@ -239,6 +244,29 @@ export async function renderProductFormView(container, context) {
      SEÇÃO 1: DADOS BÁSICOS E IMAGEM PRINCIPAL
      ======================================================================== */
 
+  let slugManuallyEdited = Boolean(editingProduct?.slug);
+
+  const slugInput = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'text',
+      id: 'prod-slug',
+      className: 'form-control',
+      placeholder: 'Ex: composto-magno-6-60-capsulas',
+      maxlength: '160',
+      value: editingProduct?.slug || generateSlug(editingProduct?.name || ''),
+      onInput: () => {
+        slugManuallyEdited = slugInput.value.trim().length > 0;
+        markDirty();
+      },
+      onBlur: () => {
+        const sanitized = generateSlug(slugInput.value || nameInput.value);
+        slugInput.value = sanitized;
+        if (!sanitized) slugManuallyEdited = false;
+        syncLivePreviewAndSeo();
+      },
+    })
+  );
+
   const nameInput = /** @type {HTMLInputElement} */ (
     el('input', {
       type: 'text',
@@ -248,7 +276,12 @@ export async function renderProductFormView(container, context) {
       required: true,
       maxlength: '180',
       value: editingProduct?.name || '',
-      onInput: markDirty,
+      onInput: () => {
+        if (!slugManuallyEdited) {
+          slugInput.value = generateSlug(nameInput.value);
+        }
+        markDirty();
+      },
       onFocus: () => livePreview.focusField('name'),
     })
   );
@@ -787,6 +820,7 @@ export async function renderProductFormView(container, context) {
     return {
       id: currentProductId || 'preview-novo',
       name: nameInput.value.trim(),
+      slug: generateSlug(slugInput.value.trim() || nameInput.value.trim()),
       sku_ref: skuInput.value.trim(),
       category_id: categorySelect.value || null,
       category_name: selectedCat?.name || 'Fórmulas Manipuladas',
@@ -834,7 +868,10 @@ export async function renderProductFormView(container, context) {
       `Fórmula manipulada sob medida na ${BRAND_NAME} com controle de qualidade farmacêutico.`;
 
     seoTitlePreview.textContent = titleText;
-    seoUrlPreview.textContent = `${SITE_DOMAIN}/produto.html?id=${currentProductId || 'uuid-do-produto'}`;
+    const effectiveSlug = generateSlug(data.slug || data.name);
+    seoUrlPreview.textContent = effectiveSlug
+      ? `${SITE_DOMAIN}/produtos/${effectiveSlug}/`
+      : `${SITE_DOMAIN}/produto.html?id=${currentProductId || 'uuid-do-produto'}`;
     seoDescPreview.textContent = plainDesc.slice(0, 160);
   }
 
@@ -994,7 +1031,18 @@ export async function renderProductFormView(container, context) {
       ]),
     ]),
 
-    seo: el('div', { className: 'product-form-section', hidden: true }, [seoCard]),
+    seo: el('div', { className: 'product-form-section', hidden: true }, [
+      el('div', { className: 'form-group' }, [
+        el('label', { for: 'prod-slug', className: 'form-label', textContent: 'Slug da URL (SEO)' }),
+        slugInput,
+        el('span', {
+          className: 'form-hint',
+          textContent:
+            'Gerado automaticamente a partir do nome. Use apenas letras minúsculas, números e hífens.',
+        }),
+      ]),
+      seoCard,
+    ]),
   };
 
   /** @type {Array<{ id: keyof typeof tabPanels, label: string, icon: string }>} */
@@ -1154,6 +1202,7 @@ export async function renderProductFormView(container, context) {
     try {
       const payload = {
         name: data.name,
+        slug: data.slug,
         sku_ref: data.sku_ref,
         category_id: data.category_id,
         price: data.price,
@@ -1190,6 +1239,10 @@ export async function renderProductFormView(container, context) {
         originalUpdatedAt = saved.updated_at || originalUpdatedAt;
         oldImagePath = saved.image_path ?? '';
         existingImageUrl = saved.image_url ?? '';
+        if (saved.slug) {
+          slugInput.value = saved.slug;
+          slugManuallyEdited = true;
+        }
       }
 
       isImageCleared = false;

@@ -334,7 +334,7 @@ export async function fetchCategories() {
 }
 
 export const PRODUCT_LIST_SELECT_COLUMNS =
-  'id, name, sku_ref, price, is_active, is_best_seller, home_featured, home_position, category_id, categories(name), image_url, image_path, updated_at, short_description, description, usage_instructions, composition, package_info, allergen_info, quality_note, payment_info, whatsapp_message, text_options, benefits';
+  'id, name, slug, sku_ref, price, is_active, is_best_seller, home_featured, home_position, category_id, categories(name), image_url, image_path, updated_at, short_description, description, usage_instructions, composition, package_info, allergen_info, quality_note, payment_info, whatsapp_message, text_options, benefits';
 
 const PRODUCT_LIST_FALLBACK_COLUMNS =
   'id, name, sku_ref, price, is_active, is_best_seller, category_id, categories(name), image_url, image_path, updated_at, short_description, description, usage_instructions, composition, package_info, allergen_info, quality_note, payment_info, whatsapp_message, text_options, benefits';
@@ -777,6 +777,10 @@ export async function saveProductRecord(payload, options = {}) {
       ...payload,
       updated_at: new Date().toISOString(),
     };
+    const normalizedSlug = generateSlug(String(payload.slug || payload.name || ''));
+    if (normalizedSlug) {
+      record.slug = normalizedSlug;
+    }
 
     if (uploaded) {
       record.image_path = uploaded.imagePath;
@@ -855,9 +859,12 @@ export async function saveProductRecord(payload, options = {}) {
  */
 export async function duplicateProductRecord(sourceProduct) {
   const copyName = `${String(sourceProduct.name || 'Produto').slice(0, 185)} (Cópia)`;
+  const baseSlug = generateSlug(sourceProduct.slug || sourceProduct.name || 'produto') || 'produto';
+  const copySuffix = `copia-${Date.now().toString(36).slice(-4)}`;
   /** @type {Record<string, any>} */
   const payload = {
     name: copyName,
+    slug: `${baseSlug}-${copySuffix}`,
     sku_ref: sourceProduct.sku_ref ? `${sourceProduct.sku_ref}-COPIA` : '',
     category_id: sourceProduct.category_id || null,
     price: Number(sourceProduct.price) || 0,
