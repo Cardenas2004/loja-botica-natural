@@ -12,6 +12,7 @@ import {
   LGPD_CONSENT_KEY,
   DEFAULT_WHATSAPP_GREETING,
   SITE_CONFIG,
+  ANALYTICS,
 } from './config.js';
 
 (() => {
@@ -117,15 +118,19 @@ import {
       const ctaLocation = sanitizeSlug(link.dataset.wa) || 'geral';
       const payload = { event: 'whatsapp_click', cta_location: ctaLocation };
 
-      // LGPD: Só envia eventos para camadas de analytics/pixel após consentimento explícito
-      if (!hasCookieConsent()) return;
+      // LGPD: Só envia eventos para camadas de analytics/pixel após consentimento explícito por categoria
+      const analyticsConsented = hasCookieConsent('analytics');
+      const marketingConsented = hasCookieConsent('marketing');
+      if (!analyticsConsented && !marketingConsented) return;
 
       try {
-        (window.dataLayer = window.dataLayer || []).push(payload);
-        if (typeof window.gtag === 'function') {
-          window.gtag('event', 'whatsapp_click', { cta_location: ctaLocation });
+        if (analyticsConsented) {
+          (window.dataLayer = window.dataLayer || []).push(payload);
+          if (typeof window.gtag === 'function') {
+            window.gtag('event', 'whatsapp_click', { cta_location: ctaLocation });
+          }
         }
-        if (typeof window.fbq === 'function') {
+        if (marketingConsented && typeof window.fbq === 'function') {
           window.fbq('track', 'Contact');
         }
       } catch {
@@ -679,22 +684,27 @@ import {
     };
 
     const saveConsentRecord = (choices) => {
+      const payload = {
+        v: 1,
+        ts: Date.now(),
+        choices: {
+          essential: true,
+          analytics: Boolean(choices?.analytics),
+          marketing: Boolean(choices?.marketing),
+        },
+      };
       try {
-        const payload = {
-          v: 1,
-          ts: Date.now(),
-          choices: {
-            essential: true,
-            analytics: Boolean(choices?.analytics),
-            marketing: Boolean(choices?.marketing),
-          },
-        };
         localStorage.setItem(CONFIG.cookieKey, JSON.stringify(payload));
       } catch {
         /* ignore */
       }
       banner.hidden = true;
       document.documentElement.classList.remove('has-cookie');
+      try {
+        window.dispatchEvent(new CustomEvent('bn:cookie-consent-updated', { detail: payload }));
+      } catch {
+        /* ignore */
+      }
     };
 
     const existingConsent = readConsentRecord();
@@ -764,6 +774,76 @@ import {
     });
   };
 
+  /* 11. ANALYTICS — Infraestrutura LGPD condicionada a consentimento e IDs configurados */
+  const GA4_ID_RE = /^G-[A-Z0-9]{4,20}$/;
+  const META_PIXEL_ID_RE = /^\d{8,20}$/;
+  let ga4Loaded = false;
+  let metaPixelLoaded = false;
+  let analyticsConsentListenerBound = false;
+
+  const appendExternalAnalyticsScript = (src, tagKey) => {
+    const parent = document.head || document.body;
+    if (!parent) return false;
+    if (document.querySelector(`script[data-analytics="${tagKey}"]`)) return false;
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = src;
+    script.dataset.analytics = tagKey;
+    parent.appendChild(script);
+    return true;
+  };
+
+  const loadGa4 = (ga4Id) => {
+    if (ga4Loaded || !GA4_ID_RE.test(ga4Id)) return;
+    window.dataLayer = window.dataLayer || [];
+    if (typeof window.gtag !== 'function') {
+      window.gtag = function gtag() {
+        window.dataLayer.push(arguments);
+      };
+    }
+    window.gtag('js', new Date());
+    window.gtag('config', ga4Id, { anonymize_ip: true });
+    appendExternalAnalyticsScript(
+      `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(ga4Id)}`,
+      'ga4'
+    );
+    ga4Loaded = true;
+  };
+
+  const loadMetaPixel = (pixelId) => {
+    if (metaPixelLoaded || !META_PIXEL_ID_RE.test(pixelId)) return;
+    if (typeof window.fbq !== 'function') {
+      const fbqFn = function fbq() {
+        if (fbqFn.callMethod) {
+          fbqFn.callMethod.apply(fbqFn, arguments);
+        } else {
+          fbqFn.queue.push(arguments);
+        }
+      };
+      fbqFn.push = fbqFn;
+      fbqFn.loaded = true;
+      fbqFn.version = '2.0';
+      fbqFn.queue = [];
+      window.fbq = fbqFn;
+      if (!window._fbq) window._fbq = fbqFn;
+    }
+    window.fbq('init', pixelId);
+    window.fbq('track', 'PageView');
+    appendExternalAnalyticsScript('https://connect.facebook.net/en_US/fbevents.js', 'meta-pixel');
+    metaPixelLoaded = true;
+  };
+
+  const initAnalyticsIfConsented = () => {
+    const ga4Id = String(ANALYTICS?.ga4MeasurementId || '').trim();
+    const metaPixelId = String(ANALYTICS?.metaPixelId || '').trim();
+    if (ga4Id && hasCookieConsent('analytics')) {
+      loadGa4(ga4Id);
+    }
+    if (metaPixelId && hasCookieConsent('marketing')) {
+      loadMetaPixel(metaPixelId);
+    }
+  };
+
   const init = () => {
     initWhatsApp();
     initScrollEffects();
@@ -775,6 +855,11 @@ import {
     initCounters();
     initFaq();
     initCookieConsent();
+    initAnalyticsIfConsented();
+    if (!analyticsConsentListenerBound) {
+      window.addEventListener('bn:cookie-consent-updated', initAnalyticsIfConsented);
+      analyticsConsentListenerBound = true;
+    }
     initYear();
   };
 

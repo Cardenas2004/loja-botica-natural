@@ -59,6 +59,16 @@ export const DEFAULT_WHATSAPP_GREETING = `Olá! Gostaria de fazer um orçamento 
 export const SHOW_INSTALLMENTS = false;
 
 /**
+ * Configuração de Analytics (GA4 e Meta Pixel), desligada por padrão.
+ * Os scripts externos só são carregados após consentimento LGPD explícito.
+ */
+export const ANALYTICS = Object.freeze({
+  // [PREENCHER: IDs de GA4 e Meta Pixel após decisão comercial, ou confirmar desabilitado]
+  ga4MeasurementId: '',
+  metaPixelId: '',
+});
+
+/**
  * Objeto congelado de configuração do WhatsApp e vitrine.
  */
 export const SITE_CONFIG = Object.freeze({
@@ -76,5 +86,6 @@ export const SITE_CONFIG = Object.freeze({
   SHOW_INSTALLMENTS,
   MAX_INSTALLMENTS: 6,
   MAX_BESTSELLERS: 6,
+  ANALYTICS,
 });
 
