@@ -187,6 +187,8 @@ export async function renderProductFormView(container, context) {
     }
     if (data.is_active !== undefined) activeCheckbox.checked = Boolean(data.is_active);
     if (data.is_best_seller !== undefined) bestsellerCheckbox.checked = Boolean(data.is_best_seller);
+    if (data.home_featured !== undefined) homeFeaturedCheckbox.checked = Boolean(data.home_featured);
+    if (data.home_position !== undefined) homePositionInput.value = String(Math.max(0, Number(data.home_position) || 0));
     if (data.whatsapp_message !== undefined) waTextarea.value = data.whatsapp_message;
 
     if (data.short_description !== undefined) shortDescEditor.setValue(data.short_description, data.text_options?.short_description);
@@ -342,6 +344,28 @@ export async function renderProductFormView(container, context) {
       className: 'toggle-switch toggle-switch--gold',
       checked: editingProduct ? Boolean(editingProduct.is_best_seller) : false,
       onChange: markDirty,
+    })
+  );
+
+  const homeFeaturedCheckbox = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'checkbox',
+      id: 'prod-home-featured',
+      className: 'toggle-switch toggle-switch--gold',
+      checked: editingProduct ? Boolean(editingProduct.home_featured) : false,
+      onChange: markDirty,
+    })
+  );
+
+  const homePositionInput = /** @type {HTMLInputElement} */ (
+    el('input', {
+      type: 'number',
+      id: 'prod-home-position',
+      className: 'form-control',
+      min: '0',
+      step: '1',
+      value: String(Math.max(0, Number(editingProduct?.home_position) || 0)),
+      onInput: markDirty,
     })
   );
 
@@ -783,6 +807,8 @@ export async function renderProductFormView(container, context) {
       preview_blob_url: activeBlobUrl || '',
       is_active: Boolean(activeCheckbox.checked),
       is_best_seller: Boolean(bestsellerCheckbox.checked),
+      home_featured: Boolean(homeFeaturedCheckbox.checked),
+      home_position: Math.max(0, Number.parseInt(homePositionInput.value || '0', 10) || 0),
     };
   }
 
@@ -887,10 +913,39 @@ export async function renderProductFormView(container, context) {
               ]),
               el('span', {
                 className: 'toggle-desc',
-                textContent: 'Destacar na vitrine da página inicial',
+                textContent: 'Exibir selo de Mais Vendido no card',
               }),
             ]),
           ]),
+        ]),
+      ]),
+      el('div', { className: 'form-row form-row--2col' }, [
+        el('div', { className: 'form-group toggle-group' }, [
+          el('label', { for: 'prod-home-featured', className: 'toggle-card toggle-card--gold' }, [
+            homeFeaturedCheckbox,
+            el('span', { className: 'toggle-content' }, [
+              el('strong', { className: 'toggle-title' }, [
+                createIcon('fa-solid fa-bolt'),
+                el('span', { textContent: ' Destacar na Home' }),
+              ]),
+              el('span', {
+                className: 'toggle-desc',
+                textContent: 'Exibir com prioridade na vitrine da página inicial',
+              }),
+            ]),
+          ]),
+        ]),
+        el('div', { className: 'form-group' }, [
+          el('label', {
+            for: 'prod-home-position',
+            className: 'form-label',
+            textContent: 'Posição na Home (0 = primeiro)',
+          }),
+          homePositionInput,
+          el('span', {
+            className: 'form-hint',
+            textContent: 'Controla a ordem dos produtos destacados na página inicial.',
+          }),
         ]),
       ]),
     ]),
@@ -1114,6 +1169,8 @@ export async function renderProductFormView(container, context) {
         text_options: data.text_options,
         is_active: data.is_active,
         is_best_seller: data.is_best_seller,
+        home_featured: data.home_featured,
+        home_position: data.home_position,
       };
 
       const saved = await saveProductRecord(payload, {
@@ -1178,6 +1235,12 @@ export async function renderProductFormView(container, context) {
           context.navigate('#/produtos');
           return;
         }
+      }
+      if (err?.isDeleted) {
+        clearDraftStorage();
+        showToast('Este produto foi removido em outra aba ou sessão.', 'warning');
+        context.navigate('#/produtos');
+        return;
       }
       const normalized = normalizeSupabaseError(err, 'Não foi possível salvar o produto');
       showToast(normalized.userMessage, 'error');

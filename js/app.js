@@ -493,6 +493,10 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
   let autoplayTimerId = null;
   /** @type {number | null} */
   let scrollRafId = null;
+  /** @type {number | null} */
+  let programmaticTargetIdx = null;
+  /** @type {number | null} */
+  let programmaticTimerId = null;
 
   const slides = Array.from(wrapperEl.querySelectorAll('.promo__slide'));
   /** @type {HTMLButtonElement[]} */
@@ -531,8 +535,8 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     pauseBtn.setAttribute(
       'aria-label',
       isManuallyPaused
-        ? 'Retomar rotação automática dos banners'
-        : 'Pausar rotação automática dos banners'
+        ? 'Retomar banners — rotação automática'
+        : 'Pausar banners — rotação automática'
     );
     const iconEl = pauseBtn.querySelector('i');
     if (iconEl) {
@@ -562,6 +566,14 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     carouselEl.dataset.activeSlide = String(currentIndex);
   }
 
+  function clearProgrammaticScrollLock() {
+    programmaticTargetIdx = null;
+    if (programmaticTimerId !== null) {
+      window.clearTimeout(programmaticTimerId);
+      programmaticTimerId = null;
+    }
+  }
+
   function goToSlide(/** @type {number} */ targetIdx, options = {}) {
     if (slideCount <= 0) return;
     currentIndex = ((targetIdx % slideCount) + slideCount) % slideCount;
@@ -569,12 +581,21 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
 
     const slideWidth = wrapperEl.clientWidth || carouselEl.clientWidth || 0;
     const targetLeft = currentIndex * slideWidth;
+    clearProgrammaticScrollLock();
+    if (Math.abs(wrapperEl.scrollLeft - targetLeft) > 2) {
+      programmaticTargetIdx = currentIndex;
+      programmaticTimerId = window.setTimeout(() => {
+        programmaticTargetIdx = null;
+        programmaticTimerId = null;
+      }, 800);
+    }
     try {
       wrapperEl.scrollTo({
         left: targetLeft,
         behavior: options.instant || prefersReducedMotion ? 'auto' : 'smooth',
       });
     } catch {
+      clearProgrammaticScrollLock();
       wrapperEl.scrollLeft = targetLeft;
     }
   }
@@ -671,12 +692,22 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
     scrollRafId = requestAnimationFrame(() => {
       const w = wrapperEl.clientWidth || 1;
+      if (programmaticTargetIdx !== null) {
+        if (Math.abs(wrapperEl.scrollLeft - programmaticTargetIdx * w) <= 2) {
+          clearProgrammaticScrollLock();
+        }
+        return;
+      }
       const idx = Math.round(wrapperEl.scrollLeft / w);
       if (idx >= 0 && idx < slideCount && idx !== currentIndex) {
         currentIndex = idx;
         syncActiveIndicators();
       }
     });
+  };
+
+  const onScrollEnd = () => {
+    clearProgrammaticScrollLock();
   };
 
   const onVisibilityChange = () => {
@@ -702,6 +733,7 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
   carouselEl.addEventListener('focusin', onFocusIn);
   carouselEl.addEventListener('focusout', onFocusOut);
   wrapperEl.addEventListener('scroll', onScroll, { passive: true });
+  wrapperEl.addEventListener('scrollend', onScrollEnd, { passive: true });
   document.addEventListener('visibilitychange', onVisibilityChange);
   reducedMotionMQ?.addEventListener('change', onReducedMotionChange);
 
@@ -711,6 +743,7 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
 
   destroyHeroCarouselController = () => {
     stopAutoplayTimer();
+    clearProgrammaticScrollLock();
     if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
     prevBtn?.removeEventListener('click', onPrevClick);
     nextBtn?.removeEventListener('click', onNextClick);
@@ -721,6 +754,7 @@ function initNativeHeroCarousel(carouselEl, wrapperEl, slideCount) {
     carouselEl.removeEventListener('focusin', onFocusIn);
     carouselEl.removeEventListener('focusout', onFocusOut);
     wrapperEl.removeEventListener('scroll', onScroll);
+    wrapperEl.removeEventListener('scrollend', onScrollEnd);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     reducedMotionMQ?.removeEventListener('change', onReducedMotionChange);
   };
@@ -832,9 +866,15 @@ function renderBestSellers() {
 
   if (!bestSellersSection || !container) return;
 
-  let featuredProducts = catalogState.products.filter(
-    (product) => Boolean(product.is_best_seller)
+  const homeFeaturedProducts = catalogState.products
+    .filter((product) => Boolean(product.home_featured))
+    .sort((a, b) => (Number(a.home_position) || 0) - (Number(b.home_position) || 0));
+
+  const bestSellerProducts = catalogState.products.filter(
+    (product) => Boolean(product.is_best_seller) && !product.home_featured
   );
+
+  let featuredProducts = [...homeFeaturedProducts, ...bestSellerProducts];
 
   if (featuredProducts.length === 0 && catalogState.products.length > 0) {
     featuredProducts = catalogState.products.slice(0, WHATSAPP_CONFIG.MAX_BESTSELLERS);
@@ -845,18 +885,21 @@ function renderBestSellers() {
   if (featuredProducts.length === 0) {
     if (catalogState.hasError) {
       bestSellersSection.hidden = false;
+      container.hidden = false;
       container.replaceChildren(createStorefrontFallbackElement());
       container.setAttribute('aria-busy', 'false');
       renderCompoundsShowcase();
       return;
     }
     container.replaceChildren();
-    bestSellersSection.hidden = true;
+    container.hidden = true;
     container.setAttribute('aria-busy', 'false');
+    renderCompoundsShowcase();
     return;
   }
 
   bestSellersSection.hidden = false;
+  container.hidden = false;
 
   const fragment = document.createDocumentFragment();
 
@@ -889,22 +932,22 @@ function renderCompoundsShowcase() {
       fragment.appendChild(cardEl);
     });
     track.replaceChildren(fragment);
+    track.setAttribute('aria-busy', 'false');
     showcase.hidden = false;
     return;
   }
 
-  if (track.children.length === 0) {
-    const fallbackFragment = document.createDocumentFragment();
-    DEFAULT_COMPOUND_CARDS.forEach((card, index) => {
-      const cardEl = createCompoundCardElement(card, {
-        products: catalogState.products,
-        isPreview: false,
-        uniqueIndex: index,
-      });
-      fallbackFragment.appendChild(cardEl);
+  const fallbackFragment = document.createDocumentFragment();
+  DEFAULT_COMPOUND_CARDS.forEach((card, index) => {
+    const cardEl = createCompoundCardElement(card, {
+      products: catalogState.products,
+      isPreview: false,
+      uniqueIndex: index,
     });
-    track.replaceChildren(fallbackFragment);
-  }
+    fallbackFragment.appendChild(cardEl);
+  });
+  track.replaceChildren(fallbackFragment);
+  track.setAttribute('aria-busy', 'false');
 
   showcase.hidden = false;
   syncCompoundsShowcase();

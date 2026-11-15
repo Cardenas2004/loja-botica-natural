@@ -13,8 +13,24 @@ if (!globalThis.__log) {
  */
 export const initialData = {
   categories: [
-    { id: 'cat-1', name: 'Dermocosméticos', slug: 'dermocosmeticos', display_order: 1, is_active: true },
-    { id: 'cat-2', name: 'Fitoterapia', slug: 'fitoterapia', display_order: 2, is_active: true },
+    {
+      id: 'cat-1',
+      name: 'Dermocosméticos',
+      slug: 'dermocosmeticos',
+      display_order: 1,
+      is_active: true,
+      created_at: new Date(Date.now() - 90000000).toISOString(),
+      updated_at: new Date(Date.now() - 3600000).toISOString(),
+    },
+    {
+      id: 'cat-2',
+      name: 'Fitoterapia',
+      slug: 'fitoterapia',
+      display_order: 2,
+      is_active: true,
+      created_at: new Date(Date.now() - 90000000).toISOString(),
+      updated_at: new Date(Date.now() - 3600000).toISOString(),
+    },
   ],
   products: [
     {
@@ -27,6 +43,8 @@ export const initialData = {
       image_path: 'catalogo/serum.webp',
       is_active: true,
       is_best_seller: true,
+      home_featured: true,
+      home_position: 1,
       short_description: 'Vitamina C a 10% pura & Ácido Hialurônico.',
       description: 'Fórmula antioxidante de alta estabilidade para rejuvenescimento facial.',
       usage_instructions: 'Aplicar 4 a 5 gotas pela manhã antes do protetor solar.',
@@ -224,7 +242,8 @@ export const initialData = {
       focus_y: 50,
       display_order: 1,
       is_active: true,
-      created_at: new Date().toISOString(),
+      created_at: new Date(Date.now() - 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 3600000).toISOString(),
     },
     {
       id: 'banner-2',
@@ -237,7 +256,8 @@ export const initialData = {
       focus_y: 65,
       display_order: 2,
       is_active: true,
-      created_at: new Date().toISOString(),
+      created_at: new Date(Date.now() - 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 3600000).toISOString(),
     },
   ],
   site_settings: [
@@ -430,6 +450,13 @@ function persistDb() {
 
 // Cópia mutável em memória persistida no sessionStorage da aba
 let db = loadDb();
+persistDb();
+
+globalThis.__mutateFakeDb = (mutator) => {
+  db = loadDb();
+  mutator(db);
+  persistDb();
+};
 
 export function resetFakeDatabase() {
   db = JSON.parse(JSON.stringify(initialData));
@@ -556,6 +583,7 @@ class FakeQueryBuilder {
   }
 
   _execute() {
+    db = loadDb();
     if (!db[this.table]) {
       db[this.table] = [];
     }
@@ -574,13 +602,22 @@ class FakeQueryBuilder {
         const row = {
           ...item,
           id: item.id || `id-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: item.created_at || new Date().toISOString(),
+          updated_at: item.updated_at || new Date().toISOString(),
         };
         list.push(row);
         inserted.push(row);
       }
       persistDb();
+      if (this.isMaybeSingle) {
+        return { data: inserted.length > 0 ? inserted[0] : null, error: null, count: inserted.length };
+      }
+      if (this.isSingle) {
+        if (inserted.length === 0) {
+          return { data: null, error: { message: 'Row not found', code: 'PGRST116' }, count: 0 };
+        }
+        return { data: inserted[0], error: null, count: 1 };
+      }
       return { data: inserted, error: null };
     }
 
@@ -591,11 +628,22 @@ class FakeQueryBuilder {
         const matches = this.filters.every((fn) => fn(row));
         if (matches) {
           matchedCount++;
-          Object.assign(row, this.mutationData, { updated_at: new Date().toISOString() });
+          Object.assign(row, this.mutationData, {
+            updated_at: this.mutationData?.updated_at || new Date().toISOString(),
+          });
           updatedRows.push(row);
         }
       }
       persistDb();
+      if (this.isMaybeSingle) {
+        return { data: updatedRows.length > 0 ? updatedRows[0] : null, error: null, count: matchedCount };
+      }
+      if (this.isSingle) {
+        if (updatedRows.length === 0) {
+          return { data: null, error: { message: 'Row not found', code: 'PGRST116' }, count: 0 };
+        }
+        return { data: updatedRows[0], error: null, count: 1 };
+      }
       return { data: updatedRows, error: null, count: matchedCount };
     }
 

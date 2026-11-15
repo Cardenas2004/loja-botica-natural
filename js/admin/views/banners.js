@@ -44,6 +44,8 @@ const FOCUS_PRESETS_3X3 = [
 export function renderBannersView(container) {
   let editingId = '';
   let oldImagePath = '';
+  /** @type {string | null} */
+  let originalUpdatedAt = null;
   /** @type {File | null} */
   let selectedFile = null;
   /** @type {string | null} */
@@ -487,6 +489,7 @@ export function renderBannersView(container) {
   function resetForm() {
     editingId = '';
     oldImagePath = '';
+    originalUpdatedAt = null;
     selectedFile = null;
     fileInput.value = '';
     isDesktopImageCleared = false;
@@ -514,6 +517,7 @@ export function renderBannersView(container) {
   function startEdit(/** @type {any} */ slide) {
     editingId = slide.id;
     oldImagePath = slide.image_path || '';
+    originalUpdatedAt = slide.updated_at || null;
     selectedFile = null;
     fileInput.value = '';
     isDesktopImageCleared = false;
@@ -549,6 +553,99 @@ export function renderBannersView(container) {
     showToast(`Modo de edição ativado para ${slideLabel}.`, 'info');
   }
 
+  async function submitBannerForm(forceOverwrite = false) {
+    if ((!editingId || isDesktopImageCleared) && !selectedFile) {
+      showToast('Selecione uma imagem panorâmica para adicionar ao carrossel.', 'warning');
+      fileInput.focus();
+      return;
+    }
+
+    const buttonLink = linkInput.value.trim();
+    if (!isValidBannerLink(buttonLink)) {
+      showToast(
+        'Link inválido. Use https://, http:// ou um caminho relativo (ex: produtos.html).',
+        'warning'
+      );
+      linkInput.focus();
+      return;
+    }
+
+    setButtonLoading(
+      saveBtn,
+      true,
+      selectedFile ? 'Otimizando WebP e enviando...' : 'Salvando...',
+      editingId ? 'Salvar Alterações / Trocar Foto' : 'Adicionar Banner'
+    );
+
+    if (selectedFile) {
+      progressWrap.hidden = false;
+      progressFill.style.width = '10%';
+    }
+
+    try {
+      await saveCarouselSlide(
+        {
+          title: titleInput.value.trim(),
+          button_link: buttonLink,
+          display_order: Math.max(0, Number.parseInt(orderInput.value || '1', 10) || 1),
+          is_active: Boolean(activeCheckbox.checked),
+          focus_x: currentFocusX,
+          focus_y: currentFocusY,
+        },
+        {
+          editingId,
+          oldImagePath,
+          originalUpdatedAt,
+          forceOverwrite,
+          file: selectedFile,
+          onProgress: (pct) => {
+            progressFill.style.width = `${pct}%`;
+          },
+        }
+      );
+
+      showToast(
+        editingId
+          ? 'Banner atualizado com sucesso!'
+          : 'Novo banner adicionado ao carrossel!',
+        'success'
+      );
+      resetForm();
+    } catch (err) {
+      if (err?.isConflict) {
+        const shouldOverwrite = await confirmAction({
+          title: 'Edição concorrente detectada',
+          message:
+            'Este banner foi alterado em outra aba enquanto você editava. Deseja sobrescrever mesmo assim?',
+          confirmLabel: 'Sobrescrever',
+          cancelLabel: 'Cancelar e recarregar',
+        });
+        if (shouldOverwrite) {
+          await submitBannerForm(true);
+          return;
+        }
+        resetForm();
+        return;
+      }
+      if (err?.isDeleted) {
+        showToast('Este banner foi removido em outra aba.', 'warning');
+        resetForm();
+        return;
+      }
+      const normalized = normalizeSupabaseError(err, 'Erro ao salvar banner');
+      showToast(normalized.userMessage, 'error');
+    } finally {
+      progressWrap.hidden = true;
+      setButtonLoading(
+        saveBtn,
+        false,
+        'Salvando...',
+        editingId ? 'Salvar Alterações / Trocar Foto' : 'Adicionar Banner',
+        editingId ? 'fa-solid fa-floppy-disk' : 'fa-solid fa-cloud-arrow-up'
+      );
+    }
+  }
+
   const formEl = el(
     'form',
     {
@@ -557,75 +654,7 @@ export function renderBannersView(container) {
       novalidate: true,
       onSubmit: async (/** @type {SubmitEvent} */ e) => {
         e.preventDefault();
-
-        if ((!editingId || isDesktopImageCleared) && !selectedFile) {
-          showToast('Selecione uma imagem panorâmica para adicionar ao carrossel.', 'warning');
-          fileInput.focus();
-          return;
-        }
-
-        const buttonLink = linkInput.value.trim();
-        if (!isValidBannerLink(buttonLink)) {
-          showToast(
-            'Link inválido. Use https://, http:// ou um caminho relativo (ex: produtos.html).',
-            'warning'
-          );
-          linkInput.focus();
-          return;
-        }
-
-        setButtonLoading(
-          saveBtn,
-          true,
-          selectedFile ? 'Otimizando WebP e enviando...' : 'Salvando...',
-          editingId ? 'Salvar Alterações / Trocar Foto' : 'Adicionar Banner'
-        );
-
-        if (selectedFile) {
-          progressWrap.hidden = false;
-          progressFill.style.width = '10%';
-        }
-
-        try {
-          await saveCarouselSlide(
-            {
-              title: titleInput.value.trim(),
-              button_link: buttonLink,
-              display_order: Math.max(0, Number.parseInt(orderInput.value || '1', 10) || 1),
-              is_active: Boolean(activeCheckbox.checked),
-              focus_x: currentFocusX,
-              focus_y: currentFocusY,
-            },
-            {
-              editingId,
-              oldImagePath,
-              file: selectedFile,
-              onProgress: (pct) => {
-                progressFill.style.width = `${pct}%`;
-              },
-            }
-          );
-
-          showToast(
-            editingId
-              ? 'Banner atualizado com sucesso!'
-              : 'Novo banner adicionado ao carrossel!',
-            'success'
-          );
-          resetForm();
-        } catch (err) {
-          const normalized = normalizeSupabaseError(err, 'Erro ao salvar banner');
-          showToast(normalized.userMessage, 'error');
-        } finally {
-          progressWrap.hidden = true;
-          setButtonLoading(
-            saveBtn,
-            false,
-            'Salvando...',
-            editingId ? 'Salvar Alterações / Trocar Foto' : 'Adicionar Banner',
-            editingId ? 'fa-solid fa-floppy-disk' : 'fa-solid fa-cloud-arrow-up'
-          );
-        }
+        await submitBannerForm(false);
       },
     },
     [

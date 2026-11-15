@@ -24,6 +24,8 @@ import {
  */
 export function renderCategoriesView(container) {
   let editingId = '';
+  /** @type {string | null} */
+  let originalUpdatedAt = null;
 
   const idInput = /** @type {HTMLInputElement} */ (el('input', { type: 'hidden', id: 'cat-id' }));
   const nameInput = /** @type {HTMLInputElement} */ (
@@ -99,6 +101,7 @@ export function renderCategoriesView(container) {
 
   function resetForm() {
     editingId = '';
+    originalUpdatedAt = null;
     idInput.value = '';
     nameInput.value = '';
     slugInput.value = '';
@@ -111,6 +114,7 @@ export function renderCategoriesView(container) {
 
   function startEdit(/** @type {any} */ cat) {
     editingId = cat.id;
+    originalUpdatedAt = cat.updated_at || null;
     idInput.value = cat.id;
     nameInput.value = cat.name || '';
     slugInput.value = cat.slug || generateSlug(cat.name || '');
@@ -122,6 +126,73 @@ export function renderCategoriesView(container) {
     nameInput.focus();
   }
 
+  async function submitCategoryForm(forceOverwrite = false) {
+    const name = nameInput.value.trim();
+    const slug = generateSlug(slugInput.value || name);
+    const display_order = Math.max(0, Number.parseInt(orderInput.value || '0', 10) || 0);
+    const is_active = Boolean(activeCheckbox.checked);
+
+    if (!name || !slug) {
+      showToast('Informe um nome válido para a categoria.', 'warning');
+      nameInput.focus();
+      return;
+    }
+
+    const isEditing = Boolean(editingId);
+    setButtonLoading(
+      saveBtn,
+      true,
+      isEditing ? 'Atualizando...' : 'Salvando...',
+      isEditing ? 'Atualizar Categoria' : 'Salvar Categoria'
+    );
+
+    try {
+      await saveCategory(
+        { name, slug, display_order, is_active },
+        editingId,
+        { originalUpdatedAt, forceOverwrite }
+      );
+      showToast(
+        isEditing ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!',
+        'success'
+      );
+      resetForm();
+      renderList();
+    } catch (err) {
+      if (err?.isConflict) {
+        const shouldOverwrite = await confirmAction({
+          title: 'Edição concorrente detectada',
+          message:
+            'Esta categoria foi alterada por outra aba ou sessão enquanto você editava. Deseja sobrescrever mesmo assim?',
+          confirmLabel: 'Sobrescrever',
+          cancelLabel: 'Cancelar e recarregar',
+        });
+        if (shouldOverwrite) {
+          await submitCategoryForm(true);
+          return;
+        }
+        resetForm();
+        renderList();
+        return;
+      }
+      if (err?.isDeleted) {
+        showToast('Esta categoria foi removida em outra aba.', 'warning');
+        resetForm();
+        renderList();
+        return;
+      }
+      const normalized = normalizeSupabaseError(err, 'Não foi possível salvar a categoria');
+      showToast(normalized.userMessage, 'error');
+    } finally {
+      setButtonLoading(
+        saveBtn,
+        false,
+        'Salvando...',
+        editingId ? 'Atualizar Categoria' : 'Salvar Categoria'
+      );
+    }
+  }
+
   const formEl = el(
     'form',
     {
@@ -130,44 +201,7 @@ export function renderCategoriesView(container) {
       novalidate: true,
       onSubmit: async (/** @type {SubmitEvent} */ e) => {
         e.preventDefault();
-        const name = nameInput.value.trim();
-        const slug = generateSlug(slugInput.value || name);
-        const display_order = Math.max(0, Number.parseInt(orderInput.value || '0', 10) || 0);
-        const is_active = Boolean(activeCheckbox.checked);
-
-        if (!name || !slug) {
-          showToast('Informe um nome válido para a categoria.', 'warning');
-          nameInput.focus();
-          return;
-        }
-
-        const isEditing = Boolean(editingId);
-        setButtonLoading(
-          saveBtn,
-          true,
-          isEditing ? 'Atualizando...' : 'Salvando...',
-          isEditing ? 'Atualizar Categoria' : 'Salvar Categoria'
-        );
-
-        try {
-          await saveCategory({ name, slug, display_order, is_active }, editingId);
-          showToast(
-            isEditing ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!',
-            'success'
-          );
-          resetForm();
-          renderList();
-        } catch (err) {
-          const normalized = normalizeSupabaseError(err, 'Não foi possível salvar a categoria');
-          showToast(normalized.userMessage, 'error');
-        } finally {
-          setButtonLoading(
-            saveBtn,
-            false,
-            'Salvando...',
-            editingId ? 'Atualizar Categoria' : 'Salvar Categoria'
-          );
-        }
+        await submitCategoryForm(false);
       },
     },
     [

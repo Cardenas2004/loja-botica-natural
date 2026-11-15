@@ -12,6 +12,8 @@ import {
   resolveAdminImageUrl,
   duplicateProductRecord,
   toggleProductStatus,
+  archiveProductRecord,
+  findProductReferences,
   bulkUpdateProductsStatus,
   deleteProductRecord,
 } from '../api.js';
@@ -371,7 +373,7 @@ export function renderProductsView(container, router) {
       const statusBadges = [
         el('span', {
           className: product.is_active ? 'badge badge-success' : 'badge badge-muted',
-          textContent: product.is_active ? 'Ativo' : 'Inativo',
+          textContent: product.is_active ? 'Ativo' : 'Arquivado',
         }),
       ];
 
@@ -380,6 +382,18 @@ export function renderProductsView(container, router) {
           el('span', { className: 'badge badge-gold' }, [
             createIcon('fa-solid fa-star'),
             el('span', { textContent: 'Mais Vendido' }),
+          ])
+        );
+      }
+
+      if (product.home_featured) {
+        statusBadges.push(
+          el('span', {
+            className: 'badge badge-gold',
+            title: `Destaque na Home (posição ${Number(product.home_position) || 0})`,
+          }, [
+            createIcon('fa-solid fa-bolt'),
+            el('span', { textContent: `Home #${Number(product.home_position) || 0}` }),
           ])
         );
       }
@@ -475,13 +489,19 @@ export function renderProductsView(container, router) {
               {
                 type: 'button',
                 className: 'btn btn-secondary btn-icon',
-                title: product.is_active ? 'Desativar produto' : 'Ativar produto',
-                'aria-label': `${product.is_active ? 'Desativar' : 'Ativar'} produto ${product.name}`,
+                title: product.is_active
+                  ? 'Arquivar produto (ocultar da loja)'
+                  : 'Reativar produto na loja',
+                'aria-label': `${product.is_active ? 'Arquivar' : 'Reativar'} produto ${product.name}`,
                 onClick: async () => {
                   try {
-                    await toggleProductStatus(product.id, !product.is_active);
+                    if (product.is_active) {
+                      await archiveProductRecord(product.id);
+                    } else {
+                      await toggleProductStatus(product.id, true);
+                    }
                     showToast(
-                      `Produto "${product.name}" ${!product.is_active ? 'ativado' : 'desativado'}.`,
+                      `Produto "${product.name}" ${!product.is_active ? 'reativado' : 'arquivado'}.`,
                       'success'
                     );
                     renderTableContent();
@@ -491,27 +511,64 @@ export function renderProductsView(container, router) {
                   }
                 },
               },
-              [createIcon(product.is_active ? 'fa-solid fa-toggle-on' : 'fa-solid fa-toggle-off')]
+              [createIcon(product.is_active ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye')]
             ),
             el(
               'button',
               {
                 type: 'button',
                 className: 'btn btn-danger btn-icon',
-                title: 'Excluir produto',
-                'aria-label': `Excluir produto ${product.name}`,
+                title: 'Excluir permanentemente',
+                'aria-label': `Excluir permanentemente produto ${product.name}`,
                 onClick: async () => {
-                  const confirmed = await confirmAction({
-                    title: 'Excluir produto',
-                    message: `Tem certeza que deseja excluir permanentemente "${product.name}"? Esta ação não poderá ser desfeita.`,
-                    confirmLabel: 'Confirmar Exclusão',
-                  });
-                  if (!confirmed) return;
+                  const refs = findProductReferences(product);
+                  if (refs.hasReferences) {
+                    const refItems = [
+                      ...refs.slides.map((s) => `Banner "${s.title || s.button_link}"`),
+                      ...refs.compounds.map((c) => `Composto "${String(c.title || '').replace(/\n/g, ' ')}"`),
+                    ].join(', ');
+
+                    if (product.is_active) {
+                      const archiveInstead = await confirmAction({
+                        title: 'Produto referenciado em banner/vitrine',
+                        message: `O produto "${product.name}" está referenciado em: ${refItems}. Recomendamos arquivá-lo (is_active = false) para não quebrar links públicos. Deseja arquivar este produto em vez de excluir permanentemente?`,
+                        confirmLabel: 'Arquivar Produto (Recomendado)',
+                        cancelLabel: 'Continuar para Exclusão Permanente',
+                      });
+
+                      if (archiveInstead) {
+                        try {
+                          await archiveProductRecord(product.id);
+                          showToast(`Produto "${product.name}" arquivado com segurança.`, 'success');
+                          renderTableContent();
+                        } catch (err) {
+                          const normalized = normalizeSupabaseError(err, 'Erro ao arquivar produto');
+                          showToast(normalized.userMessage, 'error');
+                        }
+                        return;
+                      }
+                    }
+
+                    const confirmForceDelete = await confirmAction({
+                      title: 'Confirmar exclusão permanente com vínculo ativo',
+                      message: `Atenção: "${product.name}" continua referenciado em ${refItems}. Excluí-lo permanentemente deixará o link quebrado. Deseja realmente excluir permanentemente?`,
+                      confirmLabel: 'Excluir Permanentemente',
+                      cancelLabel: 'Cancelar',
+                    });
+                    if (!confirmForceDelete) return;
+                  } else {
+                    const confirmed = await confirmAction({
+                      title: 'Excluir produto permanentemente',
+                      message: `Tem certeza que deseja excluir permanentemente "${product.name}"? Para apenas ocultá-lo da vitrine pública, cancele e utilize a ação "Arquivar". Esta ação não poderá ser desfeita.`,
+                      confirmLabel: 'Confirmar Exclusão Permanente',
+                    });
+                    if (!confirmed) return;
+                  }
 
                   try {
                     await deleteProductRecord(product);
                     state.selectedProductIds.delete(product.id);
-                    showToast(`Produto "${product.name}" excluído com sucesso.`, 'success');
+                    showToast(`Produto "${product.name}" excluído permanentemente.`, 'success');
                     renderTableContent();
                   } catch (err) {
                     const normalized = normalizeSupabaseError(err, 'Erro ao excluir produto');

@@ -334,6 +334,9 @@ export async function fetchCategories() {
 }
 
 export const PRODUCT_LIST_SELECT_COLUMNS =
+  'id, name, sku_ref, price, is_active, is_best_seller, home_featured, home_position, category_id, categories(name), image_url, image_path, updated_at, short_description, description, usage_instructions, composition, package_info, allergen_info, quality_note, payment_info, whatsapp_message, text_options, benefits';
+
+const PRODUCT_LIST_FALLBACK_COLUMNS =
   'id, name, sku_ref, price, is_active, is_best_seller, category_id, categories(name), image_url, image_path, updated_at, short_description, description, usage_instructions, composition, package_info, allergen_info, quality_note, payment_info, whatsapp_message, text_options, benefits';
 
 /**
@@ -349,16 +352,24 @@ export async function fetchProducts(options = {}) {
   const start = (page - 1) * pageSize;
   const end = start + pageSize - 1;
 
-  let query = supabase
-    .from(DB_TABLES.PRODUCTS)
-    .select(PRODUCT_LIST_SELECT_COLUMNS, { count: 'exact' })
-    .order('created_at', { ascending: false });
+  const buildQuery = (/** @type {string} */ cols) => {
+    let q = supabase
+      .from(DB_TABLES.PRODUCTS)
+      .select(cols, { count: 'exact' })
+      .order('created_at', { ascending: false });
+    if (options.pageSize) {
+      q = q.range(start, end);
+    }
+    return q;
+  };
 
-  if (options.pageSize) {
-    query = query.range(start, end);
+  let { data, error } = await buildQuery(PRODUCT_LIST_SELECT_COLUMNS);
+
+  if (error && (String(error.code) === '42703' || String(error.code) === 'PGRST204')) {
+    const retry = await buildQuery(PRODUCT_LIST_FALLBACK_COLUMNS);
+    data = retry.data;
+    error = retry.error;
   }
-
-  const { data, error } = await query;
 
   if (error) {
     const normalized = normalizeSupabaseError(error, 'Erro ao carregar produtos');
@@ -458,15 +469,62 @@ export async function fetchWhatsAppSettings() {
 }
 
 /* ==========================================================================
-   3. OPERAÇÕES CRUD: CATEGORIAS
+   3. OPERAÇÕES CRUD: CATEGORIAS E HELPER DE CONCORRÊNCIA ATÔMICA
    ========================================================================== */
 
 /**
- * Cria ou atualiza uma categoria.
+ * Quando um `UPDATE ... WHERE id = :id AND updated_at = :expected_updated_at`
+ * afeta 0 linhas (`!updatedRow`), verifica no banco se o registro foi alterado
+ * concorrentemente por outra aba (`CONCURRENT_MODIFICATION`) ou removido (`RECORD_DELETED`).
+ *
+ * @param {string} table
+ * @param {string} editingId
+ * @param {string | null} originalUpdatedAt
+ * @param {boolean} forceOverwrite
+ * @param {any} updatedRow
+ */
+async function assertAtomicUpdateResult(
+  table,
+  editingId,
+  originalUpdatedAt,
+  forceOverwrite,
+  updatedRow
+) {
+  if (!editingId || !originalUpdatedAt || forceOverwrite || updatedRow) {
+    return;
+  }
+
+  const { data: currentRow } = await supabase
+    .from(table)
+    .select('id, updated_at')
+    .eq('id', editingId)
+    .maybeSingle();
+
+  if (currentRow) {
+    const conflictErr = new Error('CONCURRENT_MODIFICATION');
+    // @ts-ignore
+    conflictErr.isConflict = true;
+    // @ts-ignore
+    conflictErr.serverUpdatedAt = currentRow.updated_at;
+    throw conflictErr;
+  }
+
+  const deletedErr = new Error('RECORD_DELETED');
+  // @ts-ignore
+  deletedErr.isDeleted = true;
+  throw deletedErr;
+}
+
+/**
+ * Cria ou atualiza uma categoria com controle de concorrência otimista atômico.
  * @param {{ name: string, slug: string, display_order: number, is_active: boolean }} payload
  * @param {string} [editingId]
+ * @param {{ originalUpdatedAt?: string | null, forceOverwrite?: boolean }} [options]
  */
-export async function saveCategory(payload, editingId = '') {
+export async function saveCategory(payload, editingId = '', options = {}) {
+  const originalUpdatedAt = options.originalUpdatedAt || null;
+  const forceOverwrite = Boolean(options.forceOverwrite);
+
   const record = {
     name: payload.name.trim(),
     slug: generateSlug(payload.slug || payload.name),
@@ -475,12 +533,30 @@ export async function saveCategory(payload, editingId = '') {
     updated_at: new Date().toISOString(),
   };
 
-  const query = editingId
-    ? supabase.from(DB_TABLES.CATEGORIES).update(record).eq('id', editingId)
-    : supabase.from(DB_TABLES.CATEGORIES).insert([record]);
+  if (editingId) {
+    let updateQuery = supabase
+      .from(DB_TABLES.CATEGORIES)
+      .update(record)
+      .eq('id', editingId);
 
-  const { error } = await query;
-  if (error) throw error;
+    if (originalUpdatedAt && !forceOverwrite) {
+      updateQuery = updateQuery.eq('updated_at', originalUpdatedAt);
+    }
+
+    const { data, error } = await updateQuery.select('*').maybeSingle();
+    if (error) throw error;
+
+    await assertAtomicUpdateResult(
+      DB_TABLES.CATEGORIES,
+      editingId,
+      originalUpdatedAt,
+      forceOverwrite,
+      data
+    );
+  } else {
+    const { error } = await supabase.from(DB_TABLES.CATEGORIES).insert([record]);
+    if (error) throw error;
+  }
 
   invalidateCache();
   await Promise.all([fetchCategories(), fetchProducts()]);
@@ -523,6 +599,8 @@ export async function deleteCategoryById(categoryId) {
 export async function saveCarouselSlide(payload, options = {}) {
   const editingId = options.editingId || '';
   const oldImagePath = options.oldImagePath || '';
+  const originalUpdatedAt = options.originalUpdatedAt || null;
+  const forceOverwrite = Boolean(options.forceOverwrite);
   const file = options.file || null;
 
   if (!isValidBannerLink(payload.button_link)) {
@@ -566,12 +644,21 @@ export async function saveCarouselSlide(payload, options = {}) {
 
     const executeSave = async (/** @type {Record<string, any>} */ dataToSave) => {
       if (editingId) {
-        return supabase.from(DB_TABLES.CAROUSEL).update(dataToSave).eq('id', editingId);
+        let updateQuery = supabase
+          .from(DB_TABLES.CAROUSEL)
+          .update(dataToSave)
+          .eq('id', editingId);
+
+        if (originalUpdatedAt && !forceOverwrite) {
+          updateQuery = updateQuery.eq('updated_at', originalUpdatedAt);
+        }
+
+        return updateQuery.select('*').maybeSingle();
       }
-      return supabase.from(DB_TABLES.CAROUSEL).insert([dataToSave]);
+      return supabase.from(DB_TABLES.CAROUSEL).insert([dataToSave]).select('*').maybeSingle();
     };
 
-    let { error } = await executeSave(record);
+    let { data, error } = await executeSave(record);
 
     // Fallback gracioso caso a migração 20261114100000_carousel_focus_point.sql ainda não tenha sido aplicada
     if (error && (String(error.code) === '42703' || String(error.code) === 'PGRST204')) {
@@ -579,10 +666,19 @@ export async function saveCarouselSlide(payload, options = {}) {
       delete fallbackRecord.focus_x;
       delete fallbackRecord.focus_y;
       const retry = await executeSave(fallbackRecord);
+      data = retry.data;
       error = retry.error;
     }
 
     if (error) throw error;
+
+    await assertAtomicUpdateResult(
+      DB_TABLES.CAROUSEL,
+      editingId,
+      originalUpdatedAt,
+      forceOverwrite,
+      data
+    );
 
     if (editingId && uploaded && oldImagePath && oldImagePath !== uploaded.imagePath) {
       await removeStorageImageIfPresent(oldImagePath);
@@ -667,27 +763,6 @@ export async function saveProductRecord(payload, options = {}) {
   let uploaded = null;
 
   try {
-    // Checagem de concorrência: verifica se o produto foi modificado por outro usuário/aba
-    if (editingId && originalUpdatedAt && !forceOverwrite) {
-      const { data: currentDbProduct } = await supabase
-        .from(DB_TABLES.PRODUCTS)
-        .select('updated_at')
-        .eq('id', editingId)
-        .maybeSingle();
-
-      if (
-        currentDbProduct?.updated_at &&
-        new Date(currentDbProduct.updated_at).getTime() > new Date(originalUpdatedAt).getTime()
-      ) {
-        const conflictErr = new Error('CONCURRENT_MODIFICATION');
-        // @ts-ignore
-        conflictErr.isConflict = true;
-        // @ts-ignore
-        conflictErr.serverUpdatedAt = currentDbProduct.updated_at;
-        throw conflictErr;
-      }
-    }
-
     if (file) {
       uploaded = await uploadStorageWebpImage(file, {
         folder: 'catalogo',
@@ -713,12 +788,16 @@ export async function saveProductRecord(payload, options = {}) {
 
     const executeQuery = async (/** @type {Record<string, any>} */ dataToSave) => {
       if (editingId) {
-        return supabase
+        let updateQuery = supabase
           .from(DB_TABLES.PRODUCTS)
           .update(dataToSave)
-          .eq('id', editingId)
-          .select('*, categories(id, name, slug)')
-          .maybeSingle();
+          .eq('id', editingId);
+
+        if (originalUpdatedAt && !forceOverwrite) {
+          updateQuery = updateQuery.eq('updated_at', originalUpdatedAt);
+        }
+
+        return updateQuery.select('*, categories(id, name, slug)').maybeSingle();
       }
       return supabase
         .from(DB_TABLES.PRODUCTS)
@@ -727,11 +806,30 @@ export async function saveProductRecord(payload, options = {}) {
         .maybeSingle();
     };
 
-    const { data, error } = await executeQuery(record);
+    let { data, error } = await executeQuery(record);
+
+    // Fallback caso a migração 20261114110000_products_home_featured.sql ou slug ainda não tenha sido aplicada
+    if (error && (String(error.code) === '42703' || String(error.code) === 'PGRST204')) {
+      const fallbackRecord = { ...record };
+      delete fallbackRecord.home_featured;
+      delete fallbackRecord.home_position;
+      delete fallbackRecord.slug;
+      const retry = await executeQuery(fallbackRecord);
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       throw error;
     }
+
+    await assertAtomicUpdateResult(
+      DB_TABLES.PRODUCTS,
+      editingId,
+      originalUpdatedAt,
+      forceOverwrite,
+      data
+    );
 
     if (editingId && uploaded && oldImagePath && oldImagePath !== uploaded.imagePath) {
       await removeStorageImageIfPresent(oldImagePath);
@@ -778,6 +876,8 @@ export async function duplicateProductRecord(sourceProduct) {
     image_path: '',
     is_active: false,
     is_best_seller: Boolean(sourceProduct.is_best_seller),
+    home_featured: Boolean(sourceProduct.home_featured),
+    home_position: Number(sourceProduct.home_position) || 0,
   };
 
   return saveProductRecord(payload);
@@ -797,6 +897,58 @@ export async function toggleProductStatus(productId, isActive) {
   if (error) throw error;
   invalidateCache();
   await fetchProducts();
+}
+
+/**
+ * Arquiva um produto (`is_active = false`), ocultando-o da vitrine pública sem perder histórico nem quebrar links.
+ * @param {string} productId
+ */
+export async function archiveProductRecord(productId) {
+  return toggleProductStatus(productId, false);
+}
+
+/**
+ * Verifica se um produto está referenciado em banners do carrossel (`carousel_slides.button_link`)
+ * ou em cards da vitrine de compostos (`compound_showcase_cards`).
+ * @param {any} product
+ * @returns {{
+ *   hasReferences: boolean,
+ *   slides: Array<{ id: string, title: string, button_link: string }>,
+ *   compounds: Array<{ id: string, title: string, button_link: string }>
+ * }}
+ */
+export function findProductReferences(product) {
+  if (!product || !product.id) {
+    return { hasReferences: false, slides: [], compounds: [] };
+  }
+  const prodId = String(product.id).trim();
+  const prodSlug = String(product.slug || '').trim();
+
+  const matchesProductUrl = (/** @type {string | null | undefined} */ rawLink) => {
+    const link = String(rawLink || '').trim();
+    if (!link) return false;
+    if (prodId && (link.includes(`id=${prodId}`) || link.includes(prodId))) {
+      return true;
+    }
+    if (
+      prodSlug &&
+      (link.includes(`/produtos/${prodSlug}`) || link.includes(`produtos/${prodSlug}`))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const slides = (state.carouselSlides || []).filter((s) => matchesProductUrl(s.button_link));
+  const compounds = (state.compoundCards || []).filter(
+    (c) => String(c.product_id || '') === prodId || matchesProductUrl(c.button_link)
+  );
+
+  return {
+    hasReferences: slides.length > 0 || compounds.length > 0,
+    slides,
+    compounds,
+  };
 }
 
 /**

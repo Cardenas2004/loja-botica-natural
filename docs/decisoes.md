@@ -122,5 +122,18 @@ As folhas de estilo (`css/style.css`, `css/product.css` e `css/admin.css`) conti
    - `1280px`: desktops amplos.
 2. **Verificação Automatizada**: `scripts/verify.mjs` inspeciona todas as diretivas `@media` de `css/style.css`, `css/product.css` e `css/admin.css` e falha imediatamente caso surja qualquer `max-width` ou valor de `min-width` fora do conjunto `{480px, 768px, 1024px, 1280px}`.
 
+---
+
+## 11. Pré-visualização em Iframe na Mesma Origem (EXTRA-01 / Fase 6)
+
+### Contexto
+A auditoria sugeriu avaliar o uso do atributo `sandbox` no `<iframe>` de pré-visualização ao vivo de produtos (`js/admin/preview.js` carregando `produto.html?preview=1`). Em `js/product.js` (`initLivePreviewMode`), a comunicação exige verificação estrita de origem (`event.origin === window.location.origin` e `window.parent.location.origin === window.location.origin`), além do transporte de imagens temporárias via URLs `blob:` criadas pelo administrador antes do upload definitivo.
+
+### Decisão
+1. **Não utilizar `sandbox="allow-scripts"` isolado**: sem `allow-same-origin`, o iframe assume origem opaca (`'null'`), causando `SecurityError` na checagem de origem, invalidando a validação `event.origin` e bloqueando pré-visualizações `blob:`.
+2. **Não utilizar `sandbox="allow-scripts allow-same-origin"`**: combinar ambas as flags anula o isolamento do sandbox (o documento embutido pode remover o próprio atributo `sandbox` via DOM) e gera alertas de segurança nos navegadores.
+3. **Mitigação adotada**: manter o iframe na mesma origem sem `sandbox`, com validação rígida de `event.origin === window.location.origin` e `event.source === window.parent` em ambos os lados (`js/admin/preview.js` e `js/product.js`), sanitização/DOM API pura sem `innerHTML` e URLs validadas via `js/shared/richtext.js` e `sanitizeAssetUrl`.
+
+
 
 

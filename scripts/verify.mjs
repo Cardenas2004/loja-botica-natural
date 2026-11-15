@@ -86,6 +86,8 @@ const REQUIRED_SEO_FILES = [
   'supabase/migrations/20261113230000_compound_showcase_cards.sql',
   'supabase/migrations/20261114100000_carousel_focus_point.sql',
   'supabase/migrations/20261114100000_carousel_focus_point_rollback.sql',
+  'supabase/migrations/20261114110000_products_home_featured.sql',
+  'supabase/migrations/20261114110000_products_home_featured_rollback.sql',
   'supabase/schema_reference.sql',
   'supabase/legacy/README.md',
   'supabase/audit/README.md',

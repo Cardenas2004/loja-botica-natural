@@ -86,7 +86,7 @@ test.describe('Fase 3 — Carrossel Hero Nativo Acessível (16:9 mobile, 16:5 de
     await expect(pauseBtn).toHaveAttribute('aria-pressed', 'false');
     await pauseBtn.click();
     await expect(pauseBtn).toHaveAttribute('aria-pressed', 'true');
-    await expect(pauseBtn).toHaveAttribute('aria-label', 'Retomar rotação automática dos banners');
+    await expect(pauseBtn).toHaveAttribute('aria-label', 'Retomar banners — rotação automática');
     await pauseBtn.click();
     await expect(pauseBtn).toHaveAttribute('aria-pressed', 'false');
   });

@@ -112,10 +112,13 @@ CREATE TABLE IF NOT EXISTS public.products (
   image_path         TEXT,
   is_active          BOOLEAN     NOT NULL DEFAULT true,
   is_best_seller     BOOLEAN     NOT NULL DEFAULT false,
+  home_featured      BOOLEAN     NOT NULL DEFAULT false,
+  home_position      INTEGER     NOT NULL DEFAULT 0,
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT chk_products_name_not_empty CHECK (char_length(btrim(name)) > 0 AND char_length(name) <= 200),
   CONSTRAINT chk_products_price_non_negative CHECK (price >= 0),
+  CONSTRAINT chk_products_home_position_non_negative CHECK (home_position >= 0),
   CONSTRAINT chk_products_text_options_object CHECK (jsonb_typeof(text_options) = 'object'),
   CONSTRAINT chk_products_sku_ref_length CHECK (sku_ref IS NULL OR char_length(sku_ref) <= 100),
   CONSTRAINT chk_products_benefits_length CHECK (benefits IS NULL OR char_length(benefits) <= 5000),
@@ -135,6 +138,10 @@ CREATE TABLE IF NOT EXISTS public.products (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku_ref_unique
   ON public.products (btrim(sku_ref))
   WHERE sku_ref IS NOT NULL AND btrim(sku_ref) <> '';
+
+CREATE INDEX IF NOT EXISTS idx_products_home_featured
+  ON public.products (home_position ASC, created_at DESC)
+  WHERE is_active = true AND home_featured = true;
 
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
