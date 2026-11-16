@@ -5,7 +5,7 @@
   "description": "Botica Natural — Farmácia de Manipulação (Site estático e Painel Administrativo)",
   "type": "module",
   "scripts": {
-    "test": "node scripts/test-richtext.mjs && node scripts/test-urlsafety.mjs && node scripts/verify.mjs",
+    "test": "node scripts/test-richtext.mjs && node scripts/test-urlsafety.mjs && node scripts/test-security.mjs && node scripts/verify.mjs",
     "test:e2e": "playwright test",
     "verify": "node scripts/verify.mjs",
     "verify:prod": "node scripts/verify.mjs --prod",

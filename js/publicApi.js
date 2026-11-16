@@ -221,24 +221,41 @@ export function resolveSafeStorageImageUrl(imageUrl, imagePath, fallback = '') {
   return fallback;
 }
 
+const GENERIC_LOGIN_FAILED_MSG = 'E-mail ou senha inválidos.';
+
 const SAFE_ERROR_MESSAGES_BY_CODE = Object.freeze({
   '23505': 'Já existe um registro cadastrado com estes dados (nome ou identificador duplicado).',
   '23503': 'Esta operação não pôde ser concluída porque o item está vinculado a outros registros.',
   '23502': 'Preencha todos os campos obrigatórios antes de salvar.',
-  '23514': 'Os valores informados não atendem às regras de validação (verifique preço ou campos obrigatórios).',
+  '23514': 'Os valores informados não atendem às regras de validação.',
   '22P02': 'Formato de dados inválido enviado na requisição.',
-  '42501': 'Acesso negado: sua conta não possui permissão de administrador para realizar esta ação.',
+  '42501': 'Permissão insuficiente para realizar esta ação.',
   PGRST116: 'O registro solicitado não foi encontrado ou não está mais disponível.',
   PGRST301: 'Sua sessão expirou. Faça login novamente para continuar.',
-  invalid_credentials: 'E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.',
-  email_not_confirmed: 'Seu endereço de e-mail ainda não foi confirmado.',
-  user_not_found: 'Usuário não encontrado.',
+  invalid_credentials: GENERIC_LOGIN_FAILED_MSG,
+  email_not_confirmed: GENERIC_LOGIN_FAILED_MSG,
+  user_not_found: GENERIC_LOGIN_FAILED_MSG,
   over_request_rate_limit: 'Muitas tentativas em sequência. Aguarde alguns instantes antes de tentar novamente.',
   session_not_found: 'Sessão encerrada ou expirada. Faça login novamente.',
 });
 
 /**
+ * Remove e-mails, tokens JWT/Bearer e parâmetros sensíveis antes de registrar em console.debug.
+ * @param {unknown} rawValue
+ * @returns {string}
+ */
+function redactSensitiveTelemetry(rawValue) {
+  return String(rawValue ?? '')
+    .replace(/Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi, 'Bearer [redacted]')
+    .replace(/eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}(?:\.[A-Za-z0-9_-]*)?/g, '[redacted-jwt]')
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[redacted-email]')
+    .replace(/(?:access_token|refresh_token|apikey|password|secret)=[^&\s]+/gi, '[redacted-param]');
+}
+
+/**
  * Normaliza erros do PostgREST, Auth, Storage ou falhas de rede em mensagens seguras em português.
+ * Garante que `userMessage` nunca exponha nomes de tabelas, policies, códigos SQL ou stack traces.
+ *
  * @param {unknown} error
  * @param {string} [contextMessage='Erro ao processar a solicitação']
  * @returns {{ success: false, userMessage: string, code: string, status: number | null }}
@@ -253,7 +270,7 @@ export function normalizeSupabaseError(
     rawError.code || rawError.error_code || rawError.statusCode || rawError.name || 'UNKNOWN_ERROR'
   ).trim();
   const rawMessage = String(
-    rawError.message || rawError.error_description || rawError.error || String(error || '')
+    rawError.message || rawError.error_description || rawError.error || ''
   ).trim();
   const status =
     typeof rawError.status === 'number'
@@ -262,13 +279,10 @@ export function normalizeSupabaseError(
         ? Number(rawError.statusCode)
         : null;
 
-  console.error(`[SupabaseClient][${contextMessage}]`, {
-    code: rawCode,
+  console.debug(`[SupabaseClient] ${contextMessage}`, {
+    code: redactSensitiveTelemetry(rawCode),
     status,
-    message: rawMessage,
-    details: rawError.details ?? null,
-    hint: rawError.hint ?? null,
-    rawError: error,
+    detail: redactSensitiveTelemetry(rawMessage).slice(0, 200),
   });
 
   if (SAFE_ERROR_MESSAGES_BY_CODE[rawCode]) {
@@ -282,10 +296,14 @@ export function normalizeSupabaseError(
 
   const lowerMsg = rawMessage.toLowerCase();
 
-  if (lowerMsg.includes('invalid login credentials')) {
+  if (
+    lowerMsg.includes('invalid login credentials') ||
+    lowerMsg.includes('email not confirmed') ||
+    lowerMsg.includes('user not found')
+  ) {
     return {
       success: false,
-      userMessage: SAFE_ERROR_MESSAGES_BY_CODE.invalid_credentials,
+      userMessage: GENERIC_LOGIN_FAILED_MSG,
       code: 'AUTH_INVALID_CREDENTIALS',
       status: status ?? 400,
     };
@@ -307,8 +325,7 @@ export function normalizeSupabaseError(
   ) {
     return {
       success: false,
-      userMessage:
-        'Acesso negado pelas políticas de segurança. Verifique se você está autenticado como administrador.',
+      userMessage: 'Permissão insuficiente para realizar esta ação.',
       code: 'RLS_FORBIDDEN',
       status: 403,
     };
@@ -355,22 +372,13 @@ export function normalizeSupabaseError(
   if (
     rawCode === '42P01' ||
     rawCode === 'PGRST205' ||
-    lowerMsg.includes('compound_showcase_cards')
+    lowerMsg.includes('compound_showcase_cards') ||
+    lowerMsg.includes('carousel_slides') ||
+    lowerMsg.includes('does not exist')
   ) {
     return {
       success: false,
-      userMessage:
-        'A tabela "compound_showcase_cards" ainda não foi criada no Supabase. Execute a migração "supabase/migrations/20261113230000_compound_showcase_cards.sql" no SQL Editor do Supabase.',
-      code: 'TABLE_NOT_FOUND',
-      status: 404,
-    };
-  }
-
-  if (lowerMsg.includes('carousel_slides') || lowerMsg.includes('does not exist')) {
-    return {
-      success: false,
-      userMessage:
-        'A tabela "carousel_slides" ainda não foi criada no Supabase. Execute as migrações no SQL Editor do Supabase.',
+      userMessage: 'Recurso indisponível no momento. Tente novamente em alguns instantes.',
       code: 'TABLE_NOT_FOUND',
       status: 404,
     };
@@ -379,8 +387,7 @@ export function normalizeSupabaseError(
   if (lowerMsg.includes('is_admin') || lowerMsg.includes('function public.is_admin')) {
     return {
       success: false,
-      userMessage:
-        'A função "public.is_admin()" precisa ser criada. Execute as migrações no SQL Editor do Supabase.',
+      userMessage: 'Serviço de autenticação administrativa indisponível no momento.',
       code: 'FUNCTION_NOT_FOUND',
       status: 400,
     };
@@ -389,17 +396,15 @@ export function normalizeSupabaseError(
   if (lowerMsg.includes('bucket not found') || lowerMsg.includes('bucket_id')) {
     return {
       success: false,
-      userMessage:
-        'O bucket "product-images" não foi encontrado no Storage. Execute o schema de referência no SQL Editor do Supabase.',
+      userMessage: 'Serviço de armazenamento de imagens indisponível no momento.',
       code: 'BUCKET_NOT_FOUND',
       status: 404,
     };
   }
 
-  const fallbackDetail = rawMessage ? `: ${rawMessage}` : '. Tente novamente em alguns instantes.';
   return {
     success: false,
-    userMessage: `${contextMessage}${fallbackDetail}`,
+    userMessage: `${contextMessage}. Tente novamente em alguns instantes.`,
     code: rawCode || 'UNEXPECTED_ERROR',
     status,
   };

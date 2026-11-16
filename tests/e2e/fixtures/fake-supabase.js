@@ -477,15 +477,21 @@ export function resetFakeDatabase() {
 }
 
 const authListeners = new Set();
-let currentUser = {
-  id: 'user-admin-123',
-  email: 'admin@boticanatural.com.br',
-  role: 'authenticated',
-};
-let currentSession = {
-  user: currentUser,
-  access_token: 'fake-jwt-token-123',
-};
+const startLoggedOut =
+  typeof globalThis !== 'undefined' && Boolean(globalThis.__bn_fake_initial_logged_out__);
+let currentUser = startLoggedOut
+  ? null
+  : {
+      id: 'user-admin-123',
+      email: 'admin@boticanatural.com.br',
+      role: 'authenticated',
+    };
+let currentSession = startLoggedOut
+  ? null
+  : {
+      user: currentUser,
+      access_token: 'fake-jwt-token-123',
+    };
 
 // Expõe disparador global de eventos para testes
 globalThis.__dispatchAuthEvent = (event, customSession = null) => {
@@ -736,6 +742,34 @@ export function createClient(supabaseUrl, supabaseKey, options = {}) {
         return { data: { user: currentUser }, error: null };
       },
       async signInWithPassword({ email, password }) {
+        const accounts =
+          typeof globalThis !== 'undefined' && globalThis.__bn_fake_auth_accounts__
+            ? globalThis.__bn_fake_auth_accounts__
+            : null;
+        if (accounts) {
+          const match = accounts[String(email || '').toLowerCase()];
+          if (!match || match.password !== password) {
+            return {
+              data: { user: null, session: null },
+              error: {
+                message: 'Invalid login credentials',
+                code: 'invalid_credentials',
+                status: 400,
+              },
+            };
+          }
+          currentUser = {
+            id: match.id,
+            email,
+            role: 'authenticated',
+          };
+          currentSession = { user: currentUser, access_token: `fake-token-${match.id}` };
+          for (const listener of authListeners) {
+            listener('SIGNED_IN', currentSession);
+          }
+          return { data: { user: currentUser, session: currentSession }, error: null };
+        }
+
         currentUser = {
           id: 'user-admin-123',
           email: email || 'admin@boticanatural.com.br',
@@ -748,6 +782,10 @@ export function createClient(supabaseUrl, supabaseKey, options = {}) {
         return { data: { user: currentUser, session: currentSession }, error: null };
       },
       async signOut() {
+        globalThis.__log.push({
+          timestamp: Date.now(),
+          operation: 'AUTH_SIGNOUT',
+        });
         currentUser = null;
         currentSession = null;
         for (const listener of authListeners) {

@@ -13,8 +13,10 @@ import {
 
 import { state, setState, resetAuthenticatedState } from './state.js';
 
+export const GENERIC_LOGIN_ERROR = 'E-mail ou senha inválidos.';
+
 /**
- * Verifica no servidor via RPC `public.is_admin()` se o usuário logado pertence a `public.admin_users`.
+ * Verifica no servidor via RPC administrativa se o usuário logado possui permissão.
  * @returns {Promise<boolean>}
  */
 export async function verifyServerAdminRole() {
@@ -22,7 +24,7 @@ export async function verifyServerAdminRole() {
   try {
     const { data, error } = await supabase.rpc(RPC_FUNCTIONS.IS_ADMIN);
     if (error) {
-      normalizeSupabaseError(error, 'Falha ao validar permissão administrativa (is_admin)');
+      normalizeSupabaseError(error, 'Falha ao validar permissão administrativa');
       return false;
     }
     return Boolean(data);
@@ -33,6 +35,7 @@ export async function verifyServerAdminRole() {
 
 /**
  * Realiza login com e-mail e senha e valida imediatamente o papel de administrador.
+ * Nunca diferencia falha de credencial de conta sem privilégio administrativo.
  * @param {string} email
  * @param {string} password
  * @returns {Promise<{ ok: boolean, session?: any, errorMessage?: string }>}
@@ -41,8 +44,7 @@ export async function loginAdmin(email, password) {
   if (!isSupabaseConfigured || !supabase) {
     return {
       ok: false,
-      errorMessage:
-        'Configuração pendente: preencha SUPABASE_URL e SUPABASE_ANON_KEY em "js/supabaseClient.js".',
+      errorMessage: 'Serviço de autenticação indisponível no momento.',
     };
   }
 
@@ -50,7 +52,7 @@ export async function loginAdmin(email, password) {
   if (!cleanEmail || !password) {
     return {
       ok: false,
-      errorMessage: 'Preencha seu e-mail administrativo e sua senha para continuar.',
+      errorMessage: 'Preencha seu e-mail e senha para continuar.',
     };
   }
 
@@ -61,13 +63,13 @@ export async function loginAdmin(email, password) {
     });
 
     if (error) {
-      const normalized = normalizeSupabaseError(error, 'Falha na autenticação');
-      return { ok: false, errorMessage: normalized.userMessage };
+      normalizeSupabaseError(error, 'Falha na autenticação');
+      return { ok: false, errorMessage: GENERIC_LOGIN_ERROR };
     }
 
     const session = data?.session;
     if (!session) {
-      return { ok: false, errorMessage: 'Sessão não pôde ser iniciada.' };
+      return { ok: false, errorMessage: GENERIC_LOGIN_ERROR };
     }
 
     const isAdmin = await verifyServerAdminRole();
@@ -76,8 +78,7 @@ export async function loginAdmin(email, password) {
       resetAuthenticatedState();
       return {
         ok: false,
-        errorMessage:
-          'Acesso negado: esta conta não possui privilégios de administrador em public.admin_users.',
+        errorMessage: GENERIC_LOGIN_ERROR,
       };
     }
 
@@ -89,8 +90,8 @@ export async function loginAdmin(email, password) {
 
     return { ok: true, session };
   } catch (err) {
-    const normalized = normalizeSupabaseError(err, 'Erro inesperado ao realizar login');
-    return { ok: false, errorMessage: normalized.userMessage };
+    normalizeSupabaseError(err, 'Erro inesperado ao realizar login');
+    return { ok: false, errorMessage: GENERIC_LOGIN_ERROR };
   }
 }
 
@@ -113,9 +114,7 @@ export async function logoutAdmin() {
  */
 export async function initAuthLifecycle(callbacks) {
   if (!isSupabaseConfigured || !supabase) {
-    callbacks.onUnauthenticated(
-      'Configure SUPABASE_URL e SUPABASE_ANON_KEY em "js/supabaseClient.js" para habilitar o painel.'
-    );
+    callbacks.onUnauthenticated('Serviço de autenticação indisponível no momento.');
     return;
   }
 
@@ -132,9 +131,7 @@ export async function initAuthLifecycle(callbacks) {
     } else {
       await supabase.auth.signOut();
       resetAuthenticatedState();
-      callbacks.onUnauthenticated(
-        'Acesso negado: esta conta não possui privilégios de administrador.'
-      );
+      callbacks.onUnauthenticated(GENERIC_LOGIN_ERROR);
     }
   } else {
     callbacks.onUnauthenticated();
@@ -174,9 +171,7 @@ export async function initAuthLifecycle(callbacks) {
       } else {
         await supabase.auth.signOut();
         resetAuthenticatedState();
-        callbacks.onUnauthenticated(
-          'Acesso negado: esta conta não possui privilégios de administrador.'
-        );
+        callbacks.onUnauthenticated(GENERIC_LOGIN_ERROR);
       }
     }, 0);
   });
