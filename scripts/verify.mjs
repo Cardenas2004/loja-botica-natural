@@ -1030,6 +1030,60 @@ if (!fs.existsSync(DIST_DIR)) {
   }
 }
 
+console.log('\n7.4. Verificando endurecimento de CI/CD e cadeia de suprimentos...');
+const lockfileRaw = fs.readFileSync(path.resolve(ROOT_DIR, 'package-lock.json'), 'utf8');
+if (lockfileRaw.includes('"node_modules/swiper"')) {
+  fail('package-lock.json ainda referencia o pacote inutilizado "swiper". Execute npm uninstall swiper.');
+} else {
+  pass('package-lock.json sincronizado sem o pacote órfão/vulnerável "swiper".');
+}
+
+const REQUIRED_WORKFLOWS = ['ci.yml', 'codeql.yml', 'dependency-review.yml'];
+let workflowErrors = 0;
+for (const wfName of REQUIRED_WORKFLOWS) {
+  const wfPath = path.resolve(ROOT_DIR, '.github/workflows', wfName);
+  if (!fs.existsSync(wfPath)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} ausente.`);
+    continue;
+  }
+  const wfContent = fs.readFileSync(wfPath, 'utf8');
+  if (/pull_request_target\b/.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} não deve usar "pull_request_target".`);
+  }
+  if (!/^permissions:\s*$/m.test(wfContent) || !/^\s+contents:\s*read\b/m.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} deve declarar "permissions: contents: read" explícito.`);
+  }
+  if (!/^concurrency:/m.test(wfContent) || !/timeout-minutes:\s*\d+/m.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} deve definir "concurrency" e "timeout-minutes".`);
+  }
+  const usesLines = wfContent.match(/^\s*(?:-\s*)?uses:\s*.+$/gm) || [];
+  if (usesLines.length === 0) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} não possui ações fixadas verificáveis.`);
+  }
+  for (const usesLine of usesLines) {
+    if (!/@[0-9a-f]{40}(?:\s+#.*)?$/.test(usesLine.trim())) {
+      workflowErrors += 1;
+      fail(`.github/workflows/${wfName}: action sem commit SHA completo de 40 caracteres -> ${usesLine.trim()}`);
+    }
+  }
+  if (/run:[^\n]*\$\{\{\s*github\.event\.(?:issue|pull_request|comment|head_commit)\./.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName}: possível script injection via github.event.* em bloco run.`);
+  }
+}
+if (!fs.existsSync(path.resolve(ROOT_DIR, '.github/dependabot.yml')) || !fs.existsSync(path.resolve(ROOT_DIR, '.gitleaks.toml'))) {
+  workflowErrors += 1;
+  fail('.github/dependabot.yml ou .gitleaks.toml ausente.');
+}
+if (workflowErrors === 0) {
+  pass('Workflows GitHub Actions (ci, codeql, dependency-review), Dependabot e Gitleaks configurados com pinagem por SHA e menor privilégio.');
+}
+
 /* ==========================================================================
    8. [MODO PRODUÇÃO] VERIFICAÇÃO DE PLACEHOLDERS [PREENCHER (APENAS --prod)
    ========================================================================== */

@@ -1,0 +1,23 @@
+title = "Botica Natural — Política Gitleaks"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Permite apenas a chave publica anon JWT deste projeto (publica por design no front-end estatico; nunca service_role)"
+regexTarget = "match"
+regexes = [
+  '''^eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qZGt1aGdvb3Boemp4bW1lbXB1Iiwicm9sZSI6ImFub24i[A-Za-z0-9_=-]*\.[A-Za-z0-9_-]+$''',
+]
+
+[[allowlists]]
+description = "Tokens sinteticos de teste usados apenas em testes unitarios e E2E"
+condition = "AND"
+paths = [
+  '''^scripts/test-security\.mjs$''',
+  '''^tests/e2e/''',
+]
+regexTarget = "line"
+regexes = [
+  '''secret|fake|dummy|mock|header\.payload|Bearer abc|example\.com''',
+]
