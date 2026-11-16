@@ -5,6 +5,29 @@
 
 const THEME_STORAGE_KEY = 'botica_admin_theme';
 const SIDEBAR_STORAGE_KEY = 'botica_admin_sidebar_collapsed';
+export const DRAFT_STORAGE_KEY_PREFIX = 'botica_draft_product_';
+
+/**
+ * Remove todos os rascunhos de produtos salvos em `localStorage` ao sair ou perder a sessão.
+ */
+export function clearAllProductDrafts() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    /** @type {string[]} */
+    const keysToDelete = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(DRAFT_STORAGE_KEY_PREFIX)) {
+        keysToDelete.push(key);
+      }
+    }
+    for (const key of keysToDelete) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // Ignora bloqueio de storage
+  }
+}
 
 /**
  * @typedef {Object} AdminState
@@ -166,6 +189,7 @@ export function subscribe(listener) {
  * Limpa todo o estado sensível ao encerrar a sessão.
  */
 export function resetAuthenticatedState() {
+  clearAllProductDrafts();
   state.session = null;
   state.userEmail = '';
   state.currentUserId = '';

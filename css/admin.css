@@ -685,8 +685,11 @@ button:disabled, .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .confirm-modal__card { text-align: center; }
 .confirm-modal__icon { width: 48px; height: 48px; margin: 0 auto 12px; border-radius: 50%; background: var(--danger-soft); color: var(--danger); display: grid; place-items: center; font-size: 1.25rem; }
 .confirm-modal__icon--primary { background: var(--primary-soft); color: var(--primary); }
+.confirm-modal__icon--warning { background: var(--warning-soft); color: var(--warning); }
 .confirm-modal__title { font-size: 1.15rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 6px; }
-.confirm-modal__message { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: var(--space-5); }
+.confirm-modal__message { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: var(--space-4); }
+.idle-modal-countdown-wrap { font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-5); }
+.idle-modal-countdown { color: var(--warning-text); font-variant-numeric: tabular-nums; }
 .confirm-modal__actions { display: flex; gap: var(--space-3); }
 .confirm-modal__actions .btn { flex: 1; min-height: 44px; }
 

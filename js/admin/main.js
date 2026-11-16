@@ -9,7 +9,15 @@ import {
   applyThemeToDocument,
   toggleTheme,
   toggleSidebarCollapsed,
+  clearAllProductDrafts,
 } from './state.js';
+
+import { supabase } from '../supabaseClient.js';
+import {
+  ADMIN_IDLE_TIMEOUT_MS,
+  ADMIN_IDLE_WARNING_BEFORE_MS,
+  createIdleSessionGuard,
+} from './sessionTimeout.js';
 
 import {
   el,
@@ -430,6 +438,37 @@ export async function initAdminApp() {
   const dashboardView = document.getElementById('dashboard-view');
   const userEmailEl = document.getElementById('admin-user-email');
 
+  const cleanupActiveView = () => {
+    if (activeViewCleanup) {
+      try {
+        activeViewCleanup();
+      } catch {
+        // Ignora
+      }
+      activeViewCleanup = null;
+    }
+  };
+
+  const idleGuard = createIdleSessionGuard({
+    timeoutMs: ADMIN_IDLE_TIMEOUT_MS,
+    warningBeforeMs: ADMIN_IDLE_WARNING_BEFORE_MS,
+    onExtend: async () => {
+      if (supabase?.auth && typeof supabase.auth.refreshSession === 'function') {
+        await supabase.auth.refreshSession();
+      }
+    },
+    onExpire: async () => {
+      cleanupActiveView();
+      await logoutAdmin();
+      setLoginFeedback('Sessão encerrada por inatividade. Faça login novamente.');
+    },
+    onLogoutNow: async () => {
+      cleanupActiveView();
+      await logoutAdmin();
+      setLoginFeedback('Sessão encerrada com segurança.');
+    },
+  });
+
   await initAuthLifecycle({
     onAuthenticated: async (session) => {
       setLoginFeedback(null);
@@ -439,18 +478,14 @@ export async function initAdminApp() {
         userEmailEl.textContent = session.user?.email || 'Administrador';
       }
 
+      idleGuard.start();
       await fetchAllAdminData({ force: true });
       await renderCurrentRoute();
     },
     onUnauthenticated: (reason) => {
-      if (activeViewCleanup) {
-        try {
-          activeViewCleanup();
-        } catch {
-          // Ignora
-        }
-        activeViewCleanup = null;
-      }
+      idleGuard.stop();
+      cleanupActiveView();
+      clearAllProductDrafts();
       if (dashboardView) dashboardView.hidden = true;
       if (loginView) loginView.hidden = false;
       if (userEmailEl) userEmailEl.textContent = '';

@@ -74,6 +74,7 @@ const JS_FILES = [
   'js/shared/categoryIcons.js',
   'js/shared/compoundShowcaseRenderer.js',
   'js/admin/main.js',
+  'js/admin/sessionTimeout.js',
   'js/admin/state.js',
   'js/admin/ui.js',
   'js/admin/api.js',
