@@ -109,7 +109,7 @@ const REQUIRED_SEO_FILES = [
   'css/fonts.css',
   'css/icons.css',
   'js/publicApi.js',
-  'js/vendor/supabase-js-2.49.1.esm.js',
+  'js/vendor/supabase-js-2.119.0.esm.js',
   'supabase/migrations/20261104200000_security_hardening.sql',
   'supabase/migrations/20261104210000_product_richtext_options.sql',
   'supabase/migrations/20261105200000_data_safety_defaults.sql',

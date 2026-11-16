@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-import { createClient } from './vendor/supabase-js-2.49.1.esm.js';
+import { createClient } from './vendor/supabase-js-2.119.0.esm.js';
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
