@@ -938,6 +938,98 @@ if (headerParityErrors === 0) {
   pass('Paridade 100% entre _headers e vercel.json, com regras Cloudflare Clean URLs (/admin), desanexo (!) e cache seguro para ESM.');
 }
 
+console.log('\n7.3. Verificando segurança de publicação (security.txt, robots.txt, vercel.json e pacote dist/)...');
+const SECURITY_TXT_PATH = path.resolve(ROOT_DIR, '.well-known/security.txt');
+if (!fs.existsSync(SECURITY_TXT_PATH)) {
+  fail('.well-known/security.txt ausente.');
+} else {
+  const secTxt = fs.readFileSync(SECURITY_TXT_PATH, 'utf8');
+  const expiresMatch = secTxt.match(/^Expires:\s*(.+)$/m);
+  const hasContact = /^Contact:\s*mailto:/m.test(secTxt);
+  const hasCanonical = /^Canonical:\s*https:\/\/boticanaturaltriunfo\.com\.br\/\.well-known\/security\.txt$/m.test(secTxt);
+  const hasLang = /^Preferred-Languages:/m.test(secTxt);
+  const expiresMs = expiresMatch ? Date.parse(expiresMatch[1].trim()) : NaN;
+  if (!hasContact || !hasCanonical || !hasLang || !Number.isFinite(expiresMs) || expiresMs <= Date.now()) {
+    fail('.well-known/security.txt deve conter Contact, Canonical, Preferred-Languages e Expires futuro válido.');
+  } else {
+    pass('.well-known/security.txt presente e conforme RFC 9116.');
+  }
+}
+
+if (!fs.existsSync(path.resolve(ROOT_DIR, 'SECURITY.md'))) {
+  fail('SECURITY.md ausente na raiz do repositório.');
+} else {
+  pass('SECURITY.md presente na raiz do repositório.');
+}
+
+const robotsTxtContent = fs.readFileSync(path.resolve(ROOT_DIR, 'robots.txt'), 'utf8');
+if (/^Disallow:\s*\/(?:docs|scripts|supabase|tests|\.github)\b/im.test(robotsTxtContent)) {
+  fail('robots.txt não deve listar diretórios internos (docs, scripts, supabase, tests, .github).');
+} else if (!/^Disallow:\s*\/admin\b/m.test(robotsTxtContent) || !/^Disallow:\s*\/admin\.html\b/m.test(robotsTxtContent)) {
+  fail('robots.txt deve manter Disallow: /admin e Disallow: /admin.html.');
+} else {
+  pass('robots.txt bloqueia apenas rotas administrativas sem enumerar diretórios internos.');
+}
+
+const vercelDeployConfig = JSON.parse(fs.readFileSync(path.resolve(ROOT_DIR, 'vercel.json'), 'utf8'));
+if (
+  vercelDeployConfig.outputDirectory !== 'dist' ||
+  vercelDeployConfig.buildCommand !== 'npm run build:products && npm run build:cf'
+) {
+  fail('vercel.json deve publicar exclusivamente outputDirectory "dist" com buildCommand "npm run build:products && npm run build:cf".');
+} else {
+  pass('vercel.json configurado para gerar e publicar apenas o pacote limpo dist/.');
+}
+
+const buildCfContent = fs.readFileSync(path.resolve(ROOT_DIR, 'scripts/build-cf.mjs'), 'utf8');
+if (!buildCfContent.includes("'.well-known'")) {
+  fail('scripts/build-cf.mjs deve incluir ".well-known" na lista de diretórios públicos.');
+} else {
+  pass('scripts/build-cf.mjs inclui .well-known no pacote de deploy dist/.');
+}
+
+const DIST_DIR = path.resolve(ROOT_DIR, 'dist');
+const REQUIRE_DIST = process.argv.includes('--dist');
+if (!fs.existsSync(DIST_DIR)) {
+  if (REQUIRE_DIST) {
+    fail('Diretório dist/ não encontrado; execute "npm run build:cf" antes de verificar.');
+  }
+} else {
+  const forbiddenTopDirs = new Set(['docs', 'supabase', 'scripts', 'tests', '.github', '.git', 'node_modules', 'artifacts', 'backups', 'test-results', 'playwright-report']);
+  const forbiddenRootFiles = new Set(['package.json', 'package-lock.json', 'playwright.config.js', 'vercel.json', 'SECURITY.md', '.env', '.gitignore']);
+  const distLeaks = [];
+  function scanDistDirectory(currentDir, relPrefix = '') {
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      const relPath = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (!relPrefix && forbiddenTopDirs.has(entry.name)) {
+          distLeaks.push(relPath);
+          continue;
+        }
+        scanDistDirectory(path.join(currentDir, entry.name), relPath);
+      } else {
+        if (!relPrefix && forbiddenRootFiles.has(entry.name)) {
+          distLeaks.push(relPath);
+        } else if (entry.name.startsWith('.env') || entry.name.endsWith('.md') || entry.name.endsWith('.sql')) {
+          distLeaks.push(relPath);
+        }
+      }
+    }
+  }
+  scanDistDirectory(DIST_DIR);
+  if (distLeaks.length > 0) {
+    fail(`dist/ contém arquivos internos proibidos: ${distLeaks.join(', ')}`);
+  } else if (
+    !fs.existsSync(path.join(DIST_DIR, '.well-known/security.txt')) ||
+    !fs.existsSync(path.join(DIST_DIR, '_headers')) ||
+    !fs.existsSync(path.join(DIST_DIR, 'index.html'))
+  ) {
+    fail('dist/ está incompleto: faltam .well-known/security.txt, _headers ou index.html.');
+  } else {
+    pass('Pacote dist/ validado sem arquivos internos (docs, supabase, scripts, tests, .md, .sql, package.json, .env) e com .well-known/security.txt.');
+  }
+}
+
 /* ==========================================================================
    8. [MODO PRODUÇÃO] VERIFICAÇÃO DE PLACEHOLDERS [PREENCHER (APENAS --prod)
    ========================================================================== */

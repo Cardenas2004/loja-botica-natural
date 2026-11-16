@@ -1,0 +1,6 @@
+# Divulgação responsável de vulnerabilidades — Botica Natural
+# Confirmar se o e-mail abaixo será mantido ou substituído por alias dedicado antes do deploy.
+Contact: mailto:boticanatural@terra.com.br
+Expires: 2027-11-16T23:59:59.000Z
+Preferred-Languages: pt-BR, en
+Canonical: https://boticanaturaltriunfo.com.br/.well-known/security.txt

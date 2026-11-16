@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build:products",
-  "outputDirectory": ".",
+  "buildCommand": "npm run build:products && npm run build:cf",
+  "outputDirectory": "dist",
   "headers": [
     {
       "source": "/(.*)",
