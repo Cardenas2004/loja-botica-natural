@@ -121,6 +121,7 @@ const REQUIRED_SEO_FILES = [
   'supabase/migrations/20261114120000_products_slug.sql',
   'supabase/migrations/20261114120000_products_slug_rollback.sql',
   'supabase/migrations/20261115100000_harden_button_links_allowlist.sql',
+  'supabase/migrations/20261115110000_restore_storage_hardening.sql',
   'supabase/schema_reference.sql',
   'supabase/legacy/README.md',
   'supabase/audit/README.md',
