@@ -145,13 +145,14 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
     }
   });
 
-  test('Em >= 1024px exibe apenas #catalog-tabs-wrapper sem máscara de opacidade e sincroniza seleção do bottom sheet mobile', async ({
+  test('Sincroniza seleção do bottom sheet mobile (390px) para as abas desktop (>= 1024px) sem máscara de opacidade', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await setupPageMocks(page);
 
     await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#catalog-grid')).toHaveAttribute('aria-busy', 'false');
     await expect(page.locator('#catalog-category-mobile')).toBeVisible();
     await expect(page.locator('#catalog-tabs-wrapper')).toBeHidden();
 
@@ -159,8 +160,10 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
     await page.locator('#btn-open-category-modal').click();
     const sheet = page.locator('#category-bottom-sheet');
     await expect(sheet).toBeVisible();
+    await expect(sheet).toHaveClass(/is-open/);
 
     const categoryButtons = sheet.locator('.category-sheet__item');
+    await expect(categoryButtons.nth(1)).toBeVisible();
     expect(await categoryButtons.count()).toBeGreaterThan(1);
 
     const secondCatBtn = categoryButtons.nth(1);
@@ -205,6 +208,29 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
       const opacity = await tab.evaluate((el) => parseFloat(getComputedStyle(el).opacity));
       expect(opacity).toBe(1);
     }
+  });
+
+  test('Bottom sheet de categorias permanece acima do banner de cookies e clicável no mobile', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupPageMocks(page);
+
+    await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#catalog-grid')).toHaveAttribute('aria-busy', 'false');
+
+    // Aguarda condição observável real: banner LGPD visível sobre a parte inferior da tela
+    await expect(page.locator('.cookie')).toBeVisible({ timeout: 3000 });
+
+    await page.locator('#btn-open-category-modal').click();
+    const sheet = page.locator('#category-bottom-sheet');
+    await expect(sheet).toHaveClass(/is-open/);
+
+    const secondCatBtn = sheet.locator('.category-sheet__item').nth(1);
+    await expect(secondCatBtn).toBeVisible();
+    await secondCatBtn.click();
+
+    await expect(page.locator('#category-mobile-selected-label')).not.toHaveText('Todos os Produtos');
   });
 
   test('Todos os <input>, <select> e <textarea> em index.html, produtos.html e admin.html possuem font-size >= 16px (ALTO-04)', async ({
