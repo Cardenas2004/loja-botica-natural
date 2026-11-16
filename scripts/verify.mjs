@@ -1075,6 +1075,14 @@ for (const wfName of REQUIRED_WORKFLOWS) {
     workflowErrors += 1;
     fail(`.github/workflows/${wfName}: possível script injection via github.event.* em bloco run.`);
   }
+  // Node 20 saiu de suporte (EOL 2026-04-30): CI não pode rodar runtime sem patches de segurança.
+  const MIN_CI_NODE_MAJOR = 22;
+  for (const [, major] of wfContent.matchAll(/node-version:\s*['"]?(\d+)/g)) {
+    if (Number(major) < MIN_CI_NODE_MAJOR) {
+      workflowErrors += 1;
+      fail(`.github/workflows/${wfName}: node-version ${major} fora de suporte (mínimo ${MIN_CI_NODE_MAJOR} LTS).`);
+    }
+  }
 }
 if (!fs.existsSync(path.resolve(ROOT_DIR, '.github/dependabot.yml')) || !fs.existsSync(path.resolve(ROOT_DIR, '.gitleaks.toml'))) {
   workflowErrors += 1;
