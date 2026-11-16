@@ -1091,13 +1091,15 @@ const IS_PROD = process.argv.includes('--prod');
 if (IS_PROD) {
   console.log('\n8. [MODO PRODUÇÃO] Verificando ausência de placeholders [PREENCHER...');
   let placeholdersFound = 0;
-  const prodScanFiles = [...HTML_FILES, ...JS_FILES, 'robots.txt', 'sitemap.xml'];
+  const prodScanFiles = Array.from(new Set([...PUBLIC_HTML_FILES, ...HTML_FILES, ...JS_FILES, 'robots.txt', 'sitemap.xml', '.well-known/security.txt']));
   for (const file of prodScanFiles) {
     const fullPath = path.resolve(ROOT_DIR, file);
     if (!fs.existsSync(fullPath)) continue;
+    const isJs = file.endsWith('.js');
+    const pattern = isJs ? /\[PREENCHER:[^\]]+\]/g : /\[PREENCHER[^\]]*\]?/gi;
     const lines = fs.readFileSync(fullPath, 'utf8').split(/\r?\n/);
     lines.forEach((lineText, idx) => {
-      const matches = lineText.match(/\[PREENCHER:[^\]]+\]/g);
+      const matches = lineText.match(pattern);
       if (matches) {
         for (const placeholder of matches) {
           fail(`${file}:${idx + 1} -> ${placeholder}`);
@@ -1107,7 +1109,7 @@ if (IS_PROD) {
     });
   }
   if (placeholdersFound === 0) {
-    pass('Nenhum placeholder [PREENCHER: ...] encontrado nos arquivos de produção.');
+    pass('Nenhum placeholder [PREENCHER...] encontrado nos arquivos de produção.');
   }
 }
 

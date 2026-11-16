@@ -64,21 +64,23 @@ Os pontos abaixo estão documentados em `docs/auditoria/revisao-rt.md` e marcado
 
 ## 4. Infraestrutura, Hospedagem e Analytics Opcional
 
-### 4.1 Headers HTTP, Cache e Hospedagem na Cloudflare (Pages / Workers Assets)
-- `_headers`: configurado para **Cloudflare Pages** com HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy` com `payment=()`, CSP estrita (`style-src 'self'`; `font-src 'self'`), desanexo explícito (`! Content-Security-Policy` e `! Cache-Control`) para impedir concatenação de headers duplicados pela borda da Cloudflare, cobertura explícita de **Clean URLs** (`/admin` e `/admin.html` com `frame-src 'self' blob:` e `X-Robots-Tag: noindex, nofollow`), `/css/*` e `/js/*` com `public, max-age=0, must-revalidate` (evitando trava de cache em módulos ES sem hash após deploy), `/images/*` com `max-age=604800, stale-while-revalidate=86400` e `/fonts/*` imutável por 1 ano.
+### 4.1 Headers HTTP, Cache, Exposição de Arquivos e Hospedagem (Cloudflare / Vercel)
+- > **Checklist completo do proprietário (Fase 2):** consulte `docs/seguranca-manual.md` para todas as ações manuais no Supabase, Cloudflare Access/WAF, validação pós-deploy e verificação de `security.txt`.
+- `_headers` e `vercel.json`: mantidos com paridade 100%, incluindo HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy` estendida (`usb`, `bluetooth`, `serial`, sensores, pagamento), CSP estrita (`script-src 'self'`; `style-src 'self'`; `font-src 'self'`; `upgrade-insecure-requests`; vitrine pública sem `wss://`), `Cross-Origin-Opener-Policy: same-origin` nas rotas administrativas `/admin` e `/admin.html`, desanexo explícito (`! Content-Security-Policy` e `! Cache-Control`) e cache seguro para módulos ESM.
 - `404.html` e `_redirects`: impedem o modo SPA Soft-404 da Cloudflare Pages (retornando HTTP `404` real com caminhos absolutos `/...` que funcionam em qualquer profundidade) e redirecionam `/produtos/` para `/produtos` (`301`).
-- `.assetsignore` e `npm run build:pages` (`dist/`): no painel da Cloudflare Pages, é recomendável usar **Build command** `npm run build:pages` e **Output directory** `dist` para publicar apenas os arquivos públicos (sem `docs/`, `supabase/`, `tests/`, `scripts/` ou `node_modules/`). Caso prefira publicar direto da raiz sem etapa de build (`.`), mantenha essa configuração sabendo que o site funciona normalmente e os diretórios internos ficam marcados como `Disallow` no `robots.txt` e `X-Robots-Tag: noindex, nofollow` no `_headers`.
+- **Deploy estrito em `dist/` (obrigatório):** tanto `vercel.json` quanto a Cloudflare Pages devem publicar exclusivamente o diretório `dist/` gerado por `npm run build:pages` (`npm run build:products && npm run build:cf`), impedindo a exposição de `docs/`, `supabase/`, `tests/`, `scripts/`, `package.json`, `SECURITY.md` e `.github/`. Apenas `/.well-known/security.txt` é incluído intencionalmente para divulgação responsável (confirmar endereço de contato e renovar `Expires:` antes de `2027-11-16`).
 - **Checklist no Painel da Cloudflare (produção)**:
-  1. Em **Security → Scrape Shield → Email Address Obfuscation**, manter **desligado** (ou confiar nos marcadores `<!--email_off-->` já aplicados nos HTMLs) para evitar injeção de script de decodificação incompatível com `script-src 'self'`.
-  2. Em **Speed → Optimization → Content Optimization**, manter **Rocket Loader** desligado para não injetar scripts externos (`ajax.cloudflare.com`) bloqueados pela CSP estrita.
-  3. Em **SSL/TLS → Overview**, utilizar modo **Full (strict)** ao apontar o domínio oficial `boticanaturaltriunfo.com.br` (configurando regra de redirecionamento `301` de `https://www.boticanaturaltriunfo.com.br/*` para `https://boticanaturaltriunfo.com.br/$1` para evitar conteúdo duplicado), e em **Supabase Dashboard → Authentication → URL Configuration**, definir *Site URL* como `https://boticanaturaltriunfo.com.br` e adicionar `https://boticanaturaltriunfo.com.br/**` em *Redirect URLs*. Caso mude de domínio no futuro, rode `node scripts/set-domain.mjs https://<novo-dominio>` + `npm run build:products`.
-- `vercel.json`: espelha exatamente os mesmos headers e políticas de cache caso o projeto seja espelhado na Vercel Edge Network.
+  1. Confirmar **Build command** `npm run build:pages` e **Output directory** `dist`.
+  2. Em **Security → Scrape Shield → Email Address Obfuscation**, manter **desligado** (ou confiar nos marcadores `<!--email_off-->` já aplicados nos HTMLs) para evitar injeção de script de decodificação incompatível com `script-src 'self'`.
+  3. Em **Speed → Optimization → Content Optimization**, manter **Rocket Loader** desligado para não injetar scripts externos (`ajax.cloudflare.com`) bloqueados pela CSP estrita.
+  4. Em **SSL/TLS → Overview**, utilizar modo **Full (strict)** ao apontar o domínio oficial `boticanaturaltriunfo.com.br` (configurando regra de redirecionamento `301` de `https://www.boticanaturaltriunfo.com.br/*` para `https://boticanaturaltriunfo.com.br/$1` para evitar conteúdo duplicado), e em **Supabase Dashboard → Authentication → URL Configuration**, definir *Site URL* como `https://boticanaturaltriunfo.com.br` e restringir *Redirect URLs* estritamente a `https://boticanaturaltriunfo.com.br/admin` e `https://boticanaturaltriunfo.com.br/admin.html`.
+  5. Configurar **Cloudflare Access** e **Rate Limiting WAF** para `/admin*` (ver `docs/seguranca-manual.md`).
 
 ### 4.2 Caso Decida Ativar GA4 e/ou Meta Pixel no Futuro
 A infraestrutura em `js/main.js` já carrega os scripts **somente após consentimento explícito por categoria**. Se o proprietário optar por preencher `ANALYTICS` em `js/config.js`:
-- Atualize a diretiva CSP (`_headers`, `vercel.json` e tags `<meta http-equiv="Content-Security-Policy">` das páginas públicas + `scripts/build-products.mjs`):
-  - Para **GA4**: adicionar `https://www.googletagmanager.com` em `script-src` e `https://www.google-analytics.com https://region1.google-analytics.com` em `connect-src`.
-  - Para **Meta Pixel**: adicionar `https://connect.facebook.net` em `script-src`, `https://www.facebook.com` em `img-src` e `connect-src`.
+- Atualize a diretiva CSP (`_headers`, `vercel.json` e tags `<meta http-equiv="Content-Security-Policy">` das páginas públicas + `scripts/build-products.mjs`) seguindo exatamente os domínios documentados em `docs/seguranca.md` (Seção 2):
+  - Para **GA4**: `https://www.googletagmanager.com` em `script-src` e `https://www.google-analytics.com https://region1.google-analytics.com https://stats.g.doubleclick.net` em `connect-src`.
+  - Para **Meta Pixel**: `https://connect.facebook.net` em `script-src` e `https://www.facebook.com` em `img-src` e `connect-src`.
 - Regenere as páginas de produto rodando `npm run build:products`.
 
 ---
@@ -86,7 +88,7 @@ A infraestrutura em `js/main.js` já carrega os scripts **somente após consenti
 ## 5. Migrações e Scripts Operacionais do Supabase
 
 ### 5.1 Migrações no Supabase (Ordem Cronológica)
-Todas possuem equivalentes de reversão (`*_rollback.sql`) quando alteram estrutura existente:
+Todas possuem equivalentes de reversão (`*_rollback.sql` ou rollback documentado) quando alteram estrutura existente:
 1. `supabase/migrations/20261104200000_security_hardening.sql`: cria `admin_users`, blinda `is_admin()`, remove e-mail hardcoded e restringe RLS.
 2. `supabase/migrations/20261104210000_product_richtext_options.sql`: adiciona coluna `text_options JSONB` em `products`.
 3. `supabase/migrations/20261105200000_data_safety_defaults.sql`: remove defaults arriscados (`allergen_info`, `quality_note`, `payment_info`), adiciona `check_price_non_negative`, triggers de `updated_at` e isolamento de `site_settings`.
@@ -96,6 +98,9 @@ Todas possuem equivalentes de reversão (`*_rollback.sql`) quando alteram estrut
 7. `supabase/migrations/20261114100000_carousel_focus_point.sql`: adiciona `focus_x` e `focus_y` em `carousel_slides` (mantidos por compatibilidade com padrão central `50/50` após ativação do ajuste automático desktop/mobile).
 8. `supabase/migrations/20261114110000_products_home_featured.sql`: adiciona `home_featured` e `home_position` (com índice parcial `idx_products_home_featured`) em `products`.
 9. `supabase/migrations/20261114120000_products_slug.sql`: adiciona `slug` único com trigger de normalização sem acentos, dedup e índice `uq_products_slug_idx` em `products`.
+10. `supabase/migrations/20261115100000_harden_button_links_allowlist.sql`: sanitiza links existentes em `carousel_slides.button_link` e `compound_showcase_cards.cta_href` e aplica CHECK constraints allowlist contra `//`, `/\`, `\/` e esquemas inseguros.
+11. `supabase/migrations/20261115110000_restore_storage_hardening.sql`: restaura `file_size_limit = 2097152` (2 MB) e `allowed_mime_types` do bucket `product-images`, remove policies antigas duplicadas e restringe uploads/atualizações autenticadas aos prefixos `catalogo/` e `carousel/`.
+12. **Pendente (NÃO aplicar antes do cadastro MFA TOTP):** `supabase/pending/20261115120000_require_aal2_admin.sql`: exige nível `aal2` em `public.is_admin()`. Só deve ser aplicada **depois** que todos os administradores ativarem MFA TOTP em `/admin#/seguranca` (ver `docs/seguranca-manual.md`).
 
 ### 5.2 Geração Estática de Produtos e Higiene de Dados
 - Após configurar o domínio oficial ou atualizar produtos no Supabase:
