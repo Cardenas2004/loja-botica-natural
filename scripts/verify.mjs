@@ -841,10 +841,41 @@ for (const key of REQUIRED_SECURITY_HEADERS) {
 if (
   netlifyRootHeaders['Content-Security-Policy'] &&
   (netlifyRootHeaders['Content-Security-Policy'].includes("'unsafe-inline'") ||
-    netlifyRootHeaders['Content-Security-Policy'].includes('fonts.googleapis.com'))
+    netlifyRootHeaders['Content-Security-Policy'].includes('fonts.googleapis.com') ||
+    !netlifyRootHeaders['Content-Security-Policy'].includes('upgrade-insecure-requests') ||
+    netlifyRootHeaders['Content-Security-Policy'].includes('wss://'))
 ) {
   headerParityErrors += 1;
-  fail('CSP em _headers/vercel.json ainda contém unsafe-inline ou fonts.googleapis.com.');
+  fail('CSP pública em _headers/vercel.json deve incluir upgrade-insecure-requests e excluir unsafe-inline, fonts.googleapis.com e wss://.');
+}
+for (const reqPerm of ['usb=()', 'bluetooth=()', 'serial=()', 'accelerometer=()', 'gyroscope=()', 'magnetometer=()']) {
+  if (!netlifyRootHeaders['Permissions-Policy']?.includes(reqPerm)) {
+    headerParityErrors += 1;
+    fail(`Permissions-Policy em _headers/vercel.json não inclui ${reqPerm}.`);
+  }
+}
+if (netlifyRootHeaders['Cross-Origin-Opener-Policy'] || vercelRootHeaders['Cross-Origin-Opener-Policy']) {
+  headerParityErrors += 1;
+  fail('Cross-Origin-Opener-Policy deve ser aplicado apenas em /admin e /admin.html, não globalmente.');
+}
+if (netlifyRootHeaders['Cross-Origin-Resource-Policy'] || vercelRootHeaders['Cross-Origin-Resource-Policy']) {
+  headerParityErrors += 1;
+  fail('Cross-Origin-Resource-Policy global não deve ser aplicado para não quebrar previews sociais.');
+}
+
+// Verifica remoção de wss:// nas tags <meta> de CSP públicas
+for (const pubHtml of PUBLIC_HTML_FILES) {
+  const htmlContent = readUtf8(pubHtml);
+  const cspMetaMatch = htmlContent.match(
+    /<meta\s+http-equiv=["']Content-Security-Policy["']\s+content=["']([^"']+)["']/i
+  );
+  if (!cspMetaMatch) {
+    headerParityErrors += 1;
+    fail(`${pubHtml}: meta tag Content-Security-Policy ausente.`);
+  } else if (cspMetaMatch[1].includes('wss://')) {
+    headerParityErrors += 1;
+    fail(`${pubHtml}: meta tag CSP pública ainda contém wss:// desnecessário.`);
+  }
 }
 
 // Regras específicas de Cloudflare Pages: Clean URLs (/admin) e desanexo (!) sem concatenação de headers
@@ -855,13 +886,24 @@ for (const adminRoute of ['/admin', '/admin.html']) {
     headerParityErrors += 1;
     fail(`_headers (${adminRoute}): falta "! Content-Security-Policy" para evitar concatenação com /* na Cloudflare.`);
   }
-  if (!cfAdmin.headers['Content-Security-Policy'] || !cfAdmin.headers['Content-Security-Policy'].includes("frame-src 'self' blob:")) {
+  if (
+    !cfAdmin.headers['Content-Security-Policy'] ||
+    !cfAdmin.headers['Content-Security-Policy'].includes("frame-src 'self' blob:") ||
+    !cfAdmin.headers['Content-Security-Policy'].includes('upgrade-insecure-requests')
+  ) {
     headerParityErrors += 1;
-    fail(`_headers (${adminRoute}): CSP deve permitir "frame-src 'self' blob:" para o preview do painel.`);
+    fail(`_headers (${adminRoute}): CSP deve permitir "frame-src 'self' blob:" e incluir "upgrade-insecure-requests".`);
   }
   if (cfAdmin.headers['Content-Security-Policy'] !== vcAdmin['Content-Security-Policy']) {
     headerParityErrors += 1;
     fail(`Divergência de CSP em ${adminRoute} entre _headers e vercel.json.`);
+  }
+  if (
+    cfAdmin.headers['Cross-Origin-Opener-Policy'] !== 'same-origin' ||
+    vcAdmin['Cross-Origin-Opener-Policy'] !== 'same-origin'
+  ) {
+    headerParityErrors += 1;
+    fail(`${adminRoute}: Cross-Origin-Opener-Policy deve ser "same-origin" em _headers e vercel.json.`);
   }
   if (cfAdmin.headers['X-Robots-Tag'] !== 'noindex, nofollow' || vcAdmin['X-Robots-Tag'] !== 'noindex, nofollow') {
     headerParityErrors += 1;
