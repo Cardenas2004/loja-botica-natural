@@ -1079,6 +1079,14 @@ for (const wfName of REQUIRED_WORKFLOWS) {
 if (!fs.existsSync(path.resolve(ROOT_DIR, '.github/dependabot.yml')) || !fs.existsSync(path.resolve(ROOT_DIR, '.gitleaks.toml'))) {
   workflowErrors += 1;
   fail('.github/dependabot.yml ou .gitleaks.toml ausente.');
+} else {
+  // Allowlists ancoradas (^...$) devem mirar o segredo extraído, não o "match":
+  // regras como `jwt` incluem o delimitador final no match e a âncora nunca casa.
+  const gitleaksToml = fs.readFileSync(path.resolve(ROOT_DIR, '.gitleaks.toml'), 'utf8');
+  if (/^\s*regexTarget\s*=\s*["']match["']/m.test(gitleaksToml)) {
+    workflowErrors += 1;
+    fail('.gitleaks.toml: use regexTarget = "secret" nas allowlists de token (o "match" inclui delimitadores e quebra âncoras ^...$).');
+  }
 }
 if (workflowErrors === 0) {
   pass('Workflows GitHub Actions (ci, codeql, dependency-review), Dependabot e Gitleaks configurados com pinagem por SHA e menor privilégio.');
