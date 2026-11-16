@@ -8,7 +8,6 @@ import {
   sanitizeRichText,
   sanitizeRichHtml,
   legacyPlainTextToHtml,
-  sanitizeLinkHref,
   extractPlainText,
   normalizeTextMode,
   renderSanitizedRichText,
@@ -17,6 +16,7 @@ import {
 } from '../shared/richtext.js';
 
 import { el, createIcon, showToast } from './ui.js';
+import { classifySafeLink } from '../shared/urlSafety.js';
 
 /**
  * Serializa os filhos de um elemento DOM do editor para HTML bruto antes de passar pelo sanitizador.
@@ -413,9 +413,10 @@ export function createRichTextEditor(config) {
 
   // Ações do popover de Link
   linkApplyBtn.addEventListener('click', () => {
-    const safeHref = sanitizeLinkHref(linkInput.value);
+    const linkInfo = classifySafeLink(linkInput.value);
+    const safeHref = linkInfo.valid ? linkInfo.href : null;
     if (!safeHref) {
-      showToast('URL inválida. Use https://, http://, mailto: ou tel:.', 'warning');
+      showToast('URL inválida. Use https://, http://, mailto:, tel: ou caminho relativo seguro.', 'warning');
       linkInput.focus();
       return;
     }
@@ -426,12 +427,22 @@ export function createRichTextEditor(config) {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
       applyEditorCommand(editableArea, 'createLink', safeHref);
+      if (linkInfo.isExternal || linkInfo.kind === 'https' || linkInfo.kind === 'http') {
+        editableArea.querySelectorAll('a').forEach((anchorEl) => {
+          if (anchorEl.getAttribute('href') === safeHref) {
+            anchorEl.setAttribute('target', '_blank');
+            anchorEl.setAttribute('rel', 'noopener noreferrer');
+          }
+        });
+      }
     } else {
       // Se não havia texto selecionado, insere um nó <a> seguro na posição do cursor
       const a = document.createElement('a');
       a.href = safeHref;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
+      if (linkInfo.isExternal || linkInfo.kind === 'https' || linkInfo.kind === 'http') {
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+      }
       a.textContent = safeHref;
       if (sel && sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);

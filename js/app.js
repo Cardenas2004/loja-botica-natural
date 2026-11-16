@@ -38,6 +38,7 @@ import {
 } from './config.js';
 
 import { extractPlainText } from './shared/richtext.js';
+import { classifySafeLink, isSafeNavigationLink } from './shared/urlSafety.js';
 import { createCategoryIconElement } from './shared/categoryIcons.js';
 import {
   DEFAULT_COMPOUND_CARDS,
@@ -338,49 +339,18 @@ export function createProductCardElement(product) {
    ========================================================================== */
 
 /**
- * Valida o link de um banner por whitelist estrita (apenas `https:`, `http:` ou caminho relativo).
- * Rejeita `javascript:`, `data:`, `vbscript:`, URLs protocol-relative (`//`) e caracteres de controle.
+ * Valida o link de um banner por whitelist estrita via `classifySafeLink` (`js/shared/urlSafety.js`).
+ * Rejeita `javascript:`, `data:`, `vbscript:`, URLs protocol-relative (`//`, `/\`, `\/`) e caracteres de controle.
  *
  * @param {string | null | undefined} rawUrl
  * @returns {string}
  */
 function sanitizeBannerLink(rawUrl) {
-  const trimmed = String(rawUrl || '')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
-    .trim();
-  if (!trimmed) return '';
-
-  // Bloqueia URLs protocol-relative (//evil.com) ou barras invertidas
-  if (trimmed.startsWith('//') || trimmed.startsWith('\\')) {
+  if (!isSafeNavigationLink(rawUrl, { allowEmpty: false })) {
     return '';
   }
-
-  try {
-    const baseOrigin =
-      typeof window !== 'undefined' &&
-      window.location &&
-      /^https?:$/i.test(window.location.protocol)
-        ? window.location.origin
-        : SITE_DOMAIN;
-
-    const parsed = new URL(trimmed, baseOrigin);
-    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-      return '';
-    }
-
-    // Se tem esquema explícito, exige http:// ou https:// no início
-    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
-      if (!/^https?:\/\//i.test(trimmed)) {
-        return '';
-      }
-      return parsed.href;
-    }
-
-    // Caminho relativo ou âncora segura
-    return trimmed;
-  } catch {
-    return '';
-  }
+  const classified = classifySafeLink(rawUrl);
+  return classified.valid && classified.href ? classified.href : '';
 }
 
 function resolveCarouselSlideImageUrl(slide) {
@@ -403,16 +373,17 @@ function createHeroCarouselSlideElement(slide, index, carouselEl) {
     sanitizeBannerLink(slide.button_link),
     catalogState.products
   );
+  const safeHrefInfo = safeHref ? classifySafeLink(safeHref) : null;
 
   /** @type {HTMLAnchorElement | HTMLDivElement} */
   let wrapperEl;
-  if (safeHref) {
+  if (safeHref && safeHrefInfo?.valid) {
     const anchor = document.createElement('a');
     anchor.className = 'promo__link';
     anchor.href = safeHref;
     anchor.draggable = false;
     anchor.setAttribute('aria-label', altText);
-    if (/^https?:\/\//i.test(safeHref)) {
+    if (safeHrefInfo.isExternal || safeHrefInfo.kind === 'https' || safeHrefInfo.kind === 'http') {
       anchor.target = '_blank';
       anchor.rel = 'noopener noreferrer';
     }

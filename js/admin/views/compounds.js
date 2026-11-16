@@ -28,6 +28,7 @@ import {
   seedDefaultCompoundCards,
 } from '../api.js';
 import { normalizeSupabaseError } from '../../supabaseClient.js';
+import { classifySafeLink, isSafeNavigationLink } from '../../shared/urlSafety.js';
 import {
   DEFAULT_BOTTLE_IMAGE_URL,
   CARD_THEMES,
@@ -1202,12 +1203,20 @@ export function renderCompoundsView(container) {
     }
 
     const buttonLink = buttonLinkInput.value.trim();
-    if (!isValidCompoundLink(buttonLink)) {
+    const compoundLinkInfo = classifySafeLink(buttonLink);
+    if (
+      !isSafeNavigationLink(buttonLink, { allowEmpty: true }) ||
+      !isValidCompoundLink(buttonLink)
+    ) {
       setEditorStatus('error', 'URL de destino inválida');
-      showToast('O link de destino informado é inválido. Use um link relativo ou https://.', 'error');
+      showToast(
+        'O link de destino informado é inválido. Use um caminho relativo seguro ou https://.',
+        'error'
+      );
       buttonLinkInput.focus();
       return;
     }
+    const normalizedButtonLink = compoundLinkInfo.isEmpty ? '' : compoundLinkInfo.href || '';
 
     setEditorStatus('saving', 'Salvando no Supabase...');
     setButtonLoading(
@@ -1227,7 +1236,7 @@ export function renderCompoundsView(container) {
           label_badge: labelBadgeInput.value,
           show_label: showLabelCheck.checked,
           button_text: buttonTextInput.value,
-          button_link: buttonLink,
+          button_link: normalizedButtonLink,
           product_id: productSelect.value || null,
           open_in_new_tab: openNewTabCheck.checked,
           show_button: showButtonCheck.checked,

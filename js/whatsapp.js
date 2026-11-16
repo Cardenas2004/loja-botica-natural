@@ -28,6 +28,8 @@ import {
   WHATSAPP_PHONE as CONFIG_WHATSAPP_PHONE,
 } from './config.js';
 
+import { classifySafeLink } from './shared/urlSafety.js';
+
 /* ==========================================================================
    1. CONSTANTES & CONTRATOS IMUTÁVEIS
    ========================================================================== */
@@ -259,19 +261,25 @@ export async function loadBuiltProductSlugs(options = {}) {
  * @returns {string}
  */
 export function extractProductSlugFromHref(rawHref) {
-  const trimmed = String(rawHref || '').trim();
-  if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//') || trimmed.startsWith('\\')) {
+  const linkInfo = classifySafeLink(rawHref);
+  if (!linkInfo.valid || !linkInfo.href) {
     return '';
   }
 
-  const relativeMatch = trimmed.match(/^(?:\.?\/)?produtos\/([a-z0-9-]+)\/?(?:[?#].*)?$/i);
-  if (relativeMatch?.[1]) {
-    return normalizeProductSlug(relativeMatch[1]);
+  if (linkInfo.kind === 'relative') {
+    if (linkInfo.href.startsWith('/#') || linkInfo.href.startsWith('#')) {
+      return '';
+    }
+    const relativeMatch = linkInfo.href.match(/^\/produtos\/([a-z0-9-]+)\/?(?:[?#].*)?$/i);
+    if (relativeMatch?.[1]) {
+      return normalizeProductSlug(relativeMatch[1]);
+    }
+    return '';
   }
 
-  if (/^https?:\/\//i.test(trimmed)) {
+  if (linkInfo.kind === 'https' || linkInfo.kind === 'http') {
     try {
-      const parsed = new URL(trimmed);
+      const parsed = new URL(linkInfo.href);
       const siteOrigin = new URL(SITE_DOMAIN).origin;
       const currentOrigin =
         typeof window !== 'undefined' && window.location ? window.location.origin : '';
@@ -333,11 +341,18 @@ export function buildProductDetailHref(product, options = {}) {
  * @returns {string}
  */
 export function resolveSafeProductHref(rawHref, products = [], options = {}) {
-  const trimmed = String(rawHref || '').trim();
-  if (!trimmed) return '';
-  const slug = extractProductSlugFromHref(trimmed);
+  const linkInfo = classifySafeLink(rawHref);
+  if (
+    !linkInfo.valid ||
+    !linkInfo.href ||
+    (linkInfo.kind !== 'https' && linkInfo.kind !== 'http' && linkInfo.kind !== 'relative')
+  ) {
+    return '';
+  }
+
+  const slug = extractProductSlugFromHref(linkInfo.href);
   if (!slug) {
-    return trimmed;
+    return linkInfo.href;
   }
 
   const builtSlugs =
@@ -350,10 +365,10 @@ export function resolveSafeProductHref(rawHref, products = [], options = {}) {
     return buildFallbackProductHref(matchedProduct, slug);
   }
 
-  if (/^\/produtos\//i.test(trimmed)) {
-    return `produtos/${encodeURIComponent(slug)}/`;
+  if (!linkInfo.isExternal && /^\/produtos\//i.test(linkInfo.href)) {
+    return `/produtos/${encodeURIComponent(slug)}/`;
   }
-  return trimmed;
+  return linkInfo.href;
 }
 
 /**
