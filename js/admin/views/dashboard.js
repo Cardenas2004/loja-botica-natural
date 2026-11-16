@@ -172,6 +172,23 @@ export function renderDashboardView(container, router) {
           ]),
         ]
       ),
+      el(
+        'button',
+        {
+          type: 'button',
+          className: 'quick-action-card',
+          onClick: () => router.navigate('#/seguranca'),
+        },
+        [
+          el('div', { className: 'quick-action-card__icon' }, [
+            createIcon('fa-solid fa-shield-halved'),
+          ]),
+          el('div', { className: 'quick-action-card__body' }, [
+            el('strong', { textContent: 'Segurança (MFA TOTP)' }),
+            el('span', { textContent: 'Configurar autenticação em dois fatores do painel' }),
+          ]),
+        ]
+      ),
     ]),
   ]);
 

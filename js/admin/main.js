@@ -28,7 +28,12 @@ import {
 } from './ui.js';
 
 import { fetchAllAdminData } from './api.js';
-import { loginAdmin, logoutAdmin, initAuthLifecycle } from './auth.js';
+import {
+  loginAdmin,
+  logoutAdmin,
+  verifyTotpChallenge,
+  initAuthLifecycle,
+} from './auth.js';
 
 import { renderDashboardView } from './views/dashboard.js';
 import { renderProductsView } from './views/products.js';
@@ -37,6 +42,7 @@ import { renderCategoriesView } from './views/categories.js';
 import { renderBannersView } from './views/banners.js';
 import { renderCompoundsView } from './views/compounds.js';
 import { renderWhatsAppView } from './views/whatsapp.js';
+import { renderSecurityView } from './views/security.js';
 
 /** @type {(() => void) | null} */
 let activeViewCleanup = null;
@@ -83,6 +89,9 @@ function parseHashRoute(rawHash) {
   }
   if (clean === '/whatsapp') {
     return { view: 'whatsapp', param: null, title: 'Mensagens de WhatsApp', parentLabel: null };
+  }
+  if (clean === '/seguranca') {
+    return { view: 'security', param: null, title: 'Segurança (MFA)', parentLabel: null };
   }
   return { view: 'dashboard', param: null, title: 'Visão Geral', parentLabel: null };
 }
@@ -200,6 +209,8 @@ async function renderCurrentRoute() {
     activeViewCleanup = renderCompoundsView(outlet);
   } else if (routeInfo.view === 'whatsapp') {
     renderWhatsAppView(outlet);
+  } else if (routeInfo.view === 'security') {
+    await renderSecurityView(outlet);
   }
 }
 
@@ -287,14 +298,45 @@ function setLoginFeedback(message) {
   }
 }
 
+/** @type {string | null} */
+let pendingMfaFactorId = null;
+
+/**
+ * Alterna entre formulário de credenciais e desafio TOTP dentro de `#login-view`.
+ * @param {string | null} factorId
+ */
+function setMfaChallengeMode(factorId) {
+  pendingMfaFactorId = factorId || null;
+  const loginForm = document.getElementById('login-form');
+  const mfaForm = document.getElementById('mfa-challenge-form');
+  const mfaInput = /** @type {HTMLInputElement | null} */ (document.getElementById('mfa-code'));
+  const showChallenge = Boolean(pendingMfaFactorId);
+
+  if (loginForm) loginForm.hidden = showChallenge;
+  if (mfaForm) mfaForm.hidden = !showChallenge;
+  if (mfaInput) {
+    mfaInput.value = '';
+    if (showChallenge) mfaInput.focus();
+  }
+}
+
 /**
  * Registra os eventos globais do shell administrativo.
+ * @param {{ onSessionAuthenticated?: (session: any) => Promise<void> }} [hooks={}]
  */
-function bindShellEvents() {
+function bindShellEvents(hooks = {}) {
   const loginForm = /** @type {HTMLFormElement | null} */ (document.getElementById('login-form'));
+  const mfaForm = /** @type {HTMLFormElement | null} */ (
+    document.getElementById('mfa-challenge-form')
+  );
   const emailInput = /** @type {HTMLInputElement | null} */ (document.getElementById('email'));
   const passwordInput = /** @type {HTMLInputElement | null} */ (document.getElementById('password'));
+  const mfaCodeInput = /** @type {HTMLInputElement | null} */ (document.getElementById('mfa-code'));
   const btnLogin = /** @type {HTMLButtonElement | null} */ (document.getElementById('btn-login'));
+  const btnMfaVerify = /** @type {HTMLButtonElement | null} */ (
+    document.getElementById('btn-mfa-verify')
+  );
+  const btnMfaCancel = document.getElementById('btn-mfa-cancel');
   const btnLogout = document.getElementById('btn-logout');
   const btnTheme = document.getElementById('btn-toggle-theme');
   const btnCollapse = document.getElementById('btn-collapse-sidebar');
@@ -327,6 +369,13 @@ function bindShellEvents() {
         setLoginFeedback(result.errorMessage || 'Falha na autenticação.');
         return;
       }
+      if (result.mfaRequired && result.factorId) {
+        setMfaChallengeMode(result.factorId);
+        return;
+      }
+      if (typeof hooks.onSessionAuthenticated === 'function' && result.session) {
+        await hooks.onSessionAuthenticated(result.session);
+      }
       showToast('Bem-vindo ao Painel Administrativo!', 'success');
     } finally {
       if (passwordInput) passwordInput.value = '';
@@ -338,6 +387,57 @@ function bindShellEvents() {
         'fa-solid fa-right-to-bracket'
       );
     }
+  });
+
+  // Submit do Desafio TOTP (AAL2)
+  mfaForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setLoginFeedback(null);
+
+    if (!pendingMfaFactorId) {
+      setMfaChallengeMode(null);
+      return;
+    }
+
+    const code = mfaCodeInput?.value.trim() || '';
+    setButtonLoading(
+      btnMfaVerify,
+      true,
+      'Validando...',
+      'Validar Código',
+      'fa-solid fa-check'
+    );
+
+    try {
+      const result = await verifyTotpChallenge(pendingMfaFactorId, code, {
+        verifyAdminAfter: true,
+      });
+      if (!result.ok) {
+        setLoginFeedback(result.errorMessage || 'Código inválido.');
+        if (mfaCodeInput) mfaCodeInput.focus();
+        return;
+      }
+      setMfaChallengeMode(null);
+      if (typeof hooks.onSessionAuthenticated === 'function' && result.session) {
+        await hooks.onSessionAuthenticated(result.session);
+      }
+      showToast('Bem-vindo ao Painel Administrativo!', 'success');
+    } finally {
+      if (mfaCodeInput) mfaCodeInput.value = '';
+      setButtonLoading(
+        btnMfaVerify,
+        false,
+        'Validando...',
+        'Validar Código',
+        'fa-solid fa-check'
+      );
+    }
+  });
+
+  btnMfaCancel?.addEventListener('click', async () => {
+    setLoginFeedback(null);
+    setMfaChallengeMode(null);
+    await logoutAdmin();
   });
 
   // Logout
@@ -432,7 +532,6 @@ function bindShellEvents() {
  */
 export async function initAdminApp() {
   syncShellPreferencesUI();
-  bindShellEvents();
 
   const loginView = document.getElementById('login-view');
   const dashboardView = document.getElementById('dashboard-view');
@@ -469,23 +568,43 @@ export async function initAdminApp() {
     },
   });
 
-  await initAuthLifecycle({
-    onAuthenticated: async (session) => {
-      setLoginFeedback(null);
-      if (loginView) loginView.hidden = true;
-      if (dashboardView) dashboardView.hidden = false;
-      if (userEmailEl) {
-        userEmailEl.textContent = session.user?.email || 'Administrador';
-      }
+  let mountedSessionToken = '';
+  const enterAuthenticatedDashboard = async (/** @type {any} */ session) => {
+    setMfaChallengeMode(null);
+    setLoginFeedback(null);
+    if (loginView) loginView.hidden = true;
+    if (dashboardView) dashboardView.hidden = false;
+    if (userEmailEl) {
+      userEmailEl.textContent = session.user?.email || 'Administrador';
+    }
 
-      idleGuard.start();
+    idleGuard.start();
+    const tokenKey = String(session?.access_token || session?.user?.id || 'auth');
+    if (mountedSessionToken !== tokenKey || state.lastFetchedAt === 0) {
+      mountedSessionToken = tokenKey;
       await fetchAllAdminData({ force: true });
       await renderCurrentRoute();
+    }
+  };
+
+  bindShellEvents({
+    onSessionAuthenticated: enterAuthenticatedDashboard,
+  });
+
+  await initAuthLifecycle({
+    onAuthenticated: enterAuthenticatedDashboard,
+    onMfaRequired: ({ factorId }) => {
+      idleGuard.stop();
+      if (dashboardView) dashboardView.hidden = true;
+      if (loginView) loginView.hidden = false;
+      setMfaChallengeMode(factorId);
     },
     onUnauthenticated: (reason) => {
+      mountedSessionToken = '';
       idleGuard.stop();
       cleanupActiveView();
       clearAllProductDrafts();
+      setMfaChallengeMode(null);
       if (dashboardView) dashboardView.hidden = true;
       if (loginView) loginView.hidden = false;
       if (userEmailEl) userEmailEl.textContent = '';

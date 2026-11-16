@@ -88,6 +88,7 @@ const JS_FILES = [
   'js/admin/views/banners.js',
   'js/admin/views/compounds.js',
   'js/admin/views/whatsapp.js',
+  'js/admin/views/security.js',
 ];
 
 const REQUIRED_SEO_FILES = [
@@ -123,6 +124,7 @@ const REQUIRED_SEO_FILES = [
   'supabase/migrations/20261114120000_products_slug_rollback.sql',
   'supabase/migrations/20261115100000_harden_button_links_allowlist.sql',
   'supabase/migrations/20261115110000_restore_storage_hardening.sql',
+  'supabase/pending/20261115120000_require_aal2_admin.sql',
   'supabase/schema_reference.sql',
   'supabase/legacy/README.md',
   'supabase/audit/README.md',

@@ -479,6 +479,16 @@ export function resetFakeDatabase() {
 const authListeners = new Set();
 const startLoggedOut =
   typeof globalThis !== 'undefined' && Boolean(globalThis.__bn_fake_initial_logged_out__);
+const fakeMfaDefaultAal =
+  typeof globalThis !== 'undefined' && globalThis.__bn_fake_mfa_aal__
+    ? String(globalThis.__bn_fake_mfa_aal__)
+    : 'aal1';
+let currentMfaLevel = fakeMfaDefaultAal;
+/** @type {Array<{ id: string, friendly_name: string, factor_type: 'totp', status: 'verified' | 'unverified', created_at: string, updated_at: string }>} */
+let fakeMfaFactors =
+  typeof globalThis !== 'undefined' && Array.isArray(globalThis.__bn_fake_mfa_factors__)
+    ? [...globalThis.__bn_fake_mfa_factors__]
+    : [];
 let currentUser = startLoggedOut
   ? null
   : {
@@ -788,10 +798,114 @@ export function createClient(supabaseUrl, supabaseKey, options = {}) {
         });
         currentUser = null;
         currentSession = null;
+        currentMfaLevel = 'aal1';
         for (const listener of authListeners) {
           listener('SIGNED_OUT', null);
         }
         return { error: null };
+      },
+      mfa: {
+        async getAuthenticatorAssuranceLevel() {
+          if (!currentSession) {
+            return {
+              data: { currentLevel: null, nextLevel: null, currentAuthenticationMethods: [] },
+              error: null,
+            };
+          }
+          const hasVerified = fakeMfaFactors.some((f) => f.status === 'verified');
+          const nextLevel = hasVerified ? 'aal2' : 'aal1';
+          return {
+            data: {
+              currentLevel: currentMfaLevel,
+              nextLevel,
+              currentAuthenticationMethods: [],
+            },
+            error: null,
+          };
+        },
+        async listFactors() {
+          const totp = fakeMfaFactors.filter((f) => f.status === 'verified');
+          return {
+            data: {
+              all: [...fakeMfaFactors],
+              totp,
+              phone: [],
+            },
+            error: null,
+          };
+        },
+        async enroll({ friendlyName = 'Botica Natural Admin' } = {}) {
+          const factorId = `totp-factor-${Date.now()}`;
+          const nowIso = new Date().toISOString();
+          fakeMfaFactors.push({
+            id: factorId,
+            friendly_name: friendlyName,
+            factor_type: 'totp',
+            status: 'unverified',
+            created_at: nowIso,
+            updated_at: nowIso,
+          });
+          const svg =
+            "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='#ffffff'/><rect x='20' y='20' width='28' height='28' fill='#111111'/><rect x='72' y='20' width='28' height='28' fill='#111111'/><rect x='20' y='72' width='28' height='28' fill='#111111'/></svg>";
+          return {
+            data: {
+              id: factorId,
+              type: 'totp',
+              friendly_name: friendlyName,
+              totp: {
+                qr_code: `data:image/svg+xml;utf-8,${encodeURIComponent(svg)}`,
+                secret: 'BOTICA2FAMOCKSECRET1234',
+                uri: 'otpauth://totp/BoticaNatural:admin@boticanatural.com.br?secret=BOTICA2FAMOCKSECRET1234',
+              },
+            },
+            error: null,
+          };
+        },
+        async challenge({ factorId }) {
+          return {
+            data: {
+              id: `challenge-${factorId}`,
+              type: 'totp',
+              expires_at: Math.floor(Date.now() / 1000) + 300,
+            },
+            error: null,
+          };
+        },
+        async verify({ factorId, code }) {
+          const expected =
+            typeof globalThis !== 'undefined' && globalThis.__bn_fake_mfa_code__
+              ? String(globalThis.__bn_fake_mfa_code__)
+              : '123456';
+          if (String(code || '').trim() !== expected) {
+            return {
+              data: null,
+              error: { message: 'Invalid TOTP code', code: 'invalid_totp', status: 422 },
+            };
+          }
+          const idx = fakeMfaFactors.findIndex((f) => f.id === factorId);
+          if (idx >= 0) {
+            fakeMfaFactors[idx].status = 'verified';
+            fakeMfaFactors[idx].updated_at = new Date().toISOString();
+          }
+          currentMfaLevel = 'aal2';
+          if (currentSession) {
+            currentSession = { ...currentSession, access_token: 'fake-jwt-token-aal2' };
+          }
+          return {
+            data: {
+              access_token: currentSession?.access_token || 'fake-jwt-token-aal2',
+              token_type: 'bearer',
+              expires_in: 3600,
+              refresh_token: 'fake-refresh-token',
+              user: currentUser,
+            },
+            error: null,
+          };
+        },
+        async unenroll({ factorId }) {
+          fakeMfaFactors = fakeMfaFactors.filter((f) => f.id !== factorId);
+          return { data: { id: factorId }, error: null };
+        },
       },
       onAuthStateChange(callback) {
         authListeners.add(callback);
