@@ -78,3 +78,68 @@ A infraestrutura em `js/main.js` só injeta scripts externos após consentimento
   - `connect-src`: `https://www.facebook.com https://graph.facebook.com`
   - `img-src`: `https://www.facebook.com`
 
+---
+
+## 3. Threat Model (Modelo de Ameaças)
+
+### 3.1 Ativos Críticos
+1. **Integridade do catálogo, vitrine e redirecionamentos:** nomes, descrições sanitizadas, preços, URLs de banners, cards de compostos e links de atendimento WhatsApp (`boticanaturaltriunfo.com.br`).
+2. **Controle de acesso ao painel `/admin`:** sessão Supabase Auth de administradores listados em `public.admin_users`, segundo fator TOTP (`aal2`) e rascunhos locais temporários durante edição.
+3. **Integridade e limites do Storage (`product-images`):** imagens `.webp`/`.jpeg`/`.png` nas pastas `catalogo/` e `carousel/`.
+4. **Cadeia de suprimentos e artefatos de build:** módulos locais em `js/`, bundle vendored em `js/vendor/`, migrações em `supabase/`, segredos de operadores e pipeline GitHub Actions.
+5. **Conformidade regulatória (LGPD e ANVISA):** ausência de rastreamento sem consentimento, minimização de coleta de dados no site e precisão de textos regulatórios e DPO em `privacidade.html`.
+
+### 3.2 Atores de Ameaça
+- **Atacante externo oportunista:** explora open redirect (`//evil.com`, `/\evil.com`), XSS em conteúdo rico, brute force ou enumeração de contas/schema no login de `/admin`, ou acesso direto a arquivos internos (`.git`, `docs/`, `supabase/`, `package.json`) se publicados junto com o site estático.
+- **Operador acidental / sessão compartilhada:** administrador que deixa `/admin` aberto em estação compartilhada da farmácia (rascunhos em `localStorage` ou sessão persistente) ou copia URLs malformadas no CMS.
+- **Atacante de cadeia de suprimentos:** comprometimento de tag mutável (`@v4`) em GitHub Action, vulnerabilidade em dependência transitiva npm (`swiper`, `@supabase/auth-js`), ou commit acidental de token `service_role` em código/PR.
+
+### 3.3 Superfícies de Ataque e Controles Aplicados
+
+| Superfície | Controles Existentes (Fase 1) | Novos Controles (Fase 2) |
+|---|---|---|
+| **Vitrine pública (HTML/CSS/JS)** | Zero `innerHTML`; sanitização DOM API (`richtext.js`); desacoplamento do SDK pesado (`publicApi.js`); analytics desligado e condicionado ao consentimento LGPD | `urlSafety.js` bloqueando `//`, `/\`, `\/` e esquemas perigosos; remoção de `wss://` da CSP pública; `upgrade-insecure-requests`; bloqueio `--prod` para `[PREENCHER` em qualquer HTML público |
+| **Painel administrativo (`/admin`)** | RPC `public.is_admin()` via `admin_users`; otimistic lock atômico (`update_product_with_optimistic_lock`); limpeza básica na saída | Erro genérico único em credenciais e conta não-admin + telemetria `console.debug` redigida; limpeza automática de `bn_admin_product_draft_*` ao sair e timeout por inatividade (aviso em 29 min com "Prolongar sessão", encerramento em 30 min); suporte TOTP nativo (`#/seguranca`) + desafio `aal2` antes de `is_admin()`; `COOP: same-origin` |
+| **Banco Postgres & Storage (Supabase)** | RLS habilitado nas tabelas públicas; `SECURITY DEFINER` com `search_path` fixo em `is_admin()` | Migração `20261115100000` (CHECK allowlist em `button_link`/`cta_href`); Migração `20261115110000` (`file_size_limit = 2 MB`, remoção de policies antigas duplicadas, escrita restrita a `catalogo/` e `carousel/`); Migração pendente `20261115120000` (`aal2` obrigatório após enrollment TOTP) |
+| **Hospedagem & Cabeçalhos HTTP** | Paridade `_headers`/`vercel.json`; `X-Frame-Options: SAMEORIGIN`; `HSTS`; Clean URLs `/admin`; `404.html` | `vercel.json` publicando apenas `dist/`; `dist/.well-known/security.txt`; remoção da enumeração de diretórios internos em `robots.txt`; `Permissions-Policy` estendida; `Permissions-Policy`, `COOP` e paridade validados em `verify.mjs` |
+| **CI/CD & Dependências** | Workflow único de testes + Playwright cross-browser | Workflows SHA-pinados com `permissions: contents: read`, `concurrency` e `timeout-minutes`; remoção de pacote órfão crítico (`swiper`); upgrade `@supabase/supabase-js@2.119.0` (0 vulnerabilidades); `npm audit`, `vendor-repro`, `Gitleaks`, `CodeQL`, `dependency-review` e `Dependabot` |
+
+### 3.4 Riscos Residuais e Decisões Restritivas
+1. **Chave `anon` pública por design:** está exposta intencionalmente no cliente estático para leitura de catálogo; sua segurança depende integralmente da integridade das policies RLS e da ausência total de chaves `service_role` no repositório (protegido via `.gitleaks.toml`).
+2. **Bucket `product-images` com `product_images_select_public` preservado:** decidido preservar `product_images_select_public` porque as URLs públicas de imagem em `/storage/v1/object/public/product-images/...` continuam servindo os produtos sem `.list()` no front-end. Fica registrado em `docs/seguranca-manual.md` como opcional para revisão futura caso deseje proxy/URLs assinadas.
+3. **Trava `aal2` em `supabase/pending/`:** mantida propositalmente fora de `supabase/migrations/` para evitar lockout imediato até o proprietário inscrever seu autenticador TOTP em `/admin#/seguranca`.
+4. **Controles de borda e painel externos ao repositório:** desativação de cadastros públicos no Supabase Auth, Leaked Password Protection, Cloudflare Access/WAF Rate Limiting em `/admin*` e preenchimento do DPO em `privacidade.html` dependem exclusivamente de ação humana do proprietário (`docs/seguranca-manual.md`).
+
+---
+
+## 4. Runbook de Resposta a Incidentes
+
+Em caso de suspeita de comprometimento de credencial administrativa, alteração indevida no catálogo ou vazamento de chave/token:
+
+1. **Contenção imediata (primeiros 15 minutos):**
+   - No **Supabase Dashboard → Authentication → Users**, localize a conta afetada e force **Sign out / Ban** imediato, ou execute no SQL Editor:
+     ```sql
+     DELETE FROM auth.sessions WHERE user_id = '<user_id_comprometido>';
+     DELETE FROM public.admin_users WHERE user_id = '<user_id_comprometido>';
+     ```
+   - Caso exista suspeita sobre o segundo fator, remova os fatores antigos em `auth.mfa_factors` do usuário comprometido.
+   - Se configurado o **Cloudflare Zero Trust / Access**, restrinja temporariamente a política de `/admin*` ou ative **Under Attack / WAF Block** na rota administrativa.
+2. **Rotação de credenciais:**
+   - Redefina a senha da conta Supabase do proprietário, das contas administrativas e do repositório GitHub.
+   - Em caso de comprometimento de token privado (`service_role`, tokens de deploy Cloudflare/Vercel ou PAT GitHub), revogue e gere novas chaves imediatamente nos respectivos painéis (a `anon key` é pública, mas pode ser rotacionada juntamente com o JWT Secret caso ocorra incidente severo de sessão, atualizando `js/publicApi.js`, `js/supabaseClient.js`, `scripts/repair-escapes.mjs` e republicando).
+3. **Verificação de integridade de dados e mídias:**
+   - Audite registros recentes no banco:
+     ```sql
+     SELECT id, title, button_link, updated_at FROM public.carousel_slides ORDER BY updated_at DESC;
+     SELECT id, name, cta_href, updated_at FROM public.compound_showcase_cards ORDER BY updated_at DESC;
+     SELECT id, name, price, is_active, updated_at FROM public.products ORDER BY updated_at DESC;
+     SELECT id, name, created_at, metadata FROM storage.objects WHERE bucket_id = 'product-images' ORDER BY created_at DESC LIMIT 50;
+     ```
+   - Remova qualquer objeto não autorizado ou altere via painel/SQL, restaurando ponto anterior via **Supabase Backups (PITR)** se necessário.
+   - Regere o pacote estático limpo (`npm run build:pages`) e dispare novo deploy na Cloudflare Pages / Vercel.
+4. **Preservação de evidências, LGPD e Pós-Mortem:**
+   - Exporte os logs de **Supabase Auth**, **Postgres** e **Cloudflare Security Events** do período afetado antes de expiração da janela de retenção.
+   - Avalie impacto a titulares de dados pessoais (o catálogo estático não armazena receituários nem dados de clientes no Supabase; se o incidente envolveu canal externo como WhatsApp ou e-mail institucional, siga a obrigação de comunicação à ANPD e aos titulares prevista no Art. 48 da LGPD junto ao Encarregado/DPO indicado em `privacidade.html`).
+   - Documente causa raiz, janela temporal e ação corretiva preventiva antes de restaurar acessos normais.
+
+
