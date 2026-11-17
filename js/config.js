@@ -28,14 +28,23 @@ export const BUSINESS_ADDRESS_TEXT = 'Rua Assis Brasil, 31, Centro, Triunfo/RS';
 export const SITE_DOMAIN = 'https://boticanaturaltriunfo.com.br';
 
 /**
- * Número oficial de WhatsApp da farmácia em formato internacional (DDI + DDD + Número, apenas dígitos).
+ * Identificador da conta de WhatsApp usado nos links `wa.me` (DDI + DDD + Número, apenas dígitos).
+ *
+ * Atenção: contas de WhatsApp registradas antes do nono dígito continuam com o ID antigo
+ * (sem o 9). Este é o formato que já abre a conversa correta; um link com o 9 pode abrir
+ * outro contato. Não troque por PHONE_E164 sem testar o link `wa.me` em um celular.
  */
 export const WHATSAPP_PHONE = '555185543448';
 
 /**
+ * Telefone discável oficial (E.164 sem o "+", com o nono dígito) para links `tel:` e JSON-LD.
+ */
+export const PHONE_E164 = '5551985543448';
+
+/**
  * Exibição formatada do telefone/WhatsApp para interface humana.
  */
-export const WHATSAPP_DISPLAY = '(51) 8554-3448';
+export const WHATSAPP_DISPLAY = '(51) 98554-3448';
 
 /**
  * Versão única de cache-busting para assets estáticos (`?v=`).
@@ -77,6 +86,7 @@ export const SITE_CONFIG = Object.freeze({
   BUSINESS_ADDRESS_TEXT,
   SITE_DOMAIN,
   WHATSAPP_PHONE,
+  PHONE_E164,
   WHATSAPP_DISPLAY,
   ASSET_VERSION,
   LGPD_CONSENT_KEY,

@@ -1096,134 +1096,79 @@ function syncCompoundsShowcase() {
    6. RENDERIZAÇÃO DE CATÁLOGO E CATEGORIAS (100% SUPABASE)
    ========================================================================== */
 
-function scrollTabIntoView(tabElement) {
-  if (!tabElement || typeof tabElement.scrollIntoView !== 'function') return;
-  const prefersReducedMotion =
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Palavras que ficam em minúsculas no meio de um nome de categoria (pt-BR). */
+const CATEGORY_LOWERCASE_WORDS = new Set([
+  'a', 'à', 'ao', 'aos', 'as', 'às', 'com', 'da', 'das', 'de', 'do', 'dos',
+  'e', 'em', 'na', 'nas', 'no', 'nos', 'o', 'os', 'ou', 'para', 'por',
+]);
 
-  tabElement.scrollIntoView({
-    inline: 'center',
-    block: 'nearest',
-    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+/**
+ * Padroniza a exibição de nomes de categoria cadastrados todo em maiúsculas
+ * ("SAÚDE DA MULHER" → "Saúde da Mulher"), para que a lista não misture caixas.
+ * Nomes já escritos em caixa mista ("Cremes Faciais") são mantidos como estão.
+ * Apenas exibição: o valor salvo no banco não muda.
+ *
+ * @param {unknown} rawName
+ * @returns {string}
+ */
+function formatCategoryLabel(rawName) {
+  const name = String(rawName ?? '').trim().replace(/\s+/g, ' ');
+  if (!name) return '';
+
+  const letters = name.replace(/[^\p{L}]/gu, '');
+  const isAllCaps = letters.length > 1 && letters === letters.toLocaleUpperCase('pt-BR');
+  if (!isAllCaps) return name;
+
+  let wordIndex = 0;
+  return name.toLocaleLowerCase('pt-BR').replace(/[\p{L}\p{N}]+/gu, (word) => {
+    const isFirstWord = wordIndex === 0;
+    wordIndex += 1;
+    if (!isFirstWord && CATEGORY_LOWERCASE_WORDS.has(word)) return word;
+    return word.charAt(0).toLocaleUpperCase('pt-BR') + word.slice(1);
   });
 }
 
-function createCategoryFilterButton({ id, slug, name, count, isActive }) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = `catalog-tab${isActive ? ' active is-active' : ''}`;
-  button.dataset.category = String(id);
-  if (slug) button.dataset.slug = String(slug);
-  button.setAttribute('aria-pressed', String(Boolean(isActive)));
-
-  const iconSvg = createCategoryIconElement(name, String(id), 'catalog-tab__icon');
-  button.appendChild(iconSvg);
-
-  const labelSpan = document.createElement('span');
-  labelSpan.className = 'catalog-tab__label';
-  labelSpan.textContent = name;
-  button.appendChild(labelSpan);
-
-  const countBadge = document.createElement('span');
-  countBadge.className = 'catalog-tab__count';
-  countBadge.textContent = String(count);
-  button.appendChild(countBadge);
-
-  button.addEventListener('click', () => {
-    handleCategorySelection(String(id));
+/**
+ * Escreve o texto permitindo quebra de linha logo após cada "/" (via <wbr>),
+ * para nomes como "Ansiolíticos/Calmantes/Melhora do Sono" não quebrarem no meio da palavra.
+ * O textContent do elemento continua igual ao texto original.
+ *
+ * @param {HTMLElement} element
+ * @param {string} text
+ */
+function appendTextWithSlashBreaks(element, text) {
+  const parts = String(text).split('/');
+  parts.forEach((part, index) => {
+    const isLast = index === parts.length - 1;
+    element.appendChild(document.createTextNode(isLast ? part : `${part}/`));
+    if (!isLast) element.appendChild(document.createElement('wbr'));
   });
-
-  return button;
 }
 
+function countProductsInCategory(categoryId) {
+  if (categoryId === 'all') return catalogState.products.length;
+  return catalogState.products.filter(
+    (prod) => String(prod.category_id) === String(categoryId)
+  ).length;
+}
+
+/**
+ * Atualiza a lista completa de categorias e o seletor único do catálogo.
+ * (A antiga fileira de abas foi substituída pela caixa única de categorias.)
+ */
 function renderCategoryFilters() {
-  const filtersContainer =
-    document.getElementById('category-filters') ||
-    document.querySelector('[data-catalog-tabs]');
-
-  if (!filtersContainer) return;
-
-  const fragment = document.createDocumentFragment();
-
-  const allButton = createCategoryFilterButton({
-    id: 'all',
-    slug: 'todos',
-    name: 'Todos',
-    count: catalogState.products.length,
-    isActive: catalogState.activeCategory === 'all',
-  });
-  fragment.appendChild(allButton);
-
-  catalogState.categories.forEach((category) => {
-    const categoryId = String(category.id);
-    const productCount = catalogState.products.filter(
-      (prod) => String(prod.category_id) === categoryId
-    ).length;
-
-    const categoryBtn = createCategoryFilterButton({
-      id: categoryId,
-      slug: String(category.slug || ''),
-      name: String(category.name || '').trim(),
-      count: productCount,
-      isActive: catalogState.activeCategory === categoryId,
-    });
-
-    fragment.appendChild(categoryBtn);
-  });
-
-  // Botão "Ver todas" integrado fluidamente ao final da barra horizontal
-  if (catalogState.categories.length > 0) {
-    const moreTab = document.createElement('button');
-    moreTab.type = 'button';
-    moreTab.className = 'catalog-tab catalog-tab--more';
-    moreTab.setAttribute('aria-haspopup', 'dialog');
-    moreTab.setAttribute(
-      'aria-label',
-      `Ver todas as ${catalogState.categories.length} categorias em lista`
-    );
-
-    const moreIcon = document.createElement('i');
-    moreIcon.className = 'fa-solid fa-bars-staggered';
-    moreIcon.setAttribute('aria-hidden', 'true');
-    moreTab.appendChild(moreIcon);
-
-    const moreLabel = document.createElement('span');
-    moreLabel.className = 'catalog-tab__label';
-    moreLabel.textContent = `Ver todas (${catalogState.categories.length})`;
-    moreTab.appendChild(moreLabel);
-
-    moreTab.addEventListener('click', () => {
-      if (categorySheetController) {
-        categorySheetController.open(moreTab);
-      }
-    });
-
-    fragment.appendChild(moreTab);
-  }
-
-  filtersContainer.replaceChildren(fragment);
-
-  // Garante que a aba ativa fique visível após inicialização (ex: navegação via hash)
-  const activeTab =
-    filtersContainer.querySelector('.catalog-tab.is-active') ||
-    filtersContainer.querySelector('.catalog-tab.active');
-  if (activeTab && catalogState.activeCategory !== 'all') {
-    requestAnimationFrame(() => scrollTabIntoView(activeTab));
-  }
-
-  // Sincroniza seletor mobile e bottom sheet com dados atualizados
   renderCategorySheetItems();
-  updateMobileCategoryUI();
+  updateCategoryPickerUI();
 }
 
 /** @type {{ open: (source?: HTMLElement | null) => void, close: () => void } | null} */
 let categorySheetController = null;
 
-function updateMobileCategoryUI() {
-  const labelEl = document.getElementById('category-mobile-selected-label');
-  const badgeEl = document.getElementById('category-mobile-count-badge');
-  const moreCountEl = document.getElementById('catalog-tabs-more-count');
+function updateCategoryPickerUI() {
+  // O nome acessível do seletor vem do próprio texto visível (WCAG 2.5.3, rótulo no nome)
+  const labelEl = document.getElementById('category-picker-label');
+  const totalEl = document.getElementById('category-picker-total');
+  const iconWrap = document.querySelector('.catalog-category-picker__icon');
 
   const isAll = catalogState.activeCategory === 'all';
   const currentCategory = isAll
@@ -1234,35 +1179,37 @@ function updateMobileCategoryUI() {
 
   const activeName = isAll
     ? 'Todos os Produtos'
-    : (currentCategory?.name || 'Categoria').trim();
-
-  const count = isAll
-    ? catalogState.products.length
-    : catalogState.products.filter(
-        (p) => String(p.category_id) === String(catalogState.activeCategory)
-      ).length;
+    : formatCategoryLabel(currentCategory?.name) || 'Categoria';
+  const totalCategories = catalogState.categories.length;
+  const totalLabel = totalCategories > 0
+    ? `${totalCategories} ${totalCategories === 1 ? 'categoria' : 'categorias'}`
+    : 'Ver categorias';
 
   if (labelEl) {
     labelEl.textContent = activeName;
   }
-  const mobileIconWrap = document.querySelector('.catalog-category-mobile__icon');
-  if (mobileIconWrap) {
-    mobileIconWrap.replaceChildren(
+  if (totalEl) {
+    if (totalCategories > 0) {
+      // Em telas estreitas o CSS oculta a palavra e mantém só o número
+      const unitEl = document.createElement('span');
+      unitEl.className = 'catalog-category-picker__action-unit';
+      unitEl.textContent = totalCategories === 1 ? ' categoria' : ' categorias';
+      totalEl.replaceChildren(document.createTextNode(String(totalCategories)), unitEl);
+    } else {
+      totalEl.textContent = totalLabel;
+    }
+  }
+  if (iconWrap) {
+    iconWrap.replaceChildren(
       createCategoryIconElement(
-        activeName,
+        isAll ? 'Todos os Produtos' : String(currentCategory?.name || ''),
         isAll ? 'all' : String(catalogState.activeCategory),
         'category-svg-icon'
       )
     );
   }
-  if (badgeEl) {
-    badgeEl.textContent = String(count);
-  }
-  if (moreCountEl) {
-    moreCountEl.textContent = String(catalogState.categories.length);
-  }
 
-  // Sincroniza marcação ativa nos itens do bottom sheet
+  // Sincroniza a opção marcada (e o foco itinerante) na lista de categorias
   const sheetList = document.getElementById('category-sheet-list');
   if (sheetList) {
     const items = sheetList.querySelectorAll('.category-sheet__item');
@@ -1270,6 +1217,7 @@ function updateMobileCategoryUI() {
       const isSelected = item.dataset.category === String(catalogState.activeCategory);
       item.classList.toggle('is-active', isSelected);
       item.setAttribute('aria-selected', String(isSelected));
+      item.tabIndex = isSelected ? 0 : -1;
       const checkIcon = item.querySelector('.category-sheet__item-check');
       if (checkIcon) {
         checkIcon.hidden = !isSelected;
@@ -1281,10 +1229,11 @@ function updateMobileCategoryUI() {
 function createCategorySheetItem({ id, name, count, isActive }) {
   const item = document.createElement('button');
   item.type = 'button';
-  item.className = `category-sheet__item${isActive ? ' is-active' : ''}`;
+  item.className = `category-sheet__item${isActive ? ' is-active' : ''}${count === 0 ? ' is-empty' : ''}`;
   item.dataset.category = String(id);
   item.setAttribute('role', 'option');
   item.setAttribute('aria-selected', String(Boolean(isActive)));
+  item.tabIndex = isActive ? 0 : -1;
 
   const iconWrapper = document.createElement('span');
   iconWrapper.className = 'category-sheet__item-icon';
@@ -1294,12 +1243,12 @@ function createCategorySheetItem({ id, name, count, isActive }) {
   );
   item.appendChild(iconWrapper);
 
-  const textWrap = document.createElement('div');
+  const textWrap = document.createElement('span');
   textWrap.className = 'category-sheet__item-text';
 
   const nameSpan = document.createElement('span');
   nameSpan.className = 'category-sheet__item-name';
-  nameSpan.textContent = name;
+  appendTextWithSlashBreaks(nameSpan, id === 'all' ? name : formatCategoryLabel(name));
   textWrap.appendChild(nameSpan);
 
   const countSpan = document.createElement('span');
@@ -1347,22 +1296,19 @@ function renderCategorySheetItems() {
   const allItem = createCategorySheetItem({
     id: 'all',
     name: 'Todos os Produtos',
-    count: catalogState.products.length,
+    count: countProductsInCategory('all'),
     isActive: catalogState.activeCategory === 'all',
   });
   fragment.appendChild(allItem);
 
-  // Cada categoria cadastrada
+  // Cada categoria cadastrada, na ordem definida no painel administrativo
   catalogState.categories.forEach((cat) => {
     const catId = String(cat.id);
-    const catCount = catalogState.products.filter(
-      (p) => String(p.category_id) === catId
-    ).length;
 
     const catItem = createCategorySheetItem({
       id: catId,
       name: String(cat.name || '').trim(),
-      count: catCount,
+      count: countProductsInCategory(catId),
       isActive: catalogState.activeCategory === catId,
     });
     fragment.appendChild(catItem);
@@ -1392,7 +1338,6 @@ function initCategorySheet() {
   const modal = document.getElementById('category-bottom-sheet');
   const backdrop = document.getElementById('category-sheet-backdrop');
   const openBtn = document.getElementById('btn-open-category-modal');
-  const moreBtn = document.getElementById('btn-category-more');
   const closeBtn = document.getElementById('btn-close-category-sheet');
   const searchInput = /** @type {HTMLInputElement | null} */ (
     document.getElementById('category-sheet-search')
@@ -1401,8 +1346,44 @@ function initCategorySheet() {
 
   if (!modal || !backdrop) return;
 
+  // No desktop a lista abre ancorada ao seletor (lista suspensa); no celular, como painel inferior.
+  const desktopQuery =
+    typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1024px)') : null;
+
   /** @type {HTMLElement | null} */
   let returnFocusElement = null;
+
+  const getVisibleItems = () =>
+    /** @type {HTMLElement[]} */ ([
+      ...modal.querySelectorAll('.category-sheet__item:not(.is-hidden)'),
+    ]);
+
+  const getTabbableElements = () =>
+    /** @type {HTMLElement[]} */ ([...modal.querySelectorAll('button, input')]).filter(
+      (el) =>
+        el.tabIndex >= 0 &&
+        !el.hidden &&
+        !el.classList.contains('is-hidden') &&
+        !(/** @type {HTMLButtonElement} */ (el).disabled) &&
+        el.getClientRects().length > 0
+    );
+
+  /** Garante que a lista suspensa caiba na tela sem esconder o seletor sob o cabeçalho fixo. */
+  function revealDropdown() {
+    if (!desktopQuery?.matches || !openBtn) return;
+    const overflow = modal.getBoundingClientRect().bottom - (window.innerHeight - 16);
+    if (overflow <= 0) return;
+    const headerHeight =
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 72;
+    const roomAboveTrigger = openBtn.getBoundingClientRect().top - (headerHeight + 12);
+    const delta = Math.min(overflow, roomAboveTrigger);
+    if (delta > 0) {
+      const prefersReducedMotion =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollBy({ top: delta, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+    }
+  }
 
   function openSheet(sourceEl = null) {
     returnFocusElement =
@@ -1419,9 +1400,11 @@ function initCategorySheet() {
     modal.classList.add('is-open');
 
     if (openBtn) openBtn.setAttribute('aria-expanded', 'true');
-    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'true');
 
-    document.body.classList.add('category-sheet-lock');
+    // Trava a rolagem só no celular (painel inferior); no desktop a lista suspensa acompanha a página
+    if (!desktopQuery?.matches) {
+      document.body.classList.add('category-sheet-lock');
+    }
 
     // Foco síncrono no clique com o modal já visível -> aciona teclado virtual no iOS Safari e Android
     if (searchInput) {
@@ -1430,6 +1413,8 @@ function initCategorySheet() {
         searchInput.select();
       } catch {}
     }
+
+    requestAnimationFrame(revealDropdown);
   }
 
   function closeSheet() {
@@ -1439,7 +1424,6 @@ function initCategorySheet() {
     modal.setAttribute('aria-hidden', 'true');
 
     if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
-    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
 
     document.body.classList.remove('category-sheet-lock');
 
@@ -1451,18 +1435,70 @@ function initCategorySheet() {
     }, 280);
 
     if (returnFocusElement && typeof returnFocusElement.focus === 'function') {
-      returnFocusElement.focus();
+      returnFocusElement.focus({ preventScroll: true });
     }
   }
 
-  openBtn?.addEventListener('click', () => openSheet(openBtn));
-  moreBtn?.addEventListener('click', () => openSheet(moreBtn));
+  openBtn?.addEventListener('click', () => {
+    if (modal.classList.contains('is-open')) {
+      closeSheet();
+    } else {
+      openSheet(openBtn);
+    }
+  });
   closeBtn?.addEventListener('click', closeSheet);
   backdrop.addEventListener('click', closeSheet);
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && modal.classList.contains('is-open')) {
       closeSheet();
+    }
+  });
+
+  // Teclado: Tab circula dentro da lista (diálogo modal); setas, Home e End percorrem as categorias.
+  modal.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') {
+      const tabbables = getTabbableElements();
+      if (tabbables.length === 0) return;
+      const first = tabbables[0];
+      const last = tabbables[tabbables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+      return;
+    }
+
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const items = getVisibleItems();
+    if (items.length === 0) return;
+
+    const isInSearch = document.activeElement === searchInput;
+    if (isInSearch && (event.key === 'Home' || event.key === 'End')) return;
+
+    const currentIndex = items.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+    let target = null;
+
+    if (event.key === 'ArrowDown') {
+      target = items[currentIndex < 0 ? 0 : Math.min(currentIndex + 1, items.length - 1)];
+    } else if (event.key === 'ArrowUp') {
+      if (currentIndex <= 0) {
+        target = isInSearch ? null : searchInput;
+      } else {
+        target = items[currentIndex - 1];
+      }
+    } else if (event.key === 'Home') {
+      target = items[0];
+    } else if (event.key === 'End') {
+      target = items[items.length - 1];
+    }
+
+    if (target) {
+      event.preventDefault();
+      target.focus();
     }
   });
 
@@ -1503,6 +1539,16 @@ function initCategorySheet() {
       }
     });
 
+    // Enter na busca seleciona a primeira categoria encontrada
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || !searchInput.value.trim()) return;
+      const firstMatch = getVisibleItems()[0];
+      if (firstMatch) {
+        event.preventDefault();
+        firstMatch.click();
+      }
+    });
+
     if (clearSearchBtn) {
       clearSearchBtn.addEventListener('click', () => {
         searchInput.value = '';
@@ -1524,24 +1570,7 @@ function handleCategorySelection(selectedCategoryId) {
   catalogState.activeCategory = selectedCategoryId;
   catalogState.currentPage = 1;
 
-  const filtersContainer =
-    document.getElementById('category-filters') ||
-    document.querySelector('[data-catalog-tabs]');
-
-  if (filtersContainer) {
-    const buttons = filtersContainer.querySelectorAll('.catalog-tab');
-    buttons.forEach((btn) => {
-      const isSelected = btn.dataset.category === selectedCategoryId;
-      btn.classList.toggle('active', isSelected);
-      btn.classList.toggle('is-active', isSelected);
-      btn.setAttribute('aria-pressed', String(isSelected));
-      if (isSelected) {
-        scrollTabIntoView(btn);
-      }
-    });
-  }
-
-  updateMobileCategoryUI();
+  updateCategoryPickerUI();
   renderCatalogProducts();
 }
 

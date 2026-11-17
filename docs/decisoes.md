@@ -193,3 +193,17 @@ Ao publicar o site estático na **Cloudflare Pages**, quatro comportamentos espe
 
 
 
+
+---
+
+## 16. Fonte do Logotipo via Adobe Fonts (Exceção Pontual à CSP de Fontes Locais)
+
+### Contexto
+O proprietário pediu o nome "Botica Natural" do cabeçalho e do rodapé na tipografia **Roca Two**. A família Roca está disponível no Adobe Fonts da conta do proprietário, mas a licença do Adobe Fonts não permite auto-hospedar os arquivos: o uso na web exige o projeto web servido por `use.typekit.net`. O Adobe Fonts oferece o desenho "Roca One"; o "Roca Two" exato só existe na licença vendida pela My Creative Land.
+
+### Decisão
+1. **Projeto web `luq5dht` (Roca Regular e Bold)** carregado com `<link>` em `<head>` nas páginas públicas (`index`, `produtos`, `produto` e páginas geradas, `privacidade`, `404`). O admin continua sem fontes externas.
+2. **CSP ampliada só no necessário**: `style-src` passa a incluir `https://use.typekit.net` e `https://p.typekit.net` (contagem de uso da licença) e `font-src` inclui `https://use.typekit.net`. `script-src` continua `'self'`, sem JavaScript da Adobe.
+3. **Reserva local**: `--font-brand: 'roca', 'Playfair Display', ...`; se o Adobe Fonts falhar, o logotipo usa a Playfair auto-hospedada.
+4. **LGPD**: a Política de Privacidade informa o Adobe Fonts como serviço de terceiros (sem cookies e sem publicidade).
+5. **Saída futura**: comprando a licença webfont do Roca Two, basta colocar os `.woff2` em `fonts/`, declarar o `@font-face` em `css/fonts.css` e remover o Adobe Fonts das páginas e da CSP.
