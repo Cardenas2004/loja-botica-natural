@@ -1103,6 +1103,21 @@ if (workflowErrors === 0) {
 /* ==========================================================================
    8. [MODO PRODUÇÃO] VERIFICAÇÃO DE PLACEHOLDERS [PREENCHER (APENAS --prod)
    ========================================================================== */
+// Workers Static Assets avalia _redirects ANTES dos arquivos estáticos: regra dinâmica em
+// /produtos/:slug sequestraria as páginas pré-renderizadas do sitemap (regressão de SEO).
+{
+  const redirectRules = readUtf8('_redirects')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'));
+  const hijacking = redirectRules.filter((rule) => /^\/produtos\/(?::|\*)/.test(rule.split(/\s+/)[0]));
+  if (hijacking.length > 0) {
+    fail(`_redirects: regra dinâmica em /produtos/ sobrepõe páginas estáticas no Workers -> ${hijacking.join(' | ')}`);
+  } else {
+    pass('_redirects sem regras dinâmicas em /produtos/ (páginas pré-renderizadas servidas diretamente; fallback via 404.html).');
+  }
+}
+
 const IS_PROD = process.argv.includes('--prod');
 if (IS_PROD) {
   console.log('\n8. [MODO PRODUÇÃO] Verificando ausência de placeholders [PREENCHER...');
