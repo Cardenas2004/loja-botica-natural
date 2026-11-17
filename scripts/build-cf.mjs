@@ -35,7 +35,7 @@ const PUBLIC_FILES = [
   '404.html',
 ];
 
-const PUBLIC_DIRS = ['css', 'js', 'images', 'fonts', 'produtos'];
+const PUBLIC_DIRS = ['css', 'js', 'images', 'fonts', 'produtos', '.well-known'];
 
 /**
  * Copia arquivo ou diretório recursivamente preservando apenas itens visíveis públicos.

@@ -26,6 +26,7 @@ import {
   DEFAULT_COMPOUND_CARDS,
   isValidCompoundLink,
 } from '../shared/compoundShowcaseRenderer.js';
+import { classifySafeLink, isSafeNavigationLink } from '../shared/urlSafety.js';
 
 export const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export const MAX_RAW_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB entrada bruta
@@ -59,27 +60,12 @@ export function resolveAdminImageUrl(item, fallback = FALLBACK_ADMIN_THUMB) {
 
 /**
  * Valida se uma URL de botão do carrossel é segura (`https:`, `http:` ou caminho relativo).
+ * Delega integralmente para `classifySafeLink` (`js/shared/urlSafety.js`).
  * @param {string} rawUrl
  * @returns {boolean}
  */
 export function isValidBannerLink(rawUrl) {
-  const trimmed = String(rawUrl ?? '').trim();
-  if (!trimmed) return true; // opcional
-  if (trimmed.startsWith('//') || trimmed.startsWith('\\\\') || /[\u0000-\u001f\u007f]/.test(trimmed)) {
-    return false;
-  }
-  const schemeMatch = trimmed.match(/^([a-z][a-z0-9+.-]*):/i);
-  if (schemeMatch) {
-    const scheme = `${schemeMatch[1].toLowerCase()}:`;
-    if (scheme !== 'https:' && scheme !== 'http:') return false;
-    try {
-      const parsed = new URL(trimmed);
-      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-    } catch {
-      return false;
-    }
-  }
-  return !trimmed.includes(':');
+  return isSafeNavigationLink(rawUrl, { allowEmpty: true });
 }
 
 /* ==========================================================================
@@ -606,6 +592,9 @@ export async function saveCarouselSlide(payload, options = {}) {
   if (!isValidBannerLink(payload.button_link)) {
     throw new Error('Link do banner inválido. Use https://, http:// ou um caminho relativo.');
   }
+  const bannerLinkCheck = classifySafeLink(payload.button_link);
+  const safeBannerLink =
+    bannerLinkCheck.valid && bannerLinkCheck.href ? bannerLinkCheck.href : '';
 
   const clampFocus = (val) => {
     const num = Number(val);
@@ -629,7 +618,7 @@ export async function saveCarouselSlide(payload, options = {}) {
     /** @type {Record<string, any>} */
     const record = {
       title: payload.title.trim(),
-      button_link: payload.button_link.trim(),
+      button_link: safeBannerLink,
       display_order: Math.max(0, Number(payload.display_order) || 0),
       is_active: Boolean(payload.is_active),
       focus_x: clampFocus(payload.focus_x ?? 50),
@@ -1167,6 +1156,9 @@ export async function saveCompoundCard(payload, options = {}) {
   if (!isValidCompoundLink(rawLink)) {
     throw new Error('O link de destino informado é inválido ou utiliza um esquema bloqueado.');
   }
+  const compoundLinkCheck = classifySafeLink(rawLink);
+  const safeCompoundLink =
+    compoundLinkCheck.valid && compoundLinkCheck.href ? compoundLinkCheck.href : '';
 
   /** @type {{ imagePath: string, imageUrl: string } | null} */
   let uploadedBottle = null;
@@ -1199,7 +1191,7 @@ export async function saveCompoundCard(payload, options = {}) {
       label_badge: String(payload.label_badge ?? '60 CÁPSULAS').trim(),
       show_label: payload.show_label !== false,
       button_text: String(payload.button_text || 'COMPRAR').trim() || 'COMPRAR',
-      button_link: rawLink,
+      button_link: safeCompoundLink,
       product_id: payload.product_id ? String(payload.product_id).trim() : null,
       open_in_new_tab: Boolean(payload.open_in_new_tab),
       show_button: payload.show_button !== false,

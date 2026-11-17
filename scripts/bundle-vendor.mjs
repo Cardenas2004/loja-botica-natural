@@ -13,11 +13,11 @@ if (!fs.existsSync(VENDOR_DIR)) {
 
 console.log('Gerando vendor bundles para produção estática...');
 
-// 1. Supabase JS 2.49.1 ESM Standalone
+// 1. Supabase JS 2.119.0 ESM Standalone
 const supabaseTempEntry = path.resolve(VENDOR_DIR, '_supabase_entry.js');
 fs.writeFileSync(supabaseTempEntry, `export * from '@supabase/supabase-js';`);
 
-const supabaseOutputFile = path.resolve(VENDOR_DIR, 'supabase-js-2.49.1.esm.js');
+const supabaseOutputFile = path.resolve(VENDOR_DIR, 'supabase-js-2.119.0.esm.js');
 await esbuild.build({
   entryPoints: [supabaseTempEntry],
   outfile: supabaseOutputFile,
@@ -28,12 +28,12 @@ await esbuild.build({
   minify: true,
   banner: {
     js: `/**
- * @supabase/supabase-js v2.49.1 — Standalone ESM Vendor Bundle (Botica Natural)
+ * @supabase/supabase-js v2.119.0 — Standalone ESM Vendor Bundle (Botica Natural)
  * Bundled with esbuild for zero-dependency static production execution.
  */`,
   },
 });
 fs.unlinkSync(supabaseTempEntry);
-console.log('✓ js/vendor/supabase-js-2.49.1.esm.js criado com sucesso.');
+console.log('✓ js/vendor/supabase-js-2.119.0.esm.js criado com sucesso.');
 
 console.log('Vendor bundles gerados com sucesso.');

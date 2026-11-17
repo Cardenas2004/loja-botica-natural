@@ -6,6 +6,7 @@ const PAGES = [
   { path: '/index.html', name: 'Home', isPublic: true },
   { path: '/produtos.html', name: 'Catálogo', isPublic: true },
   { path: '/produto.html?id=prod-1', name: 'Produto', isPublic: true },
+  { path: '/produtos/serum-renovador-c/', name: 'Produto estático', isPublic: true },
   { path: '/privacidade.html', name: 'Privacidade', isPublic: true },
   { path: '/404.html', name: '404', isPublic: true },
   { path: '/admin.html', name: 'Admin', isPublic: false },
@@ -13,12 +14,30 @@ const PAGES = [
 
 test.describe('Segurança & CSP: Zero violações de CSP, zero erros no console e zero SDK pesado na vitrine', () => {
   for (const pageDef of PAGES) {
-    test(`${pageDef.name} não deve emitir violações de CSP nem erros não capturados`, async ({ page }) => {
+    test(`${pageDef.name} não deve emitir violações de CSP nem eventos securitypolicyviolation`, async ({
+      page,
+    }) => {
+      await page.addInitScript(() => {
+        window.__bnSecurityPolicyViolations = [];
+        document.addEventListener('securitypolicyviolation', (event) => {
+          window.__bnSecurityPolicyViolations.push({
+            violatedDirective: event.violatedDirective,
+            effectiveDirective: event.effectiveDirective,
+            blockedURI: event.blockedURI,
+          });
+        });
+      });
+
       await setupPageMocks(page);
 
       const cspViolations = [];
       const consoleErrors = [];
       const requestedScripts = [];
+      const websocketRequests = [];
+
+      page.on('websocket', (ws) => {
+        websocketRequests.push(ws.url());
+      });
 
       page.on('request', (req) => {
         if (req.resourceType() === 'script') {
@@ -33,7 +52,10 @@ test.describe('Segurança & CSP: Zero violações de CSP, zero erros no console 
             consoleErrors.push(text);
           }
         }
-        if (text.toLowerCase().includes('content security policy') || text.toLowerCase().includes('violates')) {
+        if (
+          text.toLowerCase().includes('content security policy') ||
+          text.toLowerCase().includes('violates')
+        ) {
           cspViolations.push(text);
         }
       });
@@ -44,12 +66,27 @@ test.describe('Segurança & CSP: Zero violações de CSP, zero erros no console 
 
       await page.goto(pageDef.path);
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(400);
+      await expect
+        .poll(async () => page.evaluate(() => document.readyState))
+        .toBe('complete');
 
-      expect(cspViolations, `Violações de CSP em ${pageDef.name}: ${cspViolations.join('; ')}`).toEqual([]);
-      expect(consoleErrors, `Erros no console em ${pageDef.name}: ${consoleErrors.join('; ')}`).toEqual([]);
+      const domViolations = await page.evaluate(
+        () => window.__bnSecurityPolicyViolations || []
+      );
+      expect(
+        domViolations,
+        `Eventos securitypolicyviolation em ${pageDef.name}: ${JSON.stringify(domViolations)}`
+      ).toEqual([]);
+      expect(
+        cspViolations,
+        `Violações de CSP em ${pageDef.name}: ${cspViolations.join('; ')}`
+      ).toEqual([]);
+      expect(
+        consoleErrors,
+        `Erros no console em ${pageDef.name}: ${consoleErrors.join('; ')}`
+      ).toEqual([]);
 
-      // MED-04 parte 2: páginas públicas não devem carregar supabase-js nem supabaseClient.js
+      // MED-04 + Fase 2 Item 6: páginas públicas não devem carregar supabase-js nem abrir WebSocket
       if (pageDef.isPublic) {
         const heavyRequests = requestedScripts.filter(
           (u) => u.includes('supabase-js') || u.includes('supabaseClient.js')
@@ -58,6 +95,7 @@ test.describe('Segurança & CSP: Zero violações de CSP, zero erros no console 
           heavyRequests,
           `Página pública ${pageDef.name} não deve carregar supabase-js: ${heavyRequests.join(', ')}`
         ).toEqual([]);
+        expect(websocketRequests).toEqual([]);
       }
     });
   }
@@ -90,5 +128,42 @@ test.describe('Segurança & CSP: Zero violações de CSP, zero erros no console 
     const trailingRes = await page.goto('/produtos/', { waitUntil: 'domcontentloaded' });
     expect(trailingRes?.status()).toBe(200);
     expect(page.url()).toMatch(/\/produtos$/);
+  });
+
+  test('Admin com Cross-Origin-Opener-Policy: same-origin mantém login e preview em iframe funcionando sem violar CSP', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.__bnSecurityPolicyViolations = [];
+      document.addEventListener('securitypolicyviolation', (event) => {
+        window.__bnSecurityPolicyViolations.push({
+          violatedDirective: event.violatedDirective,
+          blockedURI: event.blockedURI,
+        });
+      });
+    });
+
+    // Emula cabeçalhos de produção de _headers para /admin.html durante o teste E2E
+    await page.route('**/admin.html*', async (route) => {
+      const response = await route.fetch();
+      const headers = {
+        ...response.headers(),
+        'cross-origin-opener-policy': 'same-origin',
+      };
+      await route.fulfill({ response, headers });
+    });
+
+    await setupPageMocks(page);
+    await page.goto('/admin.html#/produtos/prod-1', { waitUntil: 'domcontentloaded' });
+
+    const nameInput = page.locator('#prod-name');
+    await expect(nameInput).toBeVisible();
+    await nameInput.fill('Produto Preview COOP');
+
+    const previewFrame = page.frameLocator('iframe.live-preview-iframe');
+    await expect(previewFrame.locator('#pdp-title')).toHaveText('Produto Preview COOP');
+
+    const violations = await page.evaluate(() => window.__bnSecurityPolicyViolations || []);
+    expect(violations).toEqual([]);
   });
 });

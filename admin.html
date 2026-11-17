@@ -96,6 +96,43 @@
                 </button>
             </form>
 
+            <form id="mfa-challenge-form" class="auth-form mfa-challenge-form" action="javascript:void(0);" novalidate hidden>
+                <div class="mfa-challenge-header">
+                    <h3 class="mfa-challenge-title">Verificação em Duas Etapas (MFA)</h3>
+                    <p class="mfa-challenge-subtitle">
+                        Informe o código de 6 dígitos gerado pelo seu aplicativo autenticador.
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label for="mfa-code" class="form-label">Código do autenticador</label>
+                    <div class="input-icon-wrap">
+                        <i class="fa-solid fa-shield-halved input-icon" aria-hidden="true"></i>
+                        <input
+                            type="text"
+                            id="mfa-code"
+                            name="mfa_code"
+                            class="form-control form-control--with-icon"
+                            inputmode="numeric"
+                            pattern="[0-9]{6}"
+                            maxlength="6"
+                            autocomplete="one-time-code"
+                            placeholder="000000"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-mfa-verify" class="btn btn-primary btn-block btn-lg">
+                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                    <span>Validar Código</span>
+                </button>
+                <button type="button" id="btn-mfa-cancel" class="btn btn-secondary btn-block">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>Voltar para Login</span>
+                </button>
+            </form>
+
             <div class="auth-card__footer">
                 <a href="index.html" class="auth-back-link">
                     <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
@@ -174,6 +211,10 @@
                 <a href="#/whatsapp" class="sidebar-nav__link" data-view="whatsapp">
                     <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
                     <span class="sidebar-nav__label">WhatsApp</span>
+                </a>
+                <a href="#/seguranca" class="sidebar-nav__link" data-view="security">
+                    <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                    <span class="sidebar-nav__label">Segurança (MFA)</span>
                 </a>
             </nav>
 
@@ -299,6 +340,35 @@
                 <button type="button" id="modal-btn-confirm" class="btn btn-danger">
                     <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
                     <span>Confirmar</span>
+                </button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- =====================================================================
+         3.1. MODAL DE AVISO DE INATIVIDADE (<dialog id="idle-warning-modal">)
+         ===================================================================== -->
+    <dialog id="idle-warning-modal" class="confirm-modal" aria-labelledby="idle-modal-title" aria-describedby="idle-modal-message">
+        <div class="confirm-modal__card">
+            <div class="confirm-modal__icon confirm-modal__icon--warning" aria-hidden="true">
+                <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="confirm-modal__body">
+                <h2 id="idle-modal-title" class="confirm-modal__title">Sessão prestes a expirar</h2>
+                <p id="idle-modal-message" class="confirm-modal__message">
+                    Sua sessão administrativa será encerrada por inatividade em breve.
+                </p>
+                <p class="idle-modal-countdown-wrap">
+                    Tempo restante: <strong id="idle-modal-countdown" class="idle-modal-countdown">60s</strong>
+                </p>
+            </div>
+            <div class="confirm-modal__actions">
+                <button type="button" id="idle-modal-btn-logout" class="btn btn-secondary">
+                    Sair agora
+                </button>
+                <button type="button" id="idle-modal-btn-extend" class="btn btn-primary">
+                    <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                    <span>Prolongar sessão</span>
                 </button>
             </div>
         </div>

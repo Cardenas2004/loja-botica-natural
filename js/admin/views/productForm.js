@@ -20,7 +20,7 @@ import {
   legacyPlainTextToHtml,
   sanitizeRichHtml,
 } from '../../shared/richtext.js';
-import { state, setState } from '../state.js';
+import { state, setState, DRAFT_STORAGE_KEY_PREFIX } from '../state.js';
 import {
   saveProductRecord,
   validateImageFile,
@@ -83,7 +83,7 @@ export async function renderProductFormView(container, context) {
   let isInitializing = true;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let draftDebounceTimer = null;
-  const DRAFT_STORAGE_KEY = `botica_draft_product_${context.productId || 'new'}`;
+  const DRAFT_STORAGE_KEY = `${DRAFT_STORAGE_KEY_PREFIX}${context.productId || 'new'}`;
 
   setState({ isFormDirty: false });
 
@@ -95,9 +95,10 @@ export async function renderProductFormView(container, context) {
   };
 
   function scheduleDraftSave() {
-    if (isInitializing) return;
+    if (isInitializing || !state.session) return;
     if (draftDebounceTimer) clearTimeout(draftDebounceTimer);
     draftDebounceTimer = setTimeout(() => {
+      if (!state.session) return;
       try {
         const stateToDraft = collectCurrentFormState();
         localStorage.setItem(

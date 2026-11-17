@@ -106,6 +106,8 @@
   --z-header: 1000;
   --z-cookie: 1100;
   --z-progress: 1200;
+  --z-sheet-backdrop: 1300;
+  --z-sheet: 1310;
 
   /* Pilha Vertical de Elementos Fixos (--fixed-bottom-offset) */
   --fixed-bottom-offset: 0px;
@@ -2692,7 +2694,7 @@ body {
   background: rgba(26, 11, 46, 0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 1050;
+  z-index: var(--z-sheet-backdrop);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -2710,7 +2712,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1060;
+  z-index: var(--z-sheet);
   width: 100%;
   max-width: 580px;
   margin-inline: auto;

@@ -5,6 +5,7 @@
  */
 
 import { buildProductDetailHref, resolveSafeProductHref } from '../whatsapp.js';
+import { classifySafeLink, isSafeNavigationLink } from './urlSafety.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -248,21 +249,10 @@ export const DEFAULT_COMPOUND_CARDS = [
 
 /**
  * Valida se o endereço de destino de um card de composto é seguro.
- * Rejeita esquemas executáveis como javascript:, data:, vbscript:.
+ * Delega integralmente para `classifySafeLink` (`js/shared/urlSafety.js`).
  */
 export function isValidCompoundLink(rawLink) {
-  const link = String(rawLink || '').trim();
-  if (!link) return true;
-  if (/^(javascript|data|vbscript|file):/i.test(link)) return false;
-  if (link.startsWith('#') || link.startsWith('/')) return true;
-  if (/^[a-zA-Z0-9._-]+(\.html?)?(\?[^\s]*)?(#[^\s]*)?$/.test(link)) return true;
-
-  try {
-    const parsed = new URL(link);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
+  return isSafeNavigationLink(rawLink, { allowEmpty: true });
 }
 
 function normalizeMatchText(value) {
@@ -276,9 +266,9 @@ function normalizeMatchText(value) {
 /**
  * Resolve o link final de destino do botão do card considerando:
  * 1. `product_id` vinculado a um produto ativo do catálogo;
- * 2. `button_link` personalizado seguro;
+ * 2. `button_link` personalizado seguro (sem open redirect nem esquema perigoso);
  * 3. Correspondência inteligente por nome no catálogo de produtos;
- * 4. Fallback seguro para `#produtos`.
+ * 4. Fallback seguro para `/#produtos`.
  */
 export function resolveCompoundDestination(card, products = [], options = {}) {
   const safeCard = card || {};
@@ -291,27 +281,41 @@ export function resolveCompoundDestination(card, products = [], options = {}) {
     if (byId) {
       return {
         href: buildProductDetailHref(byId, routeOptions),
-        matchedProduct: byId
+        matchedProduct: byId,
+        isExternal: false
       };
     }
   }
 
-  const customLink = String(safeCard.button_link || '').trim();
-  if (customLink && isValidCompoundLink(customLink)) {
-    const idMatch = customLink.match(/[?&]id=([^&#]+)/i);
-    if (idMatch && productList.length > 0) {
-      const linkedProd = productList.find((item) => String(item.id) === idMatch[1]);
-      if (linkedProd) {
-        return {
-          href: buildProductDetailHref(linkedProd, routeOptions),
-          matchedProduct: linkedProd
-        };
+  const rawCustomLink = String(safeCard.button_link || '');
+  const classified = classifySafeLink(rawCustomLink);
+  if (
+    classified.valid &&
+    classified.href &&
+    (classified.kind === 'https' || classified.kind === 'http' || classified.kind === 'relative')
+  ) {
+    if (classified.kind === 'relative') {
+      const idMatch = classified.href.match(/[?&]id=([^&#]+)/i);
+      if (idMatch && productList.length > 0) {
+        const linkedProd = productList.find((item) => String(item.id) === idMatch[1]);
+        if (linkedProd) {
+          return {
+            href: buildProductDetailHref(linkedProd, routeOptions),
+            matchedProduct: linkedProd,
+            isExternal: false
+          };
+        }
       }
     }
-    return {
-      href: resolveSafeProductHref(customLink, productList, routeOptions),
-      matchedProduct: null
-    };
+
+    const safeHref = resolveSafeProductHref(classified.href, productList, routeOptions);
+    if (safeHref) {
+      return {
+        href: safeHref,
+        matchedProduct: null,
+        isExternal: classified.isExternal
+      };
+    }
   }
 
   if (productList.length > 0) {
@@ -324,7 +328,8 @@ export function resolveCompoundDestination(card, products = [], options = {}) {
       if (matched) {
         return {
           href: buildProductDetailHref(matched, routeOptions),
-          matchedProduct: matched
+          matchedProduct: matched,
+          isExternal: false
         };
       }
     }
@@ -333,13 +338,15 @@ export function resolveCompoundDestination(card, products = [], options = {}) {
   if (safeCard.product_id) {
     return {
       href: `produto.html?id=${encodeURIComponent(safeCard.product_id)}`,
-      matchedProduct: null
+      matchedProduct: null,
+      isExternal: false
     };
   }
 
   return {
     href: '#produtos',
-    matchedProduct: null
+    matchedProduct: null,
+    isExternal: false
   };
 }
 
@@ -769,7 +776,7 @@ export function createCompoundCardElement(card, options = {}) {
     btn.textContent = String(safeCard.button_text || 'COMPRAR').trim() || 'COMPRAR';
     btn.setAttribute('aria-label', `${btn.textContent} — ${plainTitle}`);
 
-    if (safeCard.open_in_new_tab) {
+    if (safeCard.open_in_new_tab || resolved.isExternal) {
       btn.target = '_blank';
       btn.rel = 'noopener noreferrer';
     }

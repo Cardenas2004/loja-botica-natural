@@ -2,48 +2,128 @@ name: CI - Botica Natural Quality & Security Gate
 
 on:
   push:
-    branches:
-      - main
-      - audit-hardening
+    branches: [main]
   pull_request:
-    branches:
-      - main
-      - audit-hardening
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  verify-and-test:
-    name: Verify, Audit & E2E Test Suite
+  quality-and-e2e:
+    name: Qualidade, Dist e Playwright Cross-Browser
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run sanitization and integrity contracts
-        run: npm test
+      - name: Build clean deploy bundle (dist/)
+        run: npm run build:cf
 
-      - name: Install Playwright browsers and system dependencies
-        run: npx playwright install --with-deps
+      - name: Run unit, security and deploy verification checks
+        run: node scripts/verify.mjs --dist && npm test
 
-      - name: Run Playwright E2E test suite (Chromium, Firefox, WebKit)
+      - name: Install Playwright browsers (Chromium, Firefox, WebKit)
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run Cross-Browser E2E & Accessibility Tests
         run: npx playwright test
 
-      - name: Upload Playwright test results on failure
+      - name: Upload Playwright report on failure
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
-        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: |
             playwright-report/
             test-results/
-          retention-days: 14
+          retention-days: 7
+
+  audit:
+    name: Auditoria de Dependências (npm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install lockfile cleanly without lifecycle scripts
+        run: npm ci --ignore-scripts
+
+      - name: Fail on high/critical vulnerabilities
+        run: npm audit --audit-level=high
+
+  vendor-repro:
+    name: Reprodutibilidade do Bundle Vendor (js/vendor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install lockfile cleanly
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild local vendor bundle and assert byte-for-byte parity
+        run: |
+          npm run build:vendor
+          git diff --exit-code js/vendor
+
+  secret-scan:
+    name: Varredura de Segredos (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Download and verify Gitleaks v8.30.0
+        run: |
+          mkdir -p /tmp/gl
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz" -o /tmp/gl/gitleaks_8.30.0_linux_x64.tar.gz
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_checksums.txt" -o /tmp/gl/checksums.txt
+          (cd /tmp/gl && grep 'gitleaks_8.30.0_linux_x64.tar.gz' checksums.txt | sha256sum -c -)
+          tar -xzf /tmp/gl/gitleaks_8.30.0_linux_x64.tar.gz -C /tmp/gl gitleaks
+
+      - name: Scan git history and workspace for leaked secrets
+        run: /tmp/gl/gitleaks git --config .gitleaks.toml --redact --no-banner -v .

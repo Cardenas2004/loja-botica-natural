@@ -3,9 +3,5 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /admin.html
-Disallow: /docs/
-Disallow: /scripts/
-Disallow: /supabase/
-Disallow: /tests/
 
 Sitemap: https://boticanaturaltriunfo.com.br/sitemap.xml

@@ -4,6 +4,8 @@
  * Compatível com navegadores (DOMParser nativo) e Node.js (parser AST puro sem dependências).
  */
 
+import { classifySafeLink, decodeHtmlEntities } from './urlSafety.js';
+
 /** @typedef {'paragraphs' | 'lines' | 'inline'} TextMode */
 
 /** Modos padrão por campo de texto do produto */
@@ -182,82 +184,16 @@ export function escapeHtml(value) {
 }
 
 /**
- * Decodifica entidades HTML básicas e numéricas para inspeção de protocolo e texto.
- * @param {string} str
- * @returns {string}
- */
-function decodeHtmlEntities(str) {
-  return String(str ?? '')
-    .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => {
-      const code = Number.parseInt(hex, 16);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : '';
-    })
-    .replace(/&#([0-9]+);?/g, (_, dec) => {
-      const code = Number.parseInt(dec, 10);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : '';
-    })
-    .replace(/&colon;/gi, ':')
-    .replace(/&tab;/gi, '\t')
-    .replace(/&newline;/gi, '\n')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&amp;/gi, '&');
-}
-
-/**
  * Valida e normaliza o atributo `href` de links `<a>`.
  * Permite apenas `https:`, `http:`, `mailto:`, `tel:` ou caminhos relativos seguros.
+ * Delega integralmente para `classifySafeLink` (`js/shared/urlSafety.js`).
+ *
  * @param {string | null | undefined} rawHref
  * @returns {string | null}
  */
 export function sanitizeLinkHref(rawHref) {
-  if (typeof rawHref !== 'string') return null;
-
-  const trimmed = rawHref.trim();
-  if (!trimmed) return null;
-
-  // Decodifica entidades e remove caracteres de controle/espaços invisíveis para checar o esquema real
-  const decoded = decodeHtmlEntities(trimmed);
-  const compactSchemeCheck = decoded.replace(/[\u0000-\u0020\u007f-\u009f]+/g, '').toLowerCase();
-
-  // Bloqueia protocolo relativo //evil.com ou barras invertidas
-  if (compactSchemeCheck.startsWith('//') || compactSchemeCheck.startsWith('\\\\')) {
-    return null;
-  }
-
-  // Verifica se possui esquema explícito
-  const schemeMatch = compactSchemeCheck.match(/^([a-z][a-z0-9+.-]*):/i);
-  if (schemeMatch) {
-    const scheme = `${schemeMatch[1].toLowerCase()}:`;
-    if (scheme !== 'https:' && scheme !== 'http:' && scheme !== 'mailto:' && scheme !== 'tel:') {
-      return null;
-    }
-
-    if (scheme === 'https:' || scheme === 'http:') {
-      try {
-        const parsed = new URL(decoded.trim());
-        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
-        return parsed.href;
-      } catch {
-        return null;
-      }
-    }
-
-    // mailto: ou tel: sem caracteres de controle nem tags
-    const cleanTarget = decoded.trim().replace(/[\u0000-\u001f\u007f<>"]/g, '');
-    return cleanTarget || null;
-  }
-
-  // Sem esquema: aceita caminho relativo seguro (/produtos, #ancora, produtos.html)
-  if (compactSchemeCheck.includes(':')) {
-    return null;
-  }
-
-  const cleanRelative = decoded.trim().replace(/[\u0000-\u001f\u007f<>"]/g, '');
-  return cleanRelative || null;
+  const result = classifySafeLink(rawHref);
+  return result.valid ? result.href : null;
 }
 
 /**

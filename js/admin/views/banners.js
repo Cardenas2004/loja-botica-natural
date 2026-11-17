@@ -6,6 +6,7 @@
  */
 
 import { normalizeSupabaseError } from '../../supabaseClient.js';
+import { classifySafeLink, isSafeNavigationLink } from '../../shared/urlSafety.js';
 import { state } from '../state.js';
 import {
   saveCarouselSlide,
@@ -369,14 +370,19 @@ export function renderBannersView(container) {
     }
 
     const buttonLink = linkInput.value.trim();
-    if (!isValidBannerLink(buttonLink)) {
+    const bannerLinkInfo = classifySafeLink(buttonLink);
+    if (
+      !isSafeNavigationLink(buttonLink, { allowEmpty: true }) ||
+      !isValidBannerLink(buttonLink)
+    ) {
       showToast(
-        'Link inválido. Use https://, http:// ou um caminho relativo (ex: produtos.html).',
+        'Link inválido. Use https://, http:// ou um caminho relativo seguro (ex: produtos.html).',
         'warning'
       );
       linkInput.focus();
       return;
     }
+    const normalizedButtonLink = bannerLinkInfo.isEmpty ? '' : bannerLinkInfo.href || '';
 
     setButtonLoading(
       saveBtn,
@@ -394,7 +400,7 @@ export function renderBannersView(container) {
       await saveCarouselSlide(
         {
           title: titleInput.value.trim(),
-          button_link: buttonLink,
+          button_link: normalizedButtonLink,
           display_order: Math.max(0, Number.parseInt(orderInput.value || '1', 10) || 1),
           is_active: Boolean(activeCheckbox.checked),
           focus_x: 50,

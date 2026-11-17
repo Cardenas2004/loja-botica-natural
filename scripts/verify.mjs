@@ -69,10 +69,12 @@ const JS_FILES = [
   'js/product.js',
   'js/admin.js',
   'js/shared/richtext.js',
+  'js/shared/urlSafety.js',
   'js/shared/productRenderer.js',
   'js/shared/categoryIcons.js',
   'js/shared/compoundShowcaseRenderer.js',
   'js/admin/main.js',
+  'js/admin/sessionTimeout.js',
   'js/admin/state.js',
   'js/admin/ui.js',
   'js/admin/api.js',
@@ -86,6 +88,7 @@ const JS_FILES = [
   'js/admin/views/banners.js',
   'js/admin/views/compounds.js',
   'js/admin/views/whatsapp.js',
+  'js/admin/views/security.js',
 ];
 
 const REQUIRED_SEO_FILES = [
@@ -106,7 +109,7 @@ const REQUIRED_SEO_FILES = [
   'css/fonts.css',
   'css/icons.css',
   'js/publicApi.js',
-  'js/vendor/supabase-js-2.49.1.esm.js',
+  'js/vendor/supabase-js-2.119.0.esm.js',
   'supabase/migrations/20261104200000_security_hardening.sql',
   'supabase/migrations/20261104210000_product_richtext_options.sql',
   'supabase/migrations/20261105200000_data_safety_defaults.sql',
@@ -119,6 +122,9 @@ const REQUIRED_SEO_FILES = [
   'supabase/migrations/20261114110000_products_home_featured_rollback.sql',
   'supabase/migrations/20261114120000_products_slug.sql',
   'supabase/migrations/20261114120000_products_slug_rollback.sql',
+  'supabase/migrations/20261115100000_harden_button_links_allowlist.sql',
+  'supabase/migrations/20261115110000_restore_storage_hardening.sql',
+  'supabase/pending/20261115120000_require_aal2_admin.sql',
   'supabase/schema_reference.sql',
   'supabase/legacy/README.md',
   'supabase/audit/README.md',
@@ -835,10 +841,41 @@ for (const key of REQUIRED_SECURITY_HEADERS) {
 if (
   netlifyRootHeaders['Content-Security-Policy'] &&
   (netlifyRootHeaders['Content-Security-Policy'].includes("'unsafe-inline'") ||
-    netlifyRootHeaders['Content-Security-Policy'].includes('fonts.googleapis.com'))
+    netlifyRootHeaders['Content-Security-Policy'].includes('fonts.googleapis.com') ||
+    !netlifyRootHeaders['Content-Security-Policy'].includes('upgrade-insecure-requests') ||
+    netlifyRootHeaders['Content-Security-Policy'].includes('wss://'))
 ) {
   headerParityErrors += 1;
-  fail('CSP em _headers/vercel.json ainda contém unsafe-inline ou fonts.googleapis.com.');
+  fail('CSP pública em _headers/vercel.json deve incluir upgrade-insecure-requests e excluir unsafe-inline, fonts.googleapis.com e wss://.');
+}
+for (const reqPerm of ['usb=()', 'bluetooth=()', 'serial=()', 'accelerometer=()', 'gyroscope=()', 'magnetometer=()']) {
+  if (!netlifyRootHeaders['Permissions-Policy']?.includes(reqPerm)) {
+    headerParityErrors += 1;
+    fail(`Permissions-Policy em _headers/vercel.json não inclui ${reqPerm}.`);
+  }
+}
+if (netlifyRootHeaders['Cross-Origin-Opener-Policy'] || vercelRootHeaders['Cross-Origin-Opener-Policy']) {
+  headerParityErrors += 1;
+  fail('Cross-Origin-Opener-Policy deve ser aplicado apenas em /admin e /admin.html, não globalmente.');
+}
+if (netlifyRootHeaders['Cross-Origin-Resource-Policy'] || vercelRootHeaders['Cross-Origin-Resource-Policy']) {
+  headerParityErrors += 1;
+  fail('Cross-Origin-Resource-Policy global não deve ser aplicado para não quebrar previews sociais.');
+}
+
+// Verifica remoção de wss:// nas tags <meta> de CSP públicas
+for (const pubHtml of PUBLIC_HTML_FILES) {
+  const htmlContent = readUtf8(pubHtml);
+  const cspMetaMatch = htmlContent.match(
+    /<meta\s+http-equiv=["']Content-Security-Policy["']\s+content=["']([^"']+)["']/i
+  );
+  if (!cspMetaMatch) {
+    headerParityErrors += 1;
+    fail(`${pubHtml}: meta tag Content-Security-Policy ausente.`);
+  } else if (cspMetaMatch[1].includes('wss://')) {
+    headerParityErrors += 1;
+    fail(`${pubHtml}: meta tag CSP pública ainda contém wss:// desnecessário.`);
+  }
 }
 
 // Regras específicas de Cloudflare Pages: Clean URLs (/admin) e desanexo (!) sem concatenação de headers
@@ -849,13 +886,24 @@ for (const adminRoute of ['/admin', '/admin.html']) {
     headerParityErrors += 1;
     fail(`_headers (${adminRoute}): falta "! Content-Security-Policy" para evitar concatenação com /* na Cloudflare.`);
   }
-  if (!cfAdmin.headers['Content-Security-Policy'] || !cfAdmin.headers['Content-Security-Policy'].includes("frame-src 'self' blob:")) {
+  if (
+    !cfAdmin.headers['Content-Security-Policy'] ||
+    !cfAdmin.headers['Content-Security-Policy'].includes("frame-src 'self' blob:") ||
+    !cfAdmin.headers['Content-Security-Policy'].includes('upgrade-insecure-requests')
+  ) {
     headerParityErrors += 1;
-    fail(`_headers (${adminRoute}): CSP deve permitir "frame-src 'self' blob:" para o preview do painel.`);
+    fail(`_headers (${adminRoute}): CSP deve permitir "frame-src 'self' blob:" e incluir "upgrade-insecure-requests".`);
   }
   if (cfAdmin.headers['Content-Security-Policy'] !== vcAdmin['Content-Security-Policy']) {
     headerParityErrors += 1;
     fail(`Divergência de CSP em ${adminRoute} entre _headers e vercel.json.`);
+  }
+  if (
+    cfAdmin.headers['Cross-Origin-Opener-Policy'] !== 'same-origin' ||
+    vcAdmin['Cross-Origin-Opener-Policy'] !== 'same-origin'
+  ) {
+    headerParityErrors += 1;
+    fail(`${adminRoute}: Cross-Origin-Opener-Policy deve ser "same-origin" em _headers e vercel.json.`);
   }
   if (cfAdmin.headers['X-Robots-Tag'] !== 'noindex, nofollow' || vcAdmin['X-Robots-Tag'] !== 'noindex, nofollow') {
     headerParityErrors += 1;
@@ -890,6 +938,160 @@ if (headerParityErrors === 0) {
   pass('Paridade 100% entre _headers e vercel.json, com regras Cloudflare Clean URLs (/admin), desanexo (!) e cache seguro para ESM.');
 }
 
+console.log('\n7.3. Verificando segurança de publicação (security.txt, robots.txt, vercel.json e pacote dist/)...');
+const SECURITY_TXT_PATH = path.resolve(ROOT_DIR, '.well-known/security.txt');
+if (!fs.existsSync(SECURITY_TXT_PATH)) {
+  fail('.well-known/security.txt ausente.');
+} else {
+  const secTxt = fs.readFileSync(SECURITY_TXT_PATH, 'utf8');
+  const expiresMatch = secTxt.match(/^Expires:\s*(.+)$/m);
+  const hasContact = /^Contact:\s*mailto:/m.test(secTxt);
+  const hasCanonical = /^Canonical:\s*https:\/\/boticanaturaltriunfo\.com\.br\/\.well-known\/security\.txt$/m.test(secTxt);
+  const hasLang = /^Preferred-Languages:/m.test(secTxt);
+  const expiresMs = expiresMatch ? Date.parse(expiresMatch[1].trim()) : NaN;
+  if (!hasContact || !hasCanonical || !hasLang || !Number.isFinite(expiresMs) || expiresMs <= Date.now()) {
+    fail('.well-known/security.txt deve conter Contact, Canonical, Preferred-Languages e Expires futuro válido.');
+  } else {
+    pass('.well-known/security.txt presente e conforme RFC 9116.');
+  }
+}
+
+if (!fs.existsSync(path.resolve(ROOT_DIR, 'SECURITY.md'))) {
+  fail('SECURITY.md ausente na raiz do repositório.');
+} else {
+  pass('SECURITY.md presente na raiz do repositório.');
+}
+
+const robotsTxtContent = fs.readFileSync(path.resolve(ROOT_DIR, 'robots.txt'), 'utf8');
+if (/^Disallow:\s*\/(?:docs|scripts|supabase|tests|\.github)\b/im.test(robotsTxtContent)) {
+  fail('robots.txt não deve listar diretórios internos (docs, scripts, supabase, tests, .github).');
+} else if (!/^Disallow:\s*\/admin\b/m.test(robotsTxtContent) || !/^Disallow:\s*\/admin\.html\b/m.test(robotsTxtContent)) {
+  fail('robots.txt deve manter Disallow: /admin e Disallow: /admin.html.');
+} else {
+  pass('robots.txt bloqueia apenas rotas administrativas sem enumerar diretórios internos.');
+}
+
+const vercelDeployConfig = JSON.parse(fs.readFileSync(path.resolve(ROOT_DIR, 'vercel.json'), 'utf8'));
+if (
+  vercelDeployConfig.outputDirectory !== 'dist' ||
+  vercelDeployConfig.buildCommand !== 'npm run build:products && npm run build:cf'
+) {
+  fail('vercel.json deve publicar exclusivamente outputDirectory "dist" com buildCommand "npm run build:products && npm run build:cf".');
+} else {
+  pass('vercel.json configurado para gerar e publicar apenas o pacote limpo dist/.');
+}
+
+const buildCfContent = fs.readFileSync(path.resolve(ROOT_DIR, 'scripts/build-cf.mjs'), 'utf8');
+if (!buildCfContent.includes("'.well-known'")) {
+  fail('scripts/build-cf.mjs deve incluir ".well-known" na lista de diretórios públicos.');
+} else {
+  pass('scripts/build-cf.mjs inclui .well-known no pacote de deploy dist/.');
+}
+
+const DIST_DIR = path.resolve(ROOT_DIR, 'dist');
+const REQUIRE_DIST = process.argv.includes('--dist');
+if (!fs.existsSync(DIST_DIR)) {
+  if (REQUIRE_DIST) {
+    fail('Diretório dist/ não encontrado; execute "npm run build:cf" antes de verificar.');
+  }
+} else {
+  const forbiddenTopDirs = new Set(['docs', 'supabase', 'scripts', 'tests', '.github', '.git', 'node_modules', 'artifacts', 'backups', 'test-results', 'playwright-report']);
+  const forbiddenRootFiles = new Set(['package.json', 'package-lock.json', 'playwright.config.js', 'vercel.json', 'SECURITY.md', '.env', '.gitignore']);
+  const distLeaks = [];
+  function scanDistDirectory(currentDir, relPrefix = '') {
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      const relPath = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (!relPrefix && forbiddenTopDirs.has(entry.name)) {
+          distLeaks.push(relPath);
+          continue;
+        }
+        scanDistDirectory(path.join(currentDir, entry.name), relPath);
+      } else {
+        if (!relPrefix && forbiddenRootFiles.has(entry.name)) {
+          distLeaks.push(relPath);
+        } else if (entry.name.startsWith('.env') || entry.name.endsWith('.md') || entry.name.endsWith('.sql')) {
+          distLeaks.push(relPath);
+        }
+      }
+    }
+  }
+  scanDistDirectory(DIST_DIR);
+  if (distLeaks.length > 0) {
+    fail(`dist/ contém arquivos internos proibidos: ${distLeaks.join(', ')}`);
+  } else if (
+    !fs.existsSync(path.join(DIST_DIR, '.well-known/security.txt')) ||
+    !fs.existsSync(path.join(DIST_DIR, '_headers')) ||
+    !fs.existsSync(path.join(DIST_DIR, 'index.html'))
+  ) {
+    fail('dist/ está incompleto: faltam .well-known/security.txt, _headers ou index.html.');
+  } else {
+    pass('Pacote dist/ validado sem arquivos internos (docs, supabase, scripts, tests, .md, .sql, package.json, .env) e com .well-known/security.txt.');
+  }
+}
+
+console.log('\n7.4. Verificando endurecimento de CI/CD e cadeia de suprimentos...');
+const lockfileRaw = fs.readFileSync(path.resolve(ROOT_DIR, 'package-lock.json'), 'utf8');
+if (lockfileRaw.includes('"node_modules/swiper"')) {
+  fail('package-lock.json ainda referencia o pacote inutilizado "swiper". Execute npm uninstall swiper.');
+} else {
+  pass('package-lock.json sincronizado sem o pacote órfão/vulnerável "swiper".');
+}
+
+const REQUIRED_WORKFLOWS = ['ci.yml', 'codeql.yml', 'dependency-review.yml'];
+let workflowErrors = 0;
+for (const wfName of REQUIRED_WORKFLOWS) {
+  const wfPath = path.resolve(ROOT_DIR, '.github/workflows', wfName);
+  if (!fs.existsSync(wfPath)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} ausente.`);
+    continue;
+  }
+  const wfContent = fs.readFileSync(wfPath, 'utf8');
+  if (/pull_request_target\b/.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} não deve usar "pull_request_target".`);
+  }
+  if (!/^permissions:\s*$/m.test(wfContent) || !/^\s+contents:\s*read\b/m.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} deve declarar "permissions: contents: read" explícito.`);
+  }
+  if (!/^concurrency:/m.test(wfContent) || !/timeout-minutes:\s*\d+/m.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} deve definir "concurrency" e "timeout-minutes".`);
+  }
+  const usesLines = wfContent.match(/^\s*(?:-\s*)?uses:\s*.+$/gm) || [];
+  if (usesLines.length === 0) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName} não possui ações fixadas verificáveis.`);
+  }
+  for (const usesLine of usesLines) {
+    if (!/@[0-9a-f]{40}(?:\s+#.*)?$/.test(usesLine.trim())) {
+      workflowErrors += 1;
+      fail(`.github/workflows/${wfName}: action sem commit SHA completo de 40 caracteres -> ${usesLine.trim()}`);
+    }
+  }
+  if (/run:[^\n]*\$\{\{\s*github\.event\.(?:issue|pull_request|comment|head_commit)\./.test(wfContent)) {
+    workflowErrors += 1;
+    fail(`.github/workflows/${wfName}: possível script injection via github.event.* em bloco run.`);
+  }
+}
+if (!fs.existsSync(path.resolve(ROOT_DIR, '.github/dependabot.yml')) || !fs.existsSync(path.resolve(ROOT_DIR, '.gitleaks.toml'))) {
+  workflowErrors += 1;
+  fail('.github/dependabot.yml ou .gitleaks.toml ausente.');
+} else {
+  // Allowlists ancoradas (^...$) devem mirar o segredo extraído, não o "match":
+  // regras como `jwt` incluem o delimitador final no match e a âncora nunca casa.
+  const gitleaksToml = fs.readFileSync(path.resolve(ROOT_DIR, '.gitleaks.toml'), 'utf8');
+  if (/^\s*regexTarget\s*=\s*["']match["']/m.test(gitleaksToml)) {
+    workflowErrors += 1;
+    fail('.gitleaks.toml: use regexTarget = "secret" nas allowlists de token (o "match" inclui delimitadores e quebra âncoras ^...$).');
+  }
+}
+if (workflowErrors === 0) {
+  pass('Workflows GitHub Actions (ci, codeql, dependency-review), Dependabot e Gitleaks configurados com pinagem por SHA e menor privilégio.');
+}
+
 /* ==========================================================================
    8. [MODO PRODUÇÃO] VERIFICAÇÃO DE PLACEHOLDERS [PREENCHER (APENAS --prod)
    ========================================================================== */
@@ -897,13 +1099,15 @@ const IS_PROD = process.argv.includes('--prod');
 if (IS_PROD) {
   console.log('\n8. [MODO PRODUÇÃO] Verificando ausência de placeholders [PREENCHER...');
   let placeholdersFound = 0;
-  const prodScanFiles = [...HTML_FILES, ...JS_FILES, 'robots.txt', 'sitemap.xml'];
+  const prodScanFiles = Array.from(new Set([...PUBLIC_HTML_FILES, ...HTML_FILES, ...JS_FILES, 'robots.txt', 'sitemap.xml', '.well-known/security.txt']));
   for (const file of prodScanFiles) {
     const fullPath = path.resolve(ROOT_DIR, file);
     if (!fs.existsSync(fullPath)) continue;
+    const isJs = file.endsWith('.js');
+    const pattern = isJs ? /\[PREENCHER:[^\]]+\]/g : /\[PREENCHER[^\]]*\]?/gi;
     const lines = fs.readFileSync(fullPath, 'utf8').split(/\r?\n/);
     lines.forEach((lineText, idx) => {
-      const matches = lineText.match(/\[PREENCHER:[^\]]+\]/g);
+      const matches = lineText.match(pattern);
       if (matches) {
         for (const placeholder of matches) {
           fail(`${file}:${idx + 1} -> ${placeholder}`);
@@ -913,7 +1117,7 @@ if (IS_PROD) {
     });
   }
   if (placeholdersFound === 0) {
-    pass('Nenhum placeholder [PREENCHER: ...] encontrado nos arquivos de produção.');
+    pass('Nenhum placeholder [PREENCHER...] encontrado nos arquivos de produção.');
   }
 }
 
