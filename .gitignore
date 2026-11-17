@@ -9,3 +9,7 @@ test-results/
 artifacts/
 backups/
 
+
+# Cloudflare Wrangler (cache local e variaveis de dev)
+.wrangler/
+.dev.vars*
