@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { setupPageMocks } from './helpers.js';
 
-test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B', () => {
+test.describe('Mobile Responsiveness — Carrossel, Seletor de Categorias e Grid 2B', () => {
   const VIEWPORTS = [
     { name: 'Micro (Galaxy S9+)', width: 320, height: 658 },
     { name: 'iPhone SE', width: 375, height: 667 },
@@ -48,24 +48,29 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
       expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
     });
 
-    test(`[${vp.name}] Em < 1024px exibe apenas #catalog-category-mobile e oculta #catalog-tabs-wrapper`, async ({
+    test(`[${vp.name}] Seletor único de categorias visível, legível e sem cortar o nome selecionado`, async ({
       page,
     }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await setupPageMocks(page);
 
       await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
-      const mobileSelector = page.locator('#catalog-category-mobile');
-      const desktopTabsWrapper = page.locator('#catalog-tabs-wrapper');
+      await expect(page.locator('#catalog-grid')).toHaveAttribute('aria-busy', 'false');
+      await expect(page.locator('#catalog-category-picker')).toBeVisible();
+      // A antiga fileira de abas de categoria não existe mais
+      await expect(page.locator('#catalog-tabs-wrapper, .catalog-tab')).toHaveCount(0);
 
-      await expect(mobileSelector).toBeVisible();
-      await expect(desktopTabsWrapper).toBeHidden();
-
-      // Rótulo de categoria ativa tem >= 16px
-      const labelFontSize = await page
-        .locator('#category-mobile-selected-label')
-        .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-      expect(labelFontSize).toBeGreaterThanOrEqual(16);
+      // Rótulo de categoria ativa tem >= 16px e cabe inteiro ("Todos os Produtos")
+      const label = page.locator('#category-picker-label');
+      await expect(label).toHaveText('Todos os Produtos');
+      const { fontSize, isTruncated } = await label.evaluate((el) => ({
+        fontSize: parseFloat(getComputedStyle(el).fontSize),
+        isTruncated: el.scrollWidth > el.clientWidth + 1,
+      }));
+      expect(fontSize).toBeGreaterThanOrEqual(16);
+      if (vp.width >= 360) {
+        expect(isTruncated).toBe(false);
+      }
     });
 
     test(`[${vp.name}] Grid de produtos exibe 1 coluna (< 340px) ou 2 colunas lado a lado (>= 340px) sem overflow`, async ({
@@ -145,7 +150,7 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
     }
   });
 
-  test('Sincroniza seleção do bottom sheet mobile (390px) para as abas desktop (>= 1024px) sem máscara de opacidade', async ({
+  test('Seleção feita no celular (390px) se mantém no seletor único ao passar para o desktop (>= 1024px)', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -153,14 +158,14 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
 
     await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#catalog-grid')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.locator('#catalog-category-mobile')).toBeVisible();
-    await expect(page.locator('#catalog-tabs-wrapper')).toBeHidden();
+    await expect(page.locator('#catalog-category-picker')).toBeVisible();
 
-    // Abre bottom sheet no mobile e seleciona uma categoria específica
+    // Abre o painel inferior no celular e seleciona uma categoria específica
     await page.locator('#btn-open-category-modal').click();
     const sheet = page.locator('#category-bottom-sheet');
     await expect(sheet).toBeVisible();
     await expect(sheet).toHaveClass(/is-open/);
+    await expect(page.locator('body')).toHaveClass(/category-sheet-lock/);
 
     const categoryButtons = sheet.locator('.category-sheet__item');
     await expect(categoryButtons.nth(1)).toBeVisible();
@@ -170,44 +175,73 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
     const selectedCategoryId = await secondCatBtn.getAttribute('data-category');
     await secondCatBtn.click();
 
-    // Verifica que o filtro foi aplicado no mobile
-    await expect(page.locator('#category-mobile-selected-label')).not.toHaveText('Todos os Produtos');
+    // Filtro aplicado, painel fechado e foco devolvido ao seletor
+    await expect(sheet).not.toHaveClass(/is-open/);
+    await expect(page.locator('#category-picker-label')).not.toHaveText('Todos os Produtos');
+    await expect(page.locator('#btn-open-category-modal')).toBeFocused();
+    const selectedLabel = await page.locator('#category-picker-label').textContent();
 
-    // Redimensiona para desktop (>= 1024px) e verifica que a seleção foi mantida e apenas #catalog-tabs-wrapper está visível
+    // No desktop, o mesmo seletor continua visível com a mesma seleção
     await page.setViewportSize({ width: 1280, height: 800 });
-    await expect(page.locator('#catalog-tabs-wrapper')).toBeVisible();
-    await expect(page.locator('#catalog-category-mobile')).toBeHidden();
+    await expect(page.locator('#catalog-category-picker')).toBeVisible();
+    await expect(page.locator('#category-picker-label')).toHaveText(selectedLabel || '');
 
-    const activeDesktopTab = page.locator(
-      `#category-filters .catalog-tab[data-category="${selectedCategoryId}"]`
-    );
-    await expect(activeDesktopTab).toHaveClass(/is-active/);
-    await expect(activeDesktopTab).toHaveAttribute('aria-pressed', 'true');
-
-    // Verifica que nenhuma aba ou nav tem mask-image ou opacidade reduzida
-    const navStyles = await page.locator('#category-filters').evaluate((el) => {
-      const cs = getComputedStyle(el);
-      return {
-        maskImage: cs.maskImage || cs.webkitMaskImage || 'none',
-        opacity: parseFloat(cs.opacity),
-      };
-    });
-    expect(navStyles.maskImage).toBe('none');
-    expect(navStyles.opacity).toBe(1);
-
-    const tabs = page.locator('.catalog-tab');
-    const tabCount = await tabs.count();
-    for (let i = 0; i < tabCount; i++) {
-      const tab = tabs.nth(i);
-      const box = await tab.boundingBox();
-      expect(box).not.toBeNull();
-      if (box) {
-        expect(box.height).toBeGreaterThanOrEqual(40);
-        expect(box.width).toBeGreaterThan(box.height * 1.15);
-      }
-      const opacity = await tab.evaluate((el) => parseFloat(getComputedStyle(el).opacity));
-      expect(opacity).toBe(1);
+    // Ao abrir no desktop, a lista fica ancorada logo abaixo do seletor, com a categoria marcada
+    await page.locator('#btn-open-category-modal').click();
+    await expect(sheet).toHaveClass(/is-open/);
+    await expect(page.locator('#btn-open-category-modal')).toHaveAttribute('aria-expanded', 'true');
+    const triggerBox = await page.locator('#btn-open-category-modal').boundingBox();
+    const sheetBox = await sheet.boundingBox();
+    expect(triggerBox).not.toBeNull();
+    expect(sheetBox).not.toBeNull();
+    if (triggerBox && sheetBox) {
+      expect(sheetBox.y).toBeGreaterThanOrEqual(triggerBox.y + triggerBox.height - 1);
+      expect(sheetBox.y - (triggerBox.y + triggerBox.height)).toBeLessThanOrEqual(24);
     }
+    await expect(
+      sheet.locator(`.category-sheet__item[data-category="${selectedCategoryId}"]`)
+    ).toHaveAttribute('aria-selected', 'true');
+    // No desktop a página não fica travada
+    await expect(page.locator('body')).not.toHaveClass(/category-sheet-lock/);
+
+    // Esc fecha e devolve o foco ao seletor
+    await page.keyboard.press('Escape');
+    await expect(sheet).not.toHaveClass(/is-open/);
+    await expect(page.locator('#btn-open-category-modal')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#btn-open-category-modal')).toBeFocused();
+  });
+
+  test('Lista de categorias funciona só pelo teclado (busca, setas e Enter)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupPageMocks(page);
+
+    await page.goto('/produtos.html', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#catalog-grid')).toHaveAttribute('aria-busy', 'false');
+
+    await page.locator('#btn-open-category-modal').focus();
+    await page.keyboard.press('Enter');
+    const sheet = page.locator('#category-bottom-sheet');
+    await expect(sheet).toHaveClass(/is-open/);
+    await expect(page.locator('#category-sheet-search')).toBeFocused();
+
+    // Seta para baixo entra na lista; a primeira opção é "Todos os Produtos"
+    await page.keyboard.press('ArrowDown');
+    const items = sheet.locator('.category-sheet__item');
+    await expect(items.first()).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(items.nth(1)).toBeFocused();
+    const targetId = await items.nth(1).getAttribute('data-category');
+
+    await page.keyboard.press('Enter');
+    await expect(sheet).not.toHaveClass(/is-open/);
+    await expect(page.locator('#category-picker-label')).not.toHaveText('Todos os Produtos');
+
+    // Reabre: a opção escolhida está marcada e é a única parada de Tab dentro da lista
+    await page.locator('#btn-open-category-modal').click();
+    await expect(
+      sheet.locator(`.category-sheet__item[data-category="${targetId}"]`)
+    ).toHaveAttribute('tabindex', '0');
+    expect(await sheet.locator('.category-sheet__item[tabindex="0"]').count()).toBe(1);
   });
 
   test('Bottom sheet de categorias permanece acima do banner de cookies e clicável no mobile', async ({
@@ -230,7 +264,7 @@ test.describe('Mobile Responsiveness — Carrossel, Abas de Categorias e Grid 2B
     await expect(secondCatBtn).toBeVisible();
     await secondCatBtn.click();
 
-    await expect(page.locator('#category-mobile-selected-label')).not.toHaveText('Todos os Produtos');
+    await expect(page.locator('#category-picker-label')).not.toHaveText('Todos os Produtos');
   });
 
   test('Todos os <input>, <select> e <textarea> em index.html, produtos.html e admin.html possuem font-size >= 16px (ALTO-04)', async ({

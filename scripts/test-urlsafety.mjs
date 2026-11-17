@@ -132,12 +132,12 @@ test('Permite mailto: e tel: em classifySafeLink/richtext, mas restringe em isSa
   assert.equal(mail.valid, true);
   assert.equal(mail.kind, 'mailto');
 
-  const phone = classifySafeLink('tel:+555185543448', { baseOrigin: BASE_ORIGIN });
+  const phone = classifySafeLink('tel:+5551985543448', { baseOrigin: BASE_ORIGIN });
   assert.equal(phone.valid, true);
   assert.equal(phone.kind, 'tel');
 
   assert.equal(isSafeNavigationLink('mailto:contato@exemplo.com'), false);
-  assert.equal(isSafeNavigationLink('tel:+555185543448'), false);
+  assert.equal(isSafeNavigationLink('tel:+5551985543448'), false);
   assert.equal(isValidCompoundLink('mailto:contato@exemplo.com'), false);
 });
 

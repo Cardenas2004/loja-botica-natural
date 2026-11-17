@@ -7,7 +7,7 @@
     <meta name="description" content="Catálogo da Botica Natural: dermocosméticos, suplementos, cápsulas, fitoterápicos e linha veterinária. Solicite orçamento pelo WhatsApp com suporte técnico.">
     <meta name="theme-color" content="#3D1E6D">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob: https://njdkuhgoophzjxmmempu.supabase.co; connect-src 'self' https://njdkuhgoophzjxmmempu.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://use.typekit.net https://p.typekit.net; font-src 'self' https://use.typekit.net; img-src 'self' data: blob: https://njdkuhgoophzjxmmempu.supabase.co; connect-src 'self' https://njdkuhgoophzjxmmempu.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self';">
     <meta name="format-detection" content="telephone=no">
     <link rel="canonical" href="https://boticanaturaltriunfo.com.br/produtos">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -29,15 +29,19 @@
     <!-- Preconnect ao Supabase Storage / REST para acelerar imagens da vitrine -->
     <link rel="preconnect" href="https://njdkuhgoophzjxmmempu.supabase.co" crossorigin>
 
-    <!-- Fontes Auto-Hospedadas (Zero Dependência Externa) -->
-    <link rel="stylesheet" href="css/fonts.css?v=20261115">
+    <!-- Logotipo "Botica Natural" em Roca (Adobe Fonts, projeto web luq5dht) -->
+    <link rel="preconnect" href="https://use.typekit.net" crossorigin>
+    <link rel="stylesheet" href="https://use.typekit.net/luq5dht.css">
+
+    <!-- Fontes de texto auto-hospedadas (Inter e Playfair Display) -->
+    <link rel="stylesheet" href="css/fonts.css?v=20261117">
 
     <!-- Ícones SVG Locais Integrados (Zero Dependência Externa) -->
-    <link rel="stylesheet" href="css/icons.css?v=20261115">
+    <link rel="stylesheet" href="css/icons.css?v=20261117">
 
     <!-- App Styles & Scripts -->
-    <link rel="stylesheet" href="css/style.css?v=20261115">
-    <script type="module" src="js/main.js?v=20261115"></script>
+    <link rel="stylesheet" href="css/style.css?v=20261117">
+    <script type="module" src="js/main.js?v=20261117"></script>
 </head>
 <body>
     <a class="skip-link" href="#catalogo">Pular para os produtos</a>
@@ -46,7 +50,7 @@
     <noscript>
         <div class="noscript-banner">
             <div class="container">
-                <p><strong>Atenção:</strong> O JavaScript do seu navegador está desativado. Para solicitar orçamentos, manipular receitas ou tirar dúvidas farmacêuticas, entre em contato direto pelo WhatsApp <a href="https://wa.me/555185543448">(51) 8554-3448</a> ou telefone <a href="tel:+555185543448">(51) 8554-3448</a>.</p>
+                <p><strong>Atenção:</strong> O JavaScript do seu navegador está desativado. Para solicitar orçamentos, manipular receitas ou tirar dúvidas farmacêuticas, entre em contato direto pelo WhatsApp <a href="https://wa.me/555185543448">(51) 98554-3448</a> ou telefone <a href="tel:+5551985543448">(51) 98554-3448</a>.</p>
             </div>
         </div>
     </noscript>
@@ -65,7 +69,6 @@
             <nav class="nav" id="menu" aria-label="Menu principal">
                 <ul class="nav__list">
                     <li><a class="nav__link is-active" href="produtos.html">Produtos</a></li>
-                    <li><a class="nav__link" href="index.html#mais-vendidos">Mais Vendidos</a></li>
                     <li><a class="nav__link" href="index.html#especialidades">Formas Farmacêuticas</a></li>
                     <li><a class="nav__link" href="index.html#como-funciona">Como funciona</a></li>
                     <!-- TODO: Reativar link quando a seção #depoimentos tiver avaliações reais verificadas -->
@@ -106,7 +109,6 @@
                 </nav>
 
                 <h1 class="catalog-hero__title" id="catalog-title">Catálogo de Produtos</h1>
-                <p class="catalog-hero__desc">Explore nossas fórmulas manipuladas com matérias-primas selecionadas, laudos de qualidade e rastreabilidade farmacêutica. Selecione a categoria ou pesquise o produto desejado.</p>
 
                 <!-- Barra de Pesquisa em Tempo Real -->
                 <div class="catalog-search-wrap">
@@ -124,18 +126,17 @@
         <section class="section" id="catalogo" aria-labelledby="catalogo-section-title">
             <h2 class="sr-only" id="catalogo-section-title">Lista de produtos por categoria</h2>
             <div class="container">
-                <!-- Barra de Categorias: Seletor Inteligente Mobile + Abas de Acesso Rápido -->
+                <!-- Seletor único de categorias: uma caixa que abre a lista completa
+                     (lista suspensa no desktop, painel inferior no celular) -->
                 <div class="catalog-category-bar" id="catalog-category-bar">
-                    <!-- Seletor / Dropdown Mobile Inteligente (exibido em telas < 1024px para evitar scroll exaustivo) -->
-                    <div class="catalog-category-mobile" id="catalog-category-mobile">
-                        <button type="button" 
-                                class="catalog-category-mobile__trigger" 
-                                id="btn-open-category-modal" 
-                                aria-haspopup="dialog" 
-                                aria-expanded="false" 
-                                aria-controls="category-bottom-sheet"
-                                aria-label="Abrir todas as categorias em lista e buscar">
-                            <span class="catalog-category-mobile__icon" aria-hidden="true">
+                    <div class="catalog-category-picker" id="catalog-category-picker">
+                        <button type="button"
+                                class="catalog-category-picker__trigger"
+                                id="btn-open-category-modal"
+                                aria-haspopup="dialog"
+                                aria-expanded="false"
+                                aria-controls="category-bottom-sheet">
+                            <span class="catalog-category-picker__icon" aria-hidden="true">
                                 <svg class="category-svg-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
                                     <rect x="3" y="3" width="7.5" height="7.5" rx="2.2" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.9"></rect>
                                     <rect x="3" y="13.5" width="7.5" height="7.5" rx="2.2" stroke="currentColor" stroke-width="1.9"></rect>
@@ -143,32 +144,58 @@
                                     <path d="M17.25 2.5L18.45 5.8L21.75 7L18.45 8.2L17.25 11.5L16.05 8.2L12.75 7L16.05 5.8L17.25 2.5Z" fill="currentColor"></path>
                                 </svg>
                             </span>
-                            <div class="catalog-category-mobile__info">
-                                <span class="catalog-category-mobile__tag">Filtrar Categoria</span>
-                                <strong class="catalog-category-mobile__name" id="category-mobile-selected-label">Todos os Produtos</strong>
-                            </div>
-                            <span class="catalog-category-mobile__action">
-                                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                                <span class="catalog-category-mobile__action-label">Buscar</span>
-                                <span class="catalog-category-mobile__badge" id="category-mobile-count-badge">0</span>
-                                <i class="fa-solid fa-chevron-down catalog-category-mobile__arrow" aria-hidden="true"></i>
+                            <span class="catalog-category-picker__info">
+                                <span class="catalog-category-picker__tag">Categoria</span>
+                                <strong class="catalog-category-picker__name" id="category-picker-label">Todos os Produtos</strong>
+                            </span>
+                            <span class="catalog-category-picker__action">
+                                <span class="catalog-category-picker__action-label" id="category-picker-total">Ver categorias</span>
+                                <i class="fa-solid fa-chevron-down catalog-category-picker__arrow" aria-hidden="true"></i>
                             </span>
                         </button>
                     </div>
 
-                    <!-- Abas de Rolagem com 100% da largura (Sem esmagamento lateral) -->
-                    <div class="catalog-tabs-wrapper" id="catalog-tabs-wrapper">
-                        <div class="catalog-tabs-nav" id="category-filters" data-catalog-tabs role="toolbar" aria-label="Filtrar produtos por categoria">
-                            <button type="button" class="catalog-tab active is-active" data-category="all" aria-pressed="true">
-                                <svg class="catalog-tab__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-                                    <rect x="3" y="3" width="7.5" height="7.5" rx="2.2" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.9"></rect>
-                                    <rect x="3" y="13.5" width="7.5" height="7.5" rx="2.2" stroke="currentColor" stroke-width="1.9"></rect>
-                                    <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2.2" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.9"></rect>
-                                    <path d="M17.25 2.5L18.45 5.8L21.75 7L18.45 8.2L17.25 11.5L16.05 8.2L12.75 7L16.05 5.8L17.25 2.5Z" fill="currentColor"></path>
-                                </svg>
-                                <span class="catalog-tab__label">Todos</span> <span class="catalog-tab__count" data-count-badge>0</span>
+                    <!-- Lista completa de categorias (fica ancorada ao seletor no desktop) -->
+                    <div class="category-sheet-backdrop" id="category-sheet-backdrop" aria-hidden="true" hidden></div>
+                    <div class="category-sheet"
+                         id="category-bottom-sheet"
+                         role="dialog"
+                         aria-modal="true"
+                         aria-labelledby="category-sheet-title"
+                         aria-hidden="true"
+                         hidden>
+                        <div class="category-sheet__handle" aria-hidden="true"></div>
+                        <header class="category-sheet__header">
+                            <div class="category-sheet__header-text">
+                                <h3 class="category-sheet__title" id="category-sheet-title">Categorias de fórmulas</h3>
+                                <p class="category-sheet__subtitle" id="category-sheet-subtitle">Selecione uma categoria para filtrar o catálogo</p>
+                            </div>
+                            <button type="button" class="category-sheet__close" id="btn-close-category-sheet" aria-label="Fechar lista de categorias">
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            </button>
+                        </header>
+
+                        <div class="category-sheet__search-box">
+                            <i class="fa-solid fa-magnifying-glass category-sheet__search-icon" aria-hidden="true"></i>
+                            <input type="search"
+                                   id="category-sheet-search"
+                                   class="category-sheet__search-input"
+                                   placeholder="Buscar categoria por nome..."
+                                   aria-label="Filtrar categorias por nome"
+                                   aria-controls="category-sheet-list"
+                                   autocomplete="off"
+                                   autocorrect="off"
+                                   autocapitalize="off"
+                                   spellcheck="false"
+                                   inputmode="search"
+                                   enterkeyhint="search">
+                            <button type="button" class="category-sheet__search-clear" id="btn-clear-category-search" aria-label="Limpar busca de categorias" hidden>
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                             </button>
                         </div>
+
+                        <!-- Itens com área de toque confortável (mínimo 48px), renderizados por js/app.js -->
+                        <div class="category-sheet__body" id="category-sheet-list" role="listbox" aria-label="Lista de categorias disponíveis"></div>
                     </div>
                 </div>
 
@@ -230,8 +257,8 @@
 
                 <!-- Banner Inferior de Receita Personalizada -->
                 <div class="catalog-custom-banner">
-                    <h2 class="catalog-custom-banner__title">Tem uma receita médica ou odontológica?</h2>
-                    <p>Manipulamos fórmulas personalizadas sob medida na dosagem exata indicada pelo seu médico, nutricionista ou veterinário. Envie a foto da receita e receba o orçamento em minutos.</p>
+                    <h2 class="catalog-custom-banner__title">Possui uma prescrição?</h2>
+                    <p>Orce sua receita</p>
                     <a class="btn btn--secondary btn--lg btn--pulse" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tenho%20uma%20receita%20e%20gostaria%20de%20fazer%20um%20or%C3%A7amento." data-wa="catalogo-custom-recipe">
                         <i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Enviar foto da receita pelo WhatsApp
                     </a>
@@ -263,7 +290,7 @@
                 <h3>Navegação</h3>
                 <ul class="footer__links">
                     <li><a href="produtos.html"><strong>Catálogo de Produtos</strong></a></li>
-                    <li><a href="index.html#mais-vendidos">Mais Vendidos</a></li>
+                    <li><a href="index.html#mais-vendidos">Destaques</a></li>
                     <li><a href="index.html#especialidades">Formas Farmacêuticas</a></li>
                     <li><a href="index.html#como-funciona">Como funciona</a></li>
                     <li><a href="index.html#sobre">Quem somos</a></li>
@@ -284,8 +311,8 @@
             <div class="footer__col">
                 <h3>Contato</h3>
                 <ul class="footer__contact">
-                    <li><a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 8554-3448</a></li>
-                    <li><a href="tel:+555185543448"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 8554-3448</a></li>
+                    <li><a href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20atendimento%20na%20Botica%20Natural." data-wa="footer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> (51) 98554-3448</a></li>
+                    <li><a href="tel:+5551985543448"><i class="fa-solid fa-phone" aria-hidden="true"></i> (51) 98554-3448</a></li>
                     <!--email_off--><li><a href="mailto:boticanatural@terra.com.br"><i class="fa-solid fa-envelope" aria-hidden="true"></i> boticanatural@terra.com.br</a></li><!--/email_off-->
                     <li><a href="https://www.google.com/maps/search/?api=1&amp;query=Rua+Assis+Brasil+31+Centro+Triunfo+RS" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Rua Assis Brasil, 31, Centro, Triunfo/RS</a></li>
                 </ul>
@@ -312,51 +339,6 @@
             </div>
         </div>
     </footer>
-
-    <!-- ================= MODAL / BOTTOM SHEET DE CATEGORIAS (MOBILE UX SÊNIOR) ================= -->
-    <div class="category-sheet-backdrop" id="category-sheet-backdrop" aria-hidden="true" hidden></div>
-    <div class="category-sheet" 
-         id="category-bottom-sheet" 
-         role="dialog" 
-         aria-modal="true" 
-         aria-labelledby="category-sheet-title" 
-         aria-hidden="true" 
-         hidden>
-        <div class="category-sheet__handle" aria-hidden="true"></div>
-        <header class="category-sheet__header">
-            <div class="category-sheet__header-text">
-                <h3 class="category-sheet__title" id="category-sheet-title">Categorias de Fórmulas</h3>
-                <p class="category-sheet__subtitle" id="category-sheet-subtitle">Selecione uma categoria para filtrar a vitrine</p>
-            </div>
-            <button type="button" class="category-sheet__close" id="btn-close-category-sheet" aria-label="Fechar lista de categorias">
-                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-            </button>
-        </header>
-
-        <!-- Campo de Busca Rápida dentro das categorias -->
-        <div class="category-sheet__search-box">
-            <i class="fa-solid fa-magnifying-glass category-sheet__search-icon" aria-hidden="true"></i>
-            <input type="search" 
-                   id="category-sheet-search" 
-                   class="category-sheet__search-input" 
-                   placeholder="Buscar categoria por nome..." 
-                   aria-label="Filtrar categorias por nome" 
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false"
-                   inputmode="search"
-                   enterkeyhint="search">
-            <button type="button" class="category-sheet__search-clear" id="btn-clear-category-search" aria-label="Limpar busca de categorias" hidden>
-                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-            </button>
-        </div>
-
-        <!-- Lista de Categorias com Toque Confortável (Mínimo 48px por item) -->
-        <div class="category-sheet__body" id="category-sheet-list" role="listbox" aria-label="Lista de categorias disponíveis">
-            <!-- Renderizado dinamicamente por js/app.js -->
-        </div>
-    </div>
 
     <!-- ================= FLOATING CTAs ================= -->
     <a class="wa-float" href="https://wa.me/555185543448?text=Ol%C3%A1%2C%20tudo%20bem%3F%20Gostaria%20de%20falar%20com%20um%20farmac%C3%AAutico." data-wa="float" aria-label="Fale conosco no WhatsApp">
@@ -408,7 +390,7 @@
     </dialog>
 
     <!-- Motor Dinâmico da Vitrine (Supabase ES Module) -->
-    <script type="module" src="./js/app.js?v=20261115"></script>
+    <script type="module" src="./js/app.js?v=20261117"></script>
 </body>
 </html>
 

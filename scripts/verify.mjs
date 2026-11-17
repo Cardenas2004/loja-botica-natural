@@ -17,6 +17,8 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
   WHATSAPP_PHONE,
+  PHONE_E164,
+  WHATSAPP_DISPLAY,
   BRAND_NAME,
   SITE_DOMAIN,
   BUSINESS_HOURS_TEXT,
@@ -223,7 +225,7 @@ if (fs.existsSync(legacyDir)) {
 /* ==========================================================================
    2. CONSISTÊNCIA DO NÚMERO DE WHATSAPP EM TODOS OS ARQUIVOS
    ========================================================================== */
-console.log(`\n2. Verificando consistência do WhatsApp (${WHATSAPP_PHONE})...`);
+console.log(`\n2. Verificando consistência do WhatsApp (${WHATSAPP_PHONE}) e do telefone (${PHONE_E164})...`);
 const filesToScanWhatsApp = [
   ...HTML_FILES,
   ...JS_FILES,
@@ -236,14 +238,20 @@ let whatsappConsistent = true;
 for (const rel of filesToScanWhatsApp) {
   const content = readUtf8(rel);
 
-  // Captura qualquer wa.me/<digitos> ou tel:+<digitos>
+  // wa.me usa o ID da conta de WhatsApp; tel: usa o número discável com o nono dígito.
   const waLinks = [...content.matchAll(/wa\.me\/(\d+)/g)].map((m) => m[1]);
   const telLinks = [...content.matchAll(/tel:\+(\d+)/g)].map((m) => m[1]);
 
-  for (const num of [...waLinks, ...telLinks]) {
+  for (const num of waLinks) {
     if (num !== WHATSAPP_PHONE) {
       whatsappConsistent = false;
-      fail(`Número de WhatsApp/telefone divergente em ${rel}: encontrado "${num}", esperado "${WHATSAPP_PHONE}"`);
+      fail(`Link wa.me divergente em ${rel}: encontrado "${num}", esperado "${WHATSAPP_PHONE}"`);
+    }
+  }
+  for (const num of telLinks) {
+    if (num !== PHONE_E164) {
+      whatsappConsistent = false;
+      fail(`Link tel: divergente em ${rel}: encontrado "${num}", esperado "${PHONE_E164}"`);
     }
   }
 
@@ -251,9 +259,14 @@ for (const rel of filesToScanWhatsApp) {
     whatsappConsistent = false;
     fail(`Número antigo (555197731564) encontrado em ${rel}`);
   }
+  // Exibição antiga sem o nono dígito, ex.: "(51) 8554-3448"
+  if (/\(51\)\s*8554-3448/.test(content)) {
+    whatsappConsistent = false;
+    fail(`Telefone exibido sem o nono dígito em ${rel}; use "${WHATSAPP_DISPLAY}".`);
+  }
 }
 if (whatsappConsistent) {
-  pass(`Número de WhatsApp (${WHATSAPP_PHONE}) idêntico em todos os arquivos HTML, JS e SQL ativos.`);
+  pass(`WhatsApp (${WHATSAPP_PHONE}) e telefone (${PHONE_E164}, exibido como ${WHATSAPP_DISPLAY}) consistentes em HTML, JS e SQL ativos.`);
 }
 
 /* ==========================================================================
