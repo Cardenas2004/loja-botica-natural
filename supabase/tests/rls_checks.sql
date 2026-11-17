@@ -315,6 +315,44 @@ BEGIN
 
   EXECUTE 'RESET ROLE';
   RAISE NOTICE '[OK TESTE 4] Administrador em public.admin_users possui permissões completas.';
+
+  -- ==========================================================================
+  -- TESTE 5 (Fase 3): menor privilégio em grants e funções
+  -- Requer supabase/migrations/20261116100000_least_privilege_grants.sql
+  -- ==========================================================================
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r','p')
+      AND (has_table_privilege('anon', c.oid, 'INSERT')
+        OR has_table_privilege('anon', c.oid, 'UPDATE')
+        OR has_table_privilege('anon', c.oid, 'DELETE')
+        OR has_table_privilege('anon', c.oid, 'TRUNCATE'))
+  ) THEN
+    RAISE EXCEPTION '[FALHA TESTE 5.1] anon ainda possui grant de escrita/TRUNCATE em tabela de public (RLS seria a única barreira)!';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r','p')
+      AND has_table_privilege('authenticated', c.oid, 'TRUNCATE')
+  ) THEN
+    RAISE EXCEPTION '[FALHA TESTE 5.2] authenticated possui TRUNCATE (ignora RLS) em tabela de public!';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.pronamespace = 'public'::regnamespace
+      AND p.prokind = 'f'
+      AND NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) cfg WHERE cfg LIKE 'search_path=%')
+  ) THEN
+    RAISE EXCEPTION '[FALHA TESTE 5.3] Função em public sem search_path fixo!';
+  END IF;
+
+  IF has_function_privilege('anon', 'public.rls_auto_enable()', 'EXECUTE') THEN
+    RAISE EXCEPTION '[FALHA TESTE 5.4] anon pode executar public.rls_auto_enable() (SECURITY DEFINER) via RPC!';
+  END IF;
+
+  RAISE NOTICE '[OK TESTE 5] Grants mínimos: anon somente leitura, sem TRUNCATE, funções com search_path fixo.';
   RAISE NOTICE '====================================================================';
   RAISE NOTICE 'SUCESSO: Todas as checagens de RLS e autorização foram APROVADAS!';
   RAISE NOTICE '====================================================================';
