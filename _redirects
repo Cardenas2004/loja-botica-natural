@@ -1,8 +1,11 @@
-# Botica Natural — Regras de roteamento para Cloudflare Pages
+# Botica Natural — Regras de roteamento (Cloudflare Workers Static Assets / Pages)
 # Como existe o diretório produtos/<slug>/ sem produtos/index.html, evita 404 ao acessar /produtos/ com barra final
 /produtos/ /produtos 301
 
-# Fallback para produtos cadastrados/editados no Admin entre builds (quando produtos/<slug>/index.html ainda não existe em dist/)
-# Na Cloudflare Pages, arquivos estáticos existentes em produtos/<slug>/index.html têm precedência e são servidos diretamente.
-/produtos/:slug /produto.html?slug=:slug 302
-/produtos/:slug/ /produto.html?slug=:slug 302
+# NÃO adicionar regras dinâmicas como `/produtos/:slug /produto.html?slug=:slug`:
+# no Workers Static Assets o _redirects é avaliado ANTES dos arquivos estáticos, então
+# essas regras sequestravam as páginas pré-renderizadas (produtos/<slug>/index.html, que
+# estão no sitemap) e as mandavam para produto.html (noindex), prejudicando SEO.
+# Produtos criados no Admin entre builds continuam acessíveis: a rota inexistente cai em
+# 404.html (assets.not_found_handling = "404-page"), cujo script redireciona para
+# /produto.html?slug=<slug> (coberto por tests/e2e/product-seo.spec.js).
