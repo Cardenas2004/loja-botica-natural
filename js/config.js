@@ -95,7 +95,7 @@ export const SITE_CONFIG = Object.freeze({
   ALLOWED_WHATSAPP_HOSTS: Object.freeze(['wa.me', 'api.whatsapp.com']),
   SHOW_INSTALLMENTS,
   MAX_INSTALLMENTS: 6,
-  MAX_BESTSELLERS: 6,
+  MAX_BESTSELLERS: 12,
   ANALYTICS,
 });
 

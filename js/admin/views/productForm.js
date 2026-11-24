@@ -926,7 +926,7 @@ export async function renderProductFormView(container, context) {
         paymentEditor.element,
       ]),
       el('div', { className: 'form-group' }, [
-        el('label', { for: 'prod-image', className: 'form-label', textContent: 'Foto Principal do Produto' }),
+        el('label', { for: 'prod-image', className: 'form-label', textContent: 'Foto Principal do Produto (opcional)' }),
         uploadZone,
         progressWrap,
         imagePreviewCard,

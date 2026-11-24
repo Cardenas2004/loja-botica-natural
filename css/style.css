@@ -4194,6 +4194,11 @@ body.category-sheet-lock {
   background: linear-gradient(180deg, var(--white) 0%, var(--primary-soft) 100%);
 }
 
+/* Título "Destaques Botica Natural" um degrau abaixo do h2 padrão (22px -> 30px) */
+.bestsellers-home .section-header h2 {
+  font-size: clamp(1.375rem, 1.1rem + 1.2vw, 1.875rem);
+}
+
 .bestsellers-home__footer {
   text-align: center;
   margin-top: 3rem;
